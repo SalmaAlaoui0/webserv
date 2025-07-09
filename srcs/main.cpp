@@ -3,14 +3,15 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:24:39 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/09 14:00:03 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/09 14:31:32 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <iostream>
+#include "../includes/ConfigParser.hpp"
 
 int main(int argc, char** argv) 
 {
@@ -21,6 +22,15 @@ int main(int argc, char** argv)
         return 1;
     }
     // Parse config file
+    // still in the start Not done yet 
+    try
+    {
+        parseConfig(argv[1]);
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << e.what() << '\n';
+    }
     // Start server
     return 0;
 }
