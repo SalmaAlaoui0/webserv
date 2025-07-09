@@ -3,34 +3,39 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:24:39 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/09 14:31:32 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/07/09 16:57:56 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <iostream>
 #include "../includes/ConfigParser.hpp"
+#include "../includes/Server.hpp"
+
 
 int main(int argc, char** argv) 
 {
-    (void)argv;
-    if (argc != 2) 
-    {
-        std::cerr << "Usage: ./webserv [config file]" << std::endl;
-        return 1;
-    }
-    // Parse config file
-    // still in the start Not done yet 
     try
     {
+        std::string configFile = "default.conf";
+        if (argc == 2)
+            configFile = argv[1];
+        else if (argc > 2) 
+        {
+            std::cerr << "Usage: ./webserv [config_file]" << std::endl;
+            return 1;
+        }
+        //std::vector<ServerConfig> configs = ConfigParser::parseConfig(configFile);
         parseConfig(argv[1]);
+        // Server server(configs);
+        // server.run();
     }
     catch(const std::exception& e)
     {
         std::cerr << e.what() << '\n';
+        return 1;
     }
-    // Start server
     return 0;
 }

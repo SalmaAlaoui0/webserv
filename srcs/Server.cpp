@@ -6,15 +6,11 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/09 12:20:44 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/09 16:32:27 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include <iostream>
-#include <cstring>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include "../includes/Server.hpp"
 
 void server()
 {
