@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/09 17:03:37 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/09 18:43:07 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,7 +21,7 @@
 #include <netinet/in.h>
 #include "ServerConfig.hpp"
 
-class ServerConfig;
+struct ServerConfig;
 
 class Server
 {

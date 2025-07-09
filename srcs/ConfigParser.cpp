@@ -43,27 +43,33 @@ int isServer(std::string line)
 	return 0;
 }
 
-bool checkClosing(std::string file, int i, int s) //// find {}
+bool checkClosing(std::string file, int i, int s)
 {
 	int j = 0;
 	std::ifstream ifile;
 	std::string line;
-	// bool brace = 0;
+	std::stack<char> Checker;
 	s++;
 	ifile.open(file.c_str());
-	std::getline(ifile, line);
-	while (j < i && std::getline(ifile, line))
+	while (j < i - 1 && std::getline(ifile, line))
 		j++;
 	while (std::getline(ifile, line))
 	{
+		// std::cout << line << std::endl;
 		s = 0;
-		while (line[s] && line[s] != '}')
+		while (line[s])
+		{
+			if (line[s] == '{')
+				Checker.push(line[s]);
+			else if(line[s] == '}')
+				Checker.pop();
 			s++;
-		if (line[s] == '}')
-			return (1);
+		}
+		j++;
 	}
-	// std::cout << "the i is: " << i << " and j is: " << j << std::endl;
-	return 0;
+	if (!Checker.empty())
+		return 0;
+	return 1;
 }
 
 bool ValidBraces(std::string file, int i, int s)
@@ -96,9 +102,10 @@ bool ValidBraces(std::string file, int i, int s)
 		if (!checkClosing(file, i, s))
 			throw ConfigParser::InvalidBrace();
 	}
+	// std::cout << "passed this pace" << std::endl;
 	/// check either there is the closing for the brace or no braces at all
-	std::cout << "server info starts in: " << line << std::endl;
-	exit (7);
+	std::cout << "Succes->server info starts in: " << line << std::endl;
+	exit (0);
 	return 1;
 }
 

@@ -5,6 +5,7 @@
 #include <fstream>
 #include <cstdlib>
 #include <vector>
+#include <stack>
 #include <map>
 
 struct	ServerConfig
@@ -19,7 +20,6 @@ class ConfigParser
 {
 private:
 	std::vector<ServerConfig> serverdata;
-
 public:
 	class InvalidFile : public std::exception
 	{
@@ -31,8 +31,8 @@ public:
 	public:
 		const char *what() const throw();
 	};
-    ConfigParser(/* args */);
-    ~ConfigParser();
+	ConfigParser(/* args */);
+	~ConfigParser();
 };
 
 void parseConfig(std::string);
