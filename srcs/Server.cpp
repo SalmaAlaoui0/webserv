@@ -6,47 +6,80 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/09 16:32:27 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/10 14:03:03 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../includes/Server.hpp"
 
-void server()
+Server::Server(const std::vector<ServerConfig>& configs)
 {
-    //✅ 1.Create a socket
-    // This creates a file descriptor that represents the server's socket
-   // AF_INET → IPv4 ,  SOCK_STREAM → TCP , 0→ default protocol
-    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-    // ✅ 2.Bind the socket to an IP and port
-    sockaddr_in address;
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY; // Accept connections from any IP
-    address.sin_port = htons(8080);       // Port 8080 (convert to network byte order)
+    this->_configs = configs;
+    setupSockets();
+}
 
-    bind(server_fd, (sockaddr*)&address, sizeof(address));
+Server::~Server()
+{
+    for (size_t i = 0; i < listeningSockets.size(); ++i)
+        close(listeningSockets[i]);
+}
 
-    //You are saying: "I want to receive messages on any local IP and on port 8080"
+Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
 
-    //✅ 3. Listen for incoming connections
-    listen(server_fd, 5);
-    std::cout << "Server is listening on port 8080...\n";
-    //Tells the socket to wait for clients.samah l 5 clients f9a2imat intidar
+const char* Server::socketException::what() const throw()
+{
+    return "_msg";
+}
 
-    //✅ 4. Accept a client connection
-    int client_fd = accept(server_fd, NULL, NULL);
-    std::cout << "Client connected!\n";
-    //This waits until a client connects.It returns a new socket just for communicating with that client.
-    //✅ 5. Read and Write data
-    char buffer[1024] = {0};
-    read(client_fd, buffer, 1024);
-    std::cout << "Client said: " << buffer << std::endl;
+int Server:: creatListeningSocket(const std::string &ip, int port)
+{
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        throw socketException("Socket creation failed");
+    int option = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
+    {
+        close(sockfd);
+        throw socketException("Socket setup failed in setsockopt()");
+    }
+    sockaddr_in addr;
+    std::memset(&addr, 0,sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    addr.sin_addr.s_addr = inet_addr(ip.c_str());
+    struct in_addr addr1;
+    std::cout << inet_ntoa(addr1) << std::endl; 
+    if (addr.sin_addr.s_addr == INADDR_NONE)
+    {
+        close(sockfd);
+        throw socketException("Invalid IP address");
+    }
+    if(bind(sockfd, (sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        close(sockfd);
+        throw socketException("bind() failed"); 
+    }
+    if(listen(sockfd, SOMAXCONN) < 0)
+    {
+        close(sockfd);
+        throw socketException("listen() failed");    
+    }
+    std::cout << "Listening on " << ip << ":" << port << std::endl;
+    return sockfd; 
+}
 
-    const char* msg = "Hello from server";
-    send(client_fd, msg, strlen(msg), 0);
-    
-    //✅ 6. Close the connection
-    close(client_fd);
-    close(server_fd);
+void Server:: setupSockets()
+{
+    for(size_t i = 0; i < _configs.size(); i++)
+    {
+    //     const std::string &ip =_configs[i].getIp();
+    //     int port = _configs[i].getPort();
+    //    int sock = creatListeningSocket(ip, port);
+    //    this->listeningSockets.push_back(sock);
+    }
+}
 
+void Server::run()
+{
+    // This is where i build the poll() loop.
 }

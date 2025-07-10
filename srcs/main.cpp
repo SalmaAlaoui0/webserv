@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:24:39 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/09 16:57:56 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/10 10:21:17 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,7 +19,7 @@ int main(int argc, char** argv)
 {
     try
     {
-        std::string configFile = "default.conf";
+        std::string configFile = "../conf/default.conf";
         if (argc == 2)
             configFile = argv[1];
         else if (argc > 2) 
