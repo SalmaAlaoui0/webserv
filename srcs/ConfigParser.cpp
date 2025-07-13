@@ -29,8 +29,10 @@ bool emptylines(std::string line)
 	return (0);
 }
 
-int isServer(std::string line)
+int isKey(std::string line, std::string target)
 {
+	std::istringstream iss(line);
+	std::string word;
 	int i = 0;
 	int j;
 	while (line[i] == ' ' || line[i] == '\t')
@@ -38,111 +40,122 @@ int isServer(std::string line)
 	j = i;
 	while (line[i] && line[i] != ' ' && line[i] != '\t')
 		i++;
-	if (line.substr(j, i) == "server")
+	if (line[i] == ' ' || line[i] == '\t')
+		i--;
+	iss >> word;
+	if (word == target)
 		return i;
+	// std::cout << "..." << word << "..." << std::endl;
 	return 0;
 }
 
-bool checkClosing(std::string file, int i, int s)
+bool checkClosing(std::string file)
 {
-	int j = 0;
 	std::ifstream ifile;
+	ifile.open(file.c_str());
 	std::string line;
 	std::stack<char> Checker;
-	s++;
-	ifile.open(file.c_str());
-	while (j < i - 1 && std::getline(ifile, line))
-		j++;
+
 	while (std::getline(ifile, line))
 	{
-		// std::cout << line << std::endl;
-		s = 0;
-		while (line[s])
+		for (size_t i = 0; i < line.length(); ++i)
 		{
-			if (line[s] == '{')
-				Checker.push(line[s]);
-			else if(line[s] == '}')
+			if (line[i] == '{')
+				Checker.push('{');
+			else if (line[i] == '}')
+			{
+				if (Checker.empty())
+					throw ConfigParser::InvalidBrace();
 				Checker.pop();
-			s++;
+			}
 		}
-		j++;
 	}
-	if (!Checker.empty())
-		return 0;
-	return 1;
+	return Checker.empty();
 }
 
-bool ValidBraces(std::string file, int i, int s)
+bool ValidBraces(std::string file)
 {
-	int j = 0;
 	std::ifstream ifile;
 	std::string line;
-	bool brace = 0;
-	s++;
 	ifile.open(file.c_str());
 	std::getline(ifile, line);
-	while (j < i)
-	{ 
-		std::getline(ifile, line);
-		j++;
-	}
-	while (line[s] && (line[s] == ' ' || line[s] == '\t'))
-		s++;
-	if (line[s] == '{')
-		brace = 1;
-	if (line[s] && line[s] != '{')
-		return 0;
-	if (!line[s])
-		std::getline(ifile, line);
-	while (emptylines(line))
-		std::getline(ifile, line);
-	if (brace == 1)
-	{
-		// std::cout << "The brace bool var. is: " << brace << std::endl;
-		if (!checkClosing(file, i, s))
-			throw ConfigParser::InvalidBrace();
-	}
-	// std::cout << "passed this pace" << std::endl;
-	/// check either there is the closing for the brace or no braces at all
-	std::cout << "Succes->server info starts in: " << line << std::endl;
-	exit (0);
+	if (!checkClosing(file))
+		throw ConfigParser::InvalidBrace();
 	return 1;
 }
 
-void parseConfig(std::string file)
+std::vector<ServerConfig> ConfigParser::parseConfig(std::string file)
 {
 	std::ifstream ifile;
 	std::string line;
-	int i = 0;
+	int server_counter = -1;
+	int lcounter = -1;
+	int Server = 0;
+	std::vector<ServerConfig> container;
+	container.push_back(ServerConfig());
 	ifile.open(file.c_str());
 	if (ifile.fail())
         throw ConfigParser::InvalidFile();
 	int dotPosition = file.find('.');
 	if (dotPosition == -1)
 		throw ConfigParser::InvalidFile();
-	if (file.substr(dotPosition) != ".conf") // check for extention
+	if (file.substr(dotPosition) != ".conf")
 		throw ConfigParser::InvalidFile();
 	while (std::getline(ifile, line))
 	{
-        if (emptylines(line)) // skip empty lines
-		{
-            i++;
+		parseServerConfig(line, container, server_counter);
+        if (emptylines(line))
 			continue;
-		}
-        // std::cout << "hello " << std::endl;
-		else if (isServer(line)) // search starting line and braces
+		else if (isKey(line, "server")) // search starting line and braces
 		{
-            // std::cout << "Here there is a server" << std::endl;
-        // std::cout << "here" << std::endl;
-			if (!ValidBraces(file, i, isServer(line)))
+			server_counter++;
+			lcounter = -1;
+			container.push_back(ServerConfig());
+			if (!ValidBraces(file))
 				throw ConfigParser::InvalidFile();
-			// 
-			// here start extracting data from server
-			
+			Server = 1;
 		}
-		else
+		else if (Server == 1)
+		{
+			Server = 0;
+			while (std::getline(ifile, line) && !isKey(line, "server"))
+			{
+				if (emptylines(line))
+				{
+					continue;
+				}
+				else if (isKey(line, "location"))
+				{
+					// std::cout << "container number is: " << server_counter << std::endl;
+    				container[server_counter].locations.push_back(LocationConfig());
+					lcounter++;
+					parseLocationConfig(line, container, server_counter, lcounter);
+					while (std::getline(ifile, line) && noClosing(line))
+					{
+						parseLocationConfig(line, container, server_counter, lcounter);
+					}
+				}
+				else
+					parseServerConfig(line, container, server_counter);
+			}
+			if (isKey(line, "server"))
+			{
+				server_counter++;
+				lcounter = -1;
+				container.push_back(ServerConfig());
+				if (!ValidBraces(file))
+					throw ConfigParser::InvalidFile();
+				Server = 1;
+			}
+		}
+		else if (Server == 0)
 			throw ConfigParser::InvalidFile();
-		i++;
 	}
-
+	return container;
 }
+
+// Do not forget to check if empty cofig instruc. for :
+	// server_name localhost;
+	// root www;
+	// allowed_methods;
+// And check location's info is btw {}

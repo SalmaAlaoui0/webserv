@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:24:39 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/10 10:21:17 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/13 18:35:27 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,9 +17,10 @@
 
 int main(int argc, char** argv) 
 {
+    ConfigParser obj;
     try
     {
-        std::string configFile = "../conf/default.conf";
+        std::string configFile = "default.conf";
         if (argc == 2)
             configFile = argv[1];
         else if (argc > 2) 
@@ -27,8 +28,9 @@ int main(int argc, char** argv)
             std::cerr << "Usage: ./webserv [config_file]" << std::endl;
             return 1;
         }
-        //std::vector<ServerConfig> configs = ConfigParser::parseConfig(configFile);
-        parseConfig(argv[1]);
+        std::vector<ServerConfig> configs = obj.parseConfig(configFile);
+        std::cout << "first server's name: " << configs[0].server_name << std::endl;
+        // parseConfig(argv[1]);
         // Server server(configs);
         // server.run();
     }
@@ -39,3 +41,4 @@ int main(int argc, char** argv)
     }
     return 0;
 }
+

@@ -8,19 +8,17 @@
 #include <stack>
 #include <map>
 
-struct	ServerConfig
-{
-	int port;
-	std::string root;
-	std::map<int, std::string> ErrorPages;
-};
+#include "LocationConfig.hpp"
+#include "ServerConfig.hpp"
+
+struct ServerConfig;
 
 
 class ConfigParser
 {
-private:
-	std::vector<ServerConfig> serverdata;
+// private:
 public:
+std::vector<ServerConfig> serverdata;
 	class InvalidFile : public std::exception
 	{
 	public:
@@ -33,12 +31,11 @@ public:
 	};
 	ConfigParser(/* args */);
 	~ConfigParser();
+	std::vector<ServerConfig> parseConfig(std::string);
 };
 
-void parseConfig(std::string);
 bool emptylines(std::string file);
-int isServer(std::string line);
-bool ValidBraces(std::string file, int, int server);
-bool checkClosing(std::string file, int i, int s);
+int isKey(std::string line, std::string target);
+bool checkClosing(std::string file);
 
 #endif
