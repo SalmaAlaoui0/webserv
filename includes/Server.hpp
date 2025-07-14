@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/13 18:02:19 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/14 16:08:35 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,6 +15,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <algorithm>
 #include <cstring>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -33,7 +34,8 @@ class Server
     private:
         std::vector<ServerConfig> _configs;
         std::vector<int> listeningSockets;
-        //std::map<int, Client> _clients;
+        std::vector<Client> clients;
+        //std::map<int, Client> clients;
     public:
         Server(const std::vector<ServerConfig>& configs);
         ~Server();
@@ -43,6 +45,7 @@ class Server
         void run();
         bool isListeningSocket(int fd) const;
         void acceptNewClient(int fd, EpollManager &epollManager);
+        void closeClient(int fd, EpollManager &epollManager);
         
         class socketException : public std::exception 
         {

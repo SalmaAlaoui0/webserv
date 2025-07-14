@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EpollManager.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:11:36 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/13 18:36:38 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/07/14 12:20:54 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,7 @@ int EpollManager::getEpollFd() const
 
 std::vector<int> EpollManager::waitEvents(int timeout)
 {
-    std::vector<int> eventFds;
+    std::vector<int> readyFds;
     const int MAX_EVENTS = 1064;
     struct epoll_event events[MAX_EVENTS];
     int n = epoll_wait(epollFd, events, MAX_EVENTS , timeout);
@@ -48,15 +48,14 @@ std::vector<int> EpollManager::waitEvents(int timeout)
         throw epollException("epoll_wait failed");
     for (int i =0; i < n ; i++)
     {
-        eventFds.push_back(events[i].data.fd);
+        readyFds.push_back(events[i].data.fd);
     }
-    return eventFds;
-    
+    return readyFds;    
 }
 
 EpollManager::epollException::epollException(const std::string &msg) :_msg(msg){}
 
-EpollManager ::epollException::~epollException(){}
+EpollManager ::epollException::~epollException() throw() {}
 
 const char* EpollManager::epollException::what() const throw()
 {
