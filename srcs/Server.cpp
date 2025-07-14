@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/13 18:36:47 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/07/14 16:18:54 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -24,13 +24,15 @@ Server::~Server()
         close(listeningSockets[i]);
 }
 
-Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
-
-Server ::socketException::~socketException(){}
-
-const char* Server::socketException::what() const throw()
+void Server:: setupSockets()
 {
-    return "_msg";
+    for(size_t i = 0; i < _configs.size(); i++)
+    {
+        const std::string &ip =_configs[i].host;
+        int port = _configs[i].port;
+       int sock = creatListeningSocket(ip, port);
+       this->listeningSockets.push_back(sock);
+    }
 }
 
 int Server:: creatListeningSocket(const std::string &ip, int port)
@@ -70,16 +72,15 @@ int Server:: creatListeningSocket(const std::string &ip, int port)
     return sockfd; 
 }
 
-void Server:: setupSockets()
+Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
+
+Server ::socketException::~socketException() throw() {}
+
+const char* Server::socketException::what() const throw()
 {
-    // for(size_t i = 0; i < _configs.size(); i++)
-    // {
-    //     const std::string &ip =_configs[i].getIp();
-    //     int port = _configs[i].getPort();
-    //    int sock = creatListeningSocket(ip, port);
-    //    this->listeningSockets.push_back(sock);
-    // }
+    return "_msg";
 }
+
 bool Server::isListeningSocket(int fd) const 
 {
     for (size_t i = 0; i < listeningSockets.size(); ++i) 
@@ -92,14 +93,16 @@ bool Server::isListeningSocket(int fd) const
 
 void Server::acceptNewClient(int fd, EpollManager &epollManager)
 {
-    int clientFd = accept(fd, NULL, NULL);
+    struct sockaddr clientAddr;
+    socklen_t clientLen = sizeof(clientAddr);
+    int clientFd = accept(fd, (struct sockaddr *)&clientAddr, &clientLen);
     if (clientFd < 0) 
         throw socketException("accept failed");
-    struct epoll_event ev;
-    ev.events = EPOLLIN;
-    ev.data.fd = clientFd;
-    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_ADD, clientFd, &ev);
-   // _clients[clientFd] = client(clientFd);
+    else
+        std::cout << "New client connected on FD : " << clientFd << std::endl;
+    epollManager.addSocket(clientFd);
+    clients.push_back(Client(clientFd));
+    //clients[clientFd] = Client(clientFd);
 }
 
 void Server::run()
@@ -126,9 +129,21 @@ void Server::run()
                 catch(const std::exception& e)
                 {
                     std::cerr << "Client fd " << fd << " error: " << e.what() << std::endl;
-                   // closeClient(fd, epollManager);
+                    closeClient(fd, epollManager);
                 }
             }
         }
     } 
+}
+
+void Server::closeClient(int fd, EpollManager &epollManager)
+{
+    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
+    close(fd);
+    std::vector<Client>::iterator itt = std::find(clients.begin(), clients.end(), fd);
+    if (itt != clients.end())
+    {    
+        clients.erase(itt);
+        std::cout << "Closed client fd: " << fd << std::endl;
+    }       
 }

@@ -3,17 +3,16 @@
 /*                                                        :::      ::::::::   */
 /*   main.cpp                                           :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:24:39 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/13 18:35:27 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/07/14 11:39:24 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <iostream>
 #include "../includes/ConfigParser.hpp"
 #include "../includes/Server.hpp"
-
 
 int main(int argc, char** argv) 
 {
@@ -30,9 +29,8 @@ int main(int argc, char** argv)
         }
         std::vector<ServerConfig> configs = obj.parseConfig(configFile);
         std::cout << "first server's name: " << configs[0].server_name << std::endl;
-        // parseConfig(argv[1]);
-        // Server server(configs);
-        // server.run();
+        Server server(configs);
+        server.run();
     }
     catch(const std::exception& e)
     {

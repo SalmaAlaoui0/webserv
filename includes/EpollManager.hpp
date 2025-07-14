@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:09:23 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/13 17:32:51 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/14 11:33:09 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,7 +35,7 @@ class EpollManager
                 std::string _msg;
             public:
                 epollException(const std::string &msg);    
-               virtual ~epollException() throw();    
+                virtual ~epollException() throw();    
                 virtual const char* what() const throw();
         };
 };
