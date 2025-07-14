@@ -12,15 +12,17 @@
 
 #include <iostream>
 #include "../includes/ConfigParser.hpp"
+#include "../includes/Request.hpp"
 
 int main(int argc, char** argv) 
 {
-    (void)argv;
-    if (argc != 2) 
-    {
-        std::cerr << "Usage: ./webserv [config file]" << std::endl;
-        return 1;
-    }
+    argc =0;
+    //(void)argv;
+    // if (argc != 2) 
+    // {
+    //     std::cerr << "Usage: ./webserv [config file]" << std::endl;
+    //     return 1;
+    // }
     // Parse config file
     // still in the start Not done yet 
     try
@@ -31,6 +33,7 @@ int main(int argc, char** argv)
     {
         std::cerr << e.what() << '\n';
     }
+    server();
     // Start server
     return 0;
 }
