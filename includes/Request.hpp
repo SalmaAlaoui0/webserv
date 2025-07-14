@@ -9,12 +9,12 @@
 #include<map>
 #include<string>
 #include<cstdlib>
-#define e405 "405 Method Not Allowed "
+#define e405 "405 Method Not Allowed"
 #define e505 "505 HTTP Version Not Supported"
 #define e400  "400 Bad Request"
 #define e413 "Payload Too Large"
 
-void server();
+
 
 int parce_request(int client_fd);
 class request{

@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/09 12:20:44 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/14 16:18:54 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -15,44 +15,107 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include "../includes/Server.hpp"
 #include "../includes/Request.hpp"
+#include "../includes/ServerConfig.hpp"
 #include <sstream>
 #include<map>
 
-void server()
+Server::Server(const std::vector<ServerConfig>& configs)
 {
-    //✅ 1.Create a socket
-    // This creates a file descriptor that represents the server's socket
-   // AF_INET → IPv4 ,  SOCK_STREAM → TCP , 0→ default protocol
-   int opt = 1;
-   int server_fd = socket(AF_INET, SOCK_STREAM, 0);
-   setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-    // ✅ 2.Bind the socket to an IP and port
-    sockaddr_in address;
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY; // Accept connections from any IP
-    address.sin_port = htons(8080);       // Port 8080 (convert to network byte order)
+    this->_configs = configs;
+    setupSockets();
+}
 
-   bind(server_fd, (sockaddr*)&address, sizeof(address));
+Server::~Server()
+{
+    for (size_t i = 0; i < listeningSockets.size(); ++i)
+        close(listeningSockets[i]);
+}
 
-    //You are saying: "I want to receive messages on any local IP and on port 8080"
+void Server:: setupSockets()
+{
+    for(size_t i = 0; i < _configs.size(); i++)
+    {
+        const std::string &ip =_configs[i].host;
+        int port = _configs[i].port;
+       int sock = creatListeningSocket(ip, port);
+       this->listeningSockets.push_back(sock);
+    }
+}
 
-    //✅ 3. Listen for incoming connections
-    listen(server_fd, 200);
-    std::cout << "Server is listening on port 8080...\n";
-    //Tells the socket to wait for clients.samah l 5 clients f9a2imat intidar
 
-    //✅ 4. Accept a client connection
-   int client_fd = accept(server_fd, NULL, NULL);
-    std::cout << "Client connected!\n";
-    //This waits until a client connects.It returns a new socket just for communicating with that client.
-    //✅ 5. Read and Write data
-    //har buffer[1024] = {0};
 
-    //read(client_fd, buffer, 1024);
-   
-    //std::cout << buffer << std::endl;
-   if( parce_request(client_fd)==0)
+int Server::creatListeningSocket(const std::string &ip, int port)
+{
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd < 0) 
+        throw socketException("Socket creation failed");
+    int option = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
+    {
+        close(sockfd);
+        throw socketException("Socket setup failed in setsockopt()");
+    }
+    sockaddr_in addr;
+    std::memset(&addr, 0,sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    //probleme in inet_addr convert in hex
+    addr.sin_addr.s_addr = inet_addr(ip.c_str());
+    // struct in_addr addr1;
+     std::cout << addr.sin_addr.s_addr << std::endl; 
+    if (addr.sin_addr.s_addr == INADDR_NONE)
+    {
+        close(sockfd);
+        throw socketException("Invalid IP address");
+    }
+    if(bind(sockfd, (sockaddr *)&addr, sizeof(addr)) < 0)
+    {
+        close(sockfd);
+        throw socketException("bind() failed"); 
+    }
+    if(listen(sockfd, SOMAXCONN) < 0)
+    {
+        close(sockfd);
+        throw socketException("listen() failed");    
+    }
+    std::cout << "Listening on " << ip << ":" << port << std::endl;
+    return sockfd; 
+}
+
+Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
+
+Server ::socketException::~socketException() throw() {}
+
+
+const char* Server::socketException::what() const throw()
+{
+    return (this->_msg).c_str();
+}
+
+bool Server::isListeningSocket(int fd) const 
+{
+    for (size_t i = 0; i < listeningSockets.size(); ++i) 
+    {
+        if (listeningSockets[i] == fd)
+            return true;
+    }
+    return false;
+}
+
+void Server::acceptNewClient(int fd, EpollManager &epollManager)
+{
+    struct sockaddr clientAddr;
+    socklen_t clientLen = sizeof(clientAddr);
+    int clientFd = accept(fd, (struct sockaddr *)&clientAddr, &clientLen);
+    if (clientFd < 0) 
+        throw socketException("accept failed");
+    else
+        std::cout << "New client connected on FD : " << clientFd << std::endl;
+    epollManager.addSocket(clientFd);
+    clients.push_back(Client(clientFd));
+    if( parce_request(clientFd)==0)
    {
     std::cout << "------->hi\n";
        const char* response =
@@ -62,15 +125,52 @@ void server()
            "\r\n"
            "Hello, World!";
        
-       send(client_fd, response, strlen(response), 0);
+       send(clientFd, response, strlen(response), 0);
 
    }
-    //std::cout << "request : " << std::endl << buffer << std::endl;
-  
-//send(client_fd, msg, strlen(msg), 0);
-    
-   // ✅ 6. Close the connection
-    close(client_fd);
-   close(server_fd);
 
+    //clients[clientFd] = Client(clientFd);
+}
+
+void Server::run()
+{
+    EpollManager epollManager;
+    for (size_t i = 0; i < listeningSockets.size(); i++)
+    {
+        epollManager.addSocket(listeningSockets[i]);
+    }
+    while (true)
+    {
+        std::vector<int> fds = epollManager.waitEvents(1000);
+        for (size_t i = 0; i < fds.size(); i++)
+        {
+            int fd = fds[i];    
+            if (isListeningSocket(fd))
+                acceptNewClient(fd, epollManager);
+            else
+            {
+                try
+                {
+                   // handleClient(fd);
+                }
+                catch(const std::exception& e)
+                {
+                    std::cerr << "Client fd " << fd << " error: " << e.what() << std::endl;
+                    closeClient(fd, epollManager);
+                }
+            }
+        }
+    } 
+}
+
+void Server::closeClient(int fd, EpollManager &epollManager)
+{
+    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
+    close(fd);
+    // std::vector<Client>::iterator itt = std::find(clients.begin(), clients.end(), fd);
+    // if (itt != clients.end())
+    // {    
+    //     clients.erase(itt);
+    //     std::cout << "Closed client fd: " << fd << std::endl;
+    // }       
 }
