@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:11:36 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/15 16:12:33 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/15 22:27:44 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -56,10 +56,11 @@ std::vector<int> EpollManager::waitEvents(int timeout)
     int n = epoll_wait(epollFd, events, MAX_EVENTS , timeout);
     if (n == -1)
         throw epollException("epoll_wait failed");
-    //std::cout << "[EpollManager] epoll_wait returned " << n << " events\n";
+    std::cout << "epoll_wait  " << n << " events\n";
     for (int i =0; i < n ; i++)
     {
         std::cout << "  - Ready FD: " << events[i].data.fd << std::endl;
+        std::cout << "  event: " << events[i].events << std::endl;
         readyFds.push_back(events[i].data.fd);
     }
     return readyFds;    

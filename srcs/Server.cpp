@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/15 16:14:44 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/15 23:56:12 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -116,12 +116,16 @@ void Server::acceptNewClient(int listenFd, EpollManager &epollManager)
     // {
         struct sockaddr clientAddr;
         socklen_t clientLen = sizeof(clientAddr);
-
         int clientFd = accept(listenFd, (struct sockaddr *)&clientAddr, &clientLen);
+        std::map<int, Client>::iterator it =clients.find(clientFd);
+        if(it != clients.end())
+        {
+            return;
+        }
         if (clientFd < 0)
         {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)//break;
-            throw socketException("accept failed");
+           // if (errno == EAGAIN || errno == EWOULDBLOCK)//break;
+                throw socketException("accept failed");
         }
       
         if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1)
@@ -129,11 +133,9 @@ void Server::acceptNewClient(int listenFd, EpollManager &epollManager)
             close(clientFd);
             throw socketException("fcntl() failed on client FD");
         }
-        std::cout << "New client connected on FD : " << clientFd << std::endl;
+        std::cout << "New client connected on FD : " << clientFd << std::endl;       
         epollManager.addSocket(clientFd);
-        clients.push_back(Client(clientFd));
-    //}
-    //clients[clientFd] = Client(clientFd);
+        clients.insert(std::make_pair(clientFd, Client(clientFd)));
 }
 
 std::string readRequest(int clientFd)
@@ -175,8 +177,8 @@ void sendResponse( int clientFd)
 }
 void handleClient(int clientFd)
 {
-    while (true)
-    {
+    // while (true)
+    // {
         std::string request = readRequest(clientFd);
         if (request.empty())
         {
@@ -187,7 +189,7 @@ void handleClient(int clientFd)
         if (parseRequest(request) == 0)
             sendResponse(clientFd);
         close(clientFd);   
-    }
+    //}
 }
 
 void Server::run()
@@ -199,18 +201,28 @@ void Server::run()
     }
     while (true)
     {
-        std::vector<int> fds = epollManager.waitEvents(1000);
-        for (size_t i = 0; i < fds.size(); i++)
+        std::vector<int> fds;
+        fds.push_back(-1);
+        fds = epollManager.waitEvents(1000);
+        // for(std::vector<int>::iterator it = fds.begin() ; it != fds.end(); it++)
+        // {
+        //     std::cout << "hado homa les files lil9itt " << *it<<  std::endl;
+        // }
+        
+        for (int i =0; (unsigned long)i < fds.size() ; i++)
         {
-            // std::cout << "[EVENT] FD = " << fds[i]<< std::endl;
-            int fd = fds[i];    
+            //std::cout << "] = " << fds[i]<< std::endl;
+            int fd = fds[0];  
             if (isListeningSocket(fd))
+            {
+               // std::cout << " hiiii\n";
                 acceptNewClient(fd, epollManager);
-            else
+            }
+            else if (fd != -1)
             {
                 // try
                 // {
-                //     std::cout<<"hiiii i'am in i==="<<i<<fds[i]<<std::endl;
+                     std::cout<<"hiiii i'am in "<<std::endl;
                      handleClient(fd);
                 // }
                 // catch(const std::exception& e)

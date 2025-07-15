@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/15 15:27:11 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/15 23:39:17 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -35,8 +35,7 @@ class Server
     private:
         std::vector<ServerConfig> _configs;
         std::vector<int> listeningSockets;
-        std::vector<Client> clients;
-        //std::map<int, Client> clients;
+        std::map<int, Client> clients;
     public:
         Server(const std::vector<ServerConfig>& configs);
         ~Server();

@@ -42,6 +42,8 @@ int parseRequest(std::string buffer)
     // std::cout << "byte read ----------->"<< bytes_received << std::endl;
     // std::cout << "request :"<< buffer <<std::endl;
     std::istringstream iss(buffer);
+    std::cout << "im in handel"<< std::endl;
+    std::cout << "buffer" << buffer << std::endl;
     std::string methode , path ,version;
     std::string line;
     std::getline(iss , line ,  '\r');
