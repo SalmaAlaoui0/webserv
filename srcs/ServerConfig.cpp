@@ -80,6 +80,7 @@ bool CheckValidIp(std::string ip)
 
 void parseListen(std::string line, std::vector<ServerConfig> &container, int i)
 {
+    // check ip valid numbers 
     std::string ip;
     int port;
     std::string listen = line.substr(isKey(line, "listen") + 1);

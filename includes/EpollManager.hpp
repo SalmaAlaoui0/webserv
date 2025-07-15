@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:09:23 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/14 11:33:09 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/15 15:43:44 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,6 +16,8 @@
 #include <unistd.h>
 #include <sys/epoll.h>
 #include <exception>
+#include <cstring>
+#include <errno.h>
 #include <vector>
 
 class EpollManager

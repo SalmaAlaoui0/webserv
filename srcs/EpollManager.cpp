@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:11:36 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/14 12:20:54 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/15 16:12:33 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -26,11 +26,21 @@ EpollManager::~EpollManager()
 
 void EpollManager::addSocket(int fd)
 {
+    // std::cout << "[EpollManager] Adding FD to epoll: " << fd << std::endl;
     struct epoll_event ev;
-    ev.events = EPOLLIN;
+    ev.events = EPOLLIN;// | EPOLLET;
     ev.data.fd = fd;
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)//“Hey epollFd, please start watching fd and tell me when I can read from it 
+     {
+        if (errno == EEXIST) 
+        {
+            std::cerr << "[EpollManager] FD already added: " << fd << std::endl;
+            return;
+        }
+        std::cerr << "[EpollManager] epoll_ctl failed for FD " << fd
+        << ": " << strerror(errno) << std::endl;
         throw epollException("Failed to add socket to epoll");
+     }
 }
 
 int EpollManager::getEpollFd() const 
@@ -46,8 +56,10 @@ std::vector<int> EpollManager::waitEvents(int timeout)
     int n = epoll_wait(epollFd, events, MAX_EVENTS , timeout);
     if (n == -1)
         throw epollException("epoll_wait failed");
+    //std::cout << "[EpollManager] epoll_wait returned " << n << " events\n";
     for (int i =0; i < n ; i++)
     {
+        std::cout << "  - Ready FD: " << events[i].data.fd << std::endl;
         readyFds.push_back(events[i].data.fd);
     }
     return readyFds;    
@@ -59,5 +71,5 @@ EpollManager ::epollException::~epollException() throw() {}
 
 const char* EpollManager::epollException::what() const throw()
 {
-    return "_msg";
+    return _msg.c_str();
 }
