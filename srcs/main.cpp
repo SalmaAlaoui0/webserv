@@ -6,12 +6,13 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:24:39 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/14 21:07:22 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/15 11:15:32 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include <iostream>
 #include "../includes/ConfigParser.hpp"
+#include "../includes/Request.hpp"
 #include "../includes/Server.hpp"
 
 int main(int argc, char** argv) 
@@ -19,7 +20,7 @@ int main(int argc, char** argv)
     ConfigParser obj;
     try
     {
-        std::string configFile = "../conf/default.conf";
+        std::string configFile = "conf/default.conf";
         if (argc == 2)
             configFile = argv[1];
         else if (argc > 2) 
