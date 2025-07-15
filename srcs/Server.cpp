@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/14 16:18:54 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/14 21:36:03 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -140,10 +140,10 @@ void Server::closeClient(int fd, EpollManager &epollManager)
 {
     epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
     close(fd);
-    std::vector<Client>::iterator itt = std::find(clients.begin(), clients.end(), fd);
-    if (itt != clients.end())
-    {    
-        clients.erase(itt);
-        std::cout << "Closed client fd: " << fd << std::endl;
-    }       
+    // std::vector<Client>::iterator itt = std::find(clients.begin(), clients.end(), fd);
+    // if (itt != clients.end())
+    // {    
+    //     clients.erase(itt);
+    //     std::cout << "Closed client fd: " << fd << std::endl;
+    // }       
 }
