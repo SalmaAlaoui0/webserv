@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/15 23:56:12 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/17 18:33:03 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -29,65 +29,62 @@ Server::Server(const std::vector<ServerConfig>& configs)
 
 Server::~Server()
 {
-    for (size_t i = 0; i < listeningSockets.size(); ++i)
-        close(listeningSockets[i]);
+    for (size_t i = 0; i < serverSockets.size(); ++i)
+        close(serverSockets[i]);
+}
+
+int Server::creatServerSocket(const std::string &ip, int port)
+{
+    int server_fd  = socket(AF_INET, SOCK_STREAM, 0);
+    if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0)
+    {
+        std::cout<< "hi i am in non blocking\n";
+        throw socketException("❌ Failed to set non-blocking mode on socket");
+    }
+    if (server_fd  < 0) 
+        throw socketException("❌Socket creation failed");
+    int option = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
+    {
+        close(server_fd );
+        throw socketException("❌ Socket setup failed in setsockopt()");
+    }
+    sockaddr_in addr;
+    std::memset(&addr, 0,sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
+    if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) <= 0) 
+    {
+        close(server_fd );
+        throw socketException("❌ Invalid IP address");
+    }
+    if(bind (server_fd, (sockaddr*)&addr, sizeof(addr)) < 0)
+    {
+        close(server_fd );
+        perror("bind() failed : ");
+        throw socketException("❌ bind() failed"); 
+    }
+    listen(server_fd, 10);
+    if(listen(server_fd , SOMAXCONN) < 0)
+    {
+        close(server_fd );
+        throw socketException("❌ listen() failed");    
+    }
+    std::cout << "Listening on " << ip << ":" << port << std::endl;
+    return server_fd ; 
 }
 
 void Server:: setupSockets()
 {
     for(size_t i = 0; i < _configs.size(); i++)
     {
-        //std::cout<<"i---->" <<i<<"         "<<_configs[i].port<<std::endl;
         if ( _configs[i].port != 0)
         {
-            const std::string &ip =_configs[i].host;
-            int port = _configs[i].port;
-           int sock = creatListeningSocket(ip, port);
-           this->listeningSockets.push_back(sock);
-        }
-    }
-}
-
-int Server::creatListeningSocket(const std::string &ip, int port)
-{
-    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) 
-        throw socketException("Socket creation failed");
-    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1)
-    {
-        close(sockfd);
-        throw socketException("Failed to set non-blocking mode on socket");
-    }
-    int option = 1;
-    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
-    {
-        close(sockfd);
-        throw socketException("Socket setup failed in setsockopt()");
-    }
-    sockaddr_in addr;
-    std::memset(&addr, 0,sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    //std::cout<< "ip avant[" <<ip << "]"<<"["<<port <<"]"<<std::endl;
-    if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) <= 0) 
-    {
-    close(sockfd);
-    throw socketException("Invalid IP address");
-    }
-    //std::cout<< "[" <<ip << "]"<<"["<<port <<"]"<<std::endl;
-
-    if(bind(sockfd, (sockaddr *)&addr, sizeof(addr)) < 0)
-    {
-        close(sockfd);
-        throw socketException("bind() failed"); 
-    }
-    if(listen(sockfd, SOMAXCONN) < 0)
-    {
-        close(sockfd);
-        throw socketException("listen() failed");    
-    }
-    std::cout << "Listening on " << ip << ":" << port << std::endl;
-    return sockfd; 
+            const std::string &ip =_configs[0].host;
+            int port = _configs[0].port;
+           this->serverSockets.push_back(creatServerSocket(ip, port));
+       }
+   }
 }
 
 Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
@@ -100,43 +97,6 @@ const char* Server::socketException::what() const throw()
     return (this->_msg).c_str();
 }
 
-bool Server::isListeningSocket(int fd) const 
-{
-    for (size_t i = 0; i < listeningSockets.size(); ++i) 
-    {
-        if (listeningSockets[i] == fd)
-            return true;
-    }
-    return false;
-}
-
-void Server::acceptNewClient(int listenFd, EpollManager &epollManager)
-{
-    // while (true)
-    // {
-        struct sockaddr clientAddr;
-        socklen_t clientLen = sizeof(clientAddr);
-        int clientFd = accept(listenFd, (struct sockaddr *)&clientAddr, &clientLen);
-        std::map<int, Client>::iterator it =clients.find(clientFd);
-        if(it != clients.end())
-        {
-            return;
-        }
-        if (clientFd < 0)
-        {
-           // if (errno == EAGAIN || errno == EWOULDBLOCK)//break;
-                throw socketException("accept failed");
-        }
-      
-        if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1)
-        {
-            close(clientFd);
-            throw socketException("fcntl() failed on client FD");
-        }
-        std::cout << "New client connected on FD : " << clientFd << std::endl;       
-        epollManager.addSocket(clientFd);
-        clients.insert(std::make_pair(clientFd, Client(clientFd)));
-}
 
 std::string readRequest(int clientFd)
 {
@@ -146,104 +106,110 @@ std::string readRequest(int clientFd)
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
         {
-            std::cerr << "recv failed: " << strerror(errno) << std::endl;
-            //close(clientFd);
+            std::cerr << "❌ recv failed: " << strerror(errno) << std::endl;
+            close(clientFd);
         }
     }
     else if (bytesRecv == 0)
     {
-        std::cout << "Client disconnected" << std::endl;
+        std::cerr << "❌ Client disconnected " << clientFd << std::endl;
     }
     else   
         buffer[bytesRecv] = '\0';
-    std::cout<< "Received: " << buffer<<std::endl;
+    std::cout<< "📩 Data received " << buffer<<std::endl;
     return (std::string)buffer;
 }
 
 void sendResponse( int clientFd)
 {
-    std::cout << "------->hi\n";
-    const char* response =
-    "HTTP/1.1 200 OK\r\n"
-    "Content-Type: text/plain\r\n"
-    "Content-Length: 13\r\n"
-    "\r\n"
-    "Hello, World!";
-    ssize_t sent =send(clientFd, response, strlen(response), 0); 
+    std::string response = "";
+    response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello world";
+     ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
      if (sent < 0)
-        std::cerr << "send failed: " << strerror(errno) << std::endl;
+        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
     else
-        std::cout << "[sendResponse] Response sent to FD: " << clientFd << std::endl;
+        std::cout << "Response sent to FD: " << clientFd << std::endl;
 }
 void handleClient(int clientFd)
 {
-    // while (true)
-    // {
         std::string request = readRequest(clientFd);
         if (request.empty())
         {
-            std::cout << "[handleClient] Empty request or client closed" << std::endl;
+            std::cout << "Empty request or client closed" << std::endl;
             close(clientFd);
             return;
         }
         if (parseRequest(request) == 0)
             sendResponse(clientFd);
-        close(clientFd);   
-    //}
+}
+
+void Server::acceptNewClient(int serverFd,  EpollManager &epollManager)
+{
+        struct sockaddr clientAddr;
+        socklen_t clientLen = sizeof(clientAddr);
+        int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
+        if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1)
+        {
+            close(clientFd);
+            throw socketException("❌fcntl() failed");
+        }
+        if (clientFd < 0)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return;
+            throw socketException("❌ accept failed");
+        }
+        epollManager.addSocket(clientFd);
+        clients.push_back(clientFd);
+        // clients.insert(std::make_pair(clientFd, Client(clientFd)));
+        std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
+    
+}
+
+bool Server::isServerSocket(int fd) const 
+{
+    for (size_t i = 0; i < serverSockets.size(); ++i) 
+    {
+        if (serverSockets[i] == fd) 
+            return true;
+    }
+    return false;
 }
 
 void Server::run()
 {
     EpollManager epollManager;
-    for (size_t i = 0; i < listeningSockets.size(); i++)
+    for (size_t i =0; i < serverSockets.size(); i++)
+        epollManager.addSocket(serverSockets[i]);
+    while (true) 
     {
-        epollManager.addSocket(listeningSockets[i]);
-    }
-    while (true)
-    {
-        std::vector<int> fds;
-        fds.push_back(-1);
-        fds = epollManager.waitEvents(1000);
-        // for(std::vector<int>::iterator it = fds.begin() ; it != fds.end(); it++)
-        // {
-        //     std::cout << "hado homa les files lil9itt " << *it<<  std::endl;
-        // }
-        
-        for (int i =0; (unsigned long)i < fds.size() ; i++)
+       std::vector<int> fds = epollManager.waitEvents(-1);
+        for (size_t i = 0; i < fds.size(); ++i) 
         {
-            //std::cout << "] = " << fds[i]<< std::endl;
-            int fd = fds[0];  
-            if (isListeningSocket(fd))
+            if (isServerSocket(fds[i])) 
+                acceptNewClient(fds[i], epollManager);
+            else 
             {
-               // std::cout << " hiiii\n";
-                acceptNewClient(fd, epollManager);
-            }
-            else if (fd != -1)
-            {
-                // try
-                // {
-                     std::cout<<"hiiii i'am in "<<std::endl;
-                     handleClient(fd);
-                // }
-                // catch(const std::exception& e)
-                // {
-                //     std::cerr << "Client fd " << fd << " error: " << e.what() << std::endl;
-                //     closeClient(fd, epollManager);
+                handleClient(fds[i]);
+                // char buf[1024];
+                // int bytes = read(fds[i], buf, sizeof(buf));
+                // if (bytes <= 0) {
+                //     std::cout << "❌ Client disconnected " << fds[i] << std::endl;
+                //     close(fds[i]);
+                // } else {
+                //     std::cout << "📥 Received: " << std::string(buf, bytes) << std::endl;
+                //     std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello world";
+                //     send(fds[i], response.c_str(), response.size(), 0);
                 // }
             }
         }
-    } 
+    }
 }
 
 void Server::closeClient(int fd, EpollManager &epollManager)
 {
     epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
     close(fd);
-     std::cout << "[closeClient] Closed FD: " << fd << std::endl;
-    // std::vector<Client>::iterator itt = std::find(clients.begin(), clients.end(), fd);
-    // if (itt != clients.end())
-    // {    
-    //     clients.erase(itt);
-    //     std::cout << "Closed client fd: " << fd << std::endl;
-    // }       
+    //clients.erase(fd);
+    std::cout << "🚪 Closed client FD: " << fd << std::endl;
 }

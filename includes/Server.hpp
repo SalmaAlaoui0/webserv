@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/15 23:39:17 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/17 18:33:48 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -34,17 +34,18 @@ class Server
 {
     private:
         std::vector<ServerConfig> _configs;
-        std::vector<int> listeningSockets;
-        std::map<int, Client> clients;
+        std::vector<int> serverSockets;
+        //std::map<int, Client> clients;
+        std::vector<int> clients;
     public:
         Server(const std::vector<ServerConfig>& configs);
-        ~Server();
+       ~Server();
         
         void setupSockets();
-        int creatListeningSocket(const std::string &ip, int port);
+        int creatServerSocket(const std::string &ip, int port);
         void run();
-        bool isListeningSocket(int fd) const;
-        void acceptNewClient(int listenFd, EpollManager &epollManager);
+        bool isServerSocket(int fd) const;
+        void acceptNewClient(int listenFd,  EpollManager &EpollManager);
         void closeClient(int fd, EpollManager &epollManager);
         
         class socketException : public std::exception 
