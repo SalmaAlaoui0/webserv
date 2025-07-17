@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:09:23 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/17 14:36:28 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/17 22:46:43 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -19,6 +19,9 @@
 #include <cstring>
 #include <errno.h>
 #include <vector>
+#include "../includes/Server.hpp"
+
+class Server;
 
 class EpollManager
 {
@@ -30,7 +33,7 @@ class EpollManager
 
         void addSocket(int fd);
         int getEpollFd() const;
-        std::vector<int> waitEvents(int time);
+        std::vector<int> waitEvents(Server &obj);
         class epollException : public std::exception 
         {
             private:
