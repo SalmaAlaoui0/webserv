@@ -92,7 +92,6 @@ std::vector<ServerConfig> ConfigParser::parseConfig(std::string file)
 	int lcounter = -1;
 	int Server = 0;
 	std::vector<ServerConfig> container;
-	container.push_back(ServerConfig());
 	ifile.open(file.c_str());
 	if (ifile.fail())
         throw ConfigParser::InvalidFile();

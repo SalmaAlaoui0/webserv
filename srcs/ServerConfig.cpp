@@ -90,17 +90,23 @@ void parseListen(std::string line, std::vector<ServerConfig> &container, int i)
     listen = listen.substr(0, listen.size() - 1);
     size_t colonpos = listen.find(':');
     ip = listen.substr(0, colonpos);
-    if (!isAllDigits(listen.substr(colonpos + 1)))
-        throw ::InvalidData();
+    if (ip == "localhost")
+        container[i].host = "127.0.0.1";
+    else
+    {
+        if (!isAllDigits(listen.substr(colonpos + 1)))
+            throw ::InvalidData();
+        if (!CheckValidIp(ip))
+            throw ::InvalidData();
+        container[i].host = ip;
+    }
     std::stringstream p(listen.substr(colonpos + 1));
     p >> port;
-    if (!CheckValidIp(ip) || port > 65535 || port <= 0)
+    if (port > 65535 || port <= 0)
     {
         throw ::InvalidData();
     }
-    
-    container[i].port = port;
-    container[i].host = ip;
+    container[i].port = port;    
     // std::cout << "ur listen info, host: -" << container[i].host << "- And port is: -" << container[i].port << "-" << std::endl;
 }
 

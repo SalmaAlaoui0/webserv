@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/17 22:44:41 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/21 11:31:13 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -94,36 +94,58 @@ std::string Server::readRequest(int clientFd, EpollManager &epollManager)
     else
     {
         buffer[bytesRecv] = '\0';   
-        std::cout<< "📩 Data received " << buffer<<std::endl;   
+        // std::cout<< "📩 Data received \n" << buffer<<std::endl;
     }
     return (std::string)buffer;
 }
 
-void sendResponse( int clientFd)
+void Server::sendResponse( int clientFd, request r)
 {
-    std::string response = "";
-    response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello world";
-     ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
-     if (sent < 0)
+//     std::string body = R"(<!DOCTYPE html> <html lang="en">
+// <head><h1><center>Hello world</center></h1>
+// </head>
+// </html>)";
+	(void)r;
+    std::string body = "<h1><center>Hello world</center></h1>";
+	if (r.get_path() == "/favicon.ico")
+	{
+		std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+		send(clientFd, notFound.c_str(), notFound.size(), 0);
+		return;
+	}
+	// std::cout << "your method is: " << r.get_method() << ", and the path is(ps: without file it's stored alone;): " << r.get_root() << ", and version is: " << r.get_version() << std::endl << std::endl;
+	if (r.get_method() == "GET")
+		handle_get_methode(r, this->_configs);
+	std::ostringstream response;
+	response << "HTTP/1.1 200 OK\r\n"
+			 << "Content-Type: text/html\r\n"
+			 << "Content-Length: " << body.size() << "\r\n\r\n" << body;
+
+    ssize_t sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
+    if (sent < 0)
         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
     else
         std::cout << "Response sent to FD: " << clientFd << std::endl;
 }
 
+
 void Server::handleClient(int clientFd, EpollManager &epollManager)
 {
-        std::string request = readRequest(clientFd, epollManager);
-        if (request.empty())
-        {
-            std::cout << "Empty request or client closed" << std::endl;
-            closeClient(clientFd, epollManager); 
-            return;
-        }
-        std::map<int, Client>::iterator it = clients.find(clientFd);
-        if (it != clients.end())
-            it->second.updateActivity();
-        if (parseRequest(request) == 0)
-            sendResponse(clientFd);
+	request r;
+	std::string request = readRequest(clientFd, epollManager);
+	if (request.empty())
+	{
+		std::cout << "Empty request or client closed" << std::endl;
+		closeClient(clientFd, epollManager); 
+		return;
+	}
+	std::map<int, Client>::iterator it = clients.find(clientFd);
+	if (it != clients.end())
+	{
+		it->second.updateActivity();
+	}
+	if (parseRequest(request, r) == 0)
+		sendResponse(clientFd, r);
 }
 
 void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
@@ -143,8 +165,8 @@ void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
             throw socketException("❌ accept failed");
         }
         epollManager.addSocket(clientFd);
-         clients.insert(std::make_pair(clientFd, Client(clientFd)));
-        std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
+        clients.insert(std::make_pair(clientFd, Client(clientFd)));
+        // std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
     
 }
 
@@ -181,30 +203,37 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
 
 void Server::run()
 {
-    EpollManager epollManager;
-    for (size_t i =0; i < serverSockets.size(); i++)
+	EpollManager epollManager;
+	for (size_t i =0; i < serverSockets.size(); i++)
+	{
+        std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
         epollManager.addSocket(serverSockets[i]);
-    while (true) 
-    {
-        std::vector<int> fds = epollManager.waitEvents(*this);
-        checkTimeout(clients, epollManager);
-        for (size_t i = 0; i < fds.size(); ++i) 
-        {
-            if (isServerSocket(fds[i])) 
+    }
+	while (true) 
+	{
+		std::vector<int> fds = epollManager.waitEvents(*this);
+		checkTimeout(clients, epollManager);
+		for (size_t i = 0; i < fds.size(); ++i) 
+		{
+			if (isServerSocket(fds[i])) 
+			{
+                // std::cout << "hehehahahahh just detected a new connection\n" << std::endl;
                 acceptNewClient(fds[i], epollManager);
-            else 
-            {
-                handleClient(fds[i], epollManager);
-                // char buf[1024];
-                // int bytes = read(fds[i], buf, sizeof(buf));
-                // if (bytes <= 0) {
-                //     std::cout << "❌ Client disconnected " << fds[i] << std::endl;
-                //     close(fds[i]);
-                // } else {
-                //     std::cout << "📥 Received: " << std::string(buf, bytes) << std::endl;
-                //     std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello world";
-                //     send(fds[i], response.c_str(), response.size(), 0);
-                // }
+            }
+			else 
+			{
+                std::cout << "started handling an already there connection\n" << std::endl;
+				handleClient(fds[i], epollManager);
+				// char buf[1024];
+				// int bytes = read(fds[i], buf, sizeof(buf));
+				// if (bytes <= 0) {
+				//     std::cout << "❌ Client disconnected " << fds[i] << std::endl;
+				//     close(fds[i]);
+				// } else {
+				//     std::cout << "📥 Received: " << std::string(buf, bytes) << std::endl;
+				//     std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello world";
+				//     send(fds[i], response.c_str(), response.size(), 0);
+				// }
             }
         }
     }

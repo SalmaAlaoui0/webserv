@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EpollManager.cpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:11:36 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/17 22:37:11 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/20 09:43:34 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -31,16 +31,16 @@ void EpollManager::addSocket(int fd)
     ev.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
     ev.data.fd = fd;
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)
-     {
-        if (errno == EEXIST) 
+    {
+        if (errno == EEXIST)
         {
             std::cerr << "fd already added: " << fd << std::endl;
             return;
         }
         std::cerr << "epoll_ctl failed for FD " << fd << ": " << strerror(errno) << std::endl;
         throw epollException("❌ Failed to add socket to epoll");
-     }
-     std::cout<<"fd added by eppol: "<< fd<<std::endl;
+    }
+    // std::cout<<"fd added by eppol: "<< fd<<std::endl;
 }
 
 int EpollManager::getEpollFd() const 
@@ -65,7 +65,7 @@ std::vector<int> EpollManager::waitEvents(Server &obj)
             obj.closeClient(fd, *this);
             continue;
         }
-        std::cout << " Ready FD: " << events[i].data.fd << std::endl;
+        // std::cout << " Ready FD: " << events[i].data.fd << std::endl;
         readyFds.push_back(events[i].data.fd);
     }
     return readyFds;    
