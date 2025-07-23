@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/17 22:46:23 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/19 14:37:51 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -50,6 +50,7 @@ class Server
         void closeClient(int fd, EpollManager &epollManager);
         void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
         std::string readRequest(int clientFd, EpollManager &epollManager);
+        void sendResponse(int clientFd, request r);
         
         class socketException : public std::exception 
         {
@@ -61,3 +62,5 @@ class Server
                 virtual const char* what() const throw();
         };
 };
+
+void handle_get_methode(request r, std::vector<ServerConfig> _configs);

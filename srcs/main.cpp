@@ -29,7 +29,7 @@ int main(int argc, char** argv)
             return 1;
         }
         std::vector<ServerConfig> configs = obj.parseConfig(configFile);
-        std::cout << "first server's name: " << configs[0].server_name << std::endl;
+        // std::cout << "first server's name: " << configs[0].server_name << std::endl;
         Server server(configs);
         server.run();
     }

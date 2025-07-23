@@ -2,6 +2,33 @@
 #include "../includes/ConfigParser.hpp"
 #include "../includes/LocationConfig.hpp"
 
+int containsChar(std::string str, char target) {
+	int result;
+	std::vector<std::string> chunks;
+	std::string word;
+	result = str.find(target) != std::string::npos;
+	if (result)
+	{
+		int j = str.find(target);
+		j++;
+		while (str[j])
+		{
+			if (str[j] != ' ' || str[j] != '\t')
+				return 2;
+		}
+	}
+	str = str.substr(0, str.find(target));
+	std::istringstream iss(str);
+	while (iss >> word)
+	{
+		chunks.push_back(word);
+	}
+	if (chunks.size() > 2)
+		return 2;
+	if (chunks.size() == 2 && (chunks[0] != "^~" && chunks[0] != "~"))
+		return 2;
+    return result;
+}
 
 std::string checkValidLocation(std::string line)
 {
@@ -9,10 +36,15 @@ std::string checkValidLocation(std::string line)
     std::string path;
     value = line.substr(isKey(line, "location") + 1);
     value = trim(value);
-    path = value.substr(0, value.find(' '));
-    if (trim(value.substr(value.find(' ') + 1)) != "{")
-        throw ::InvalidData();
-    // std::cout << "The location's path is: -" << path << "-" << std::endl;
+    if (containsChar(value, '{'))
+    {
+		if (containsChar(value, '{') == 2)
+			throw ::InvalidData();
+        path = value.substr(0, value.find('{'));
+    }
+    else
+		path = value;
+    // std::cout << "the path extracted is: " << path << std::endl;
     return (path);
 }
 
