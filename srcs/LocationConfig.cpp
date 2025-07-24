@@ -35,8 +35,8 @@ void parseLoc_root(std::string line, std::vector<ServerConfig> &container, int i
 	std::string root;
     root = line.substr(isKey(line, "root") + 1);
     root = trim(root);
-	if (root[root.size() - 1] != ';' || root[root.size() - 2] == ';')
-        throw ::InvalidData();
+	// if (root[root.creatListeningSocket() - 1] != ';' || root[root.size() - 2] == ';')
+    //     throw ::InvalidData();
     root = root.substr(0, root.size() - 1);
     container[i].locations[j].root = root;
 	// std::cout << "ur location root is: -" << container[i].locations[j].root << "-" << std::endl;

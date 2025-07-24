@@ -33,17 +33,23 @@ std::string error_set(request r)
         return e413; 
     return "";
 }
-int parseRequest(std::string buffer)
+static std::string trim(std::string &s)
+{
+    size_t start = s.find_first_not_of(" \t\r\n");
+    size_t end = s.find_last_not_of(" \t\r\n");
+   
+    if (start == std::string::npos || end == std::string::npos)
+        return "";
+    return s.substr(start, end - start + 1);
+}
+int parseRequest(int client_fd)
 {
     request r;
-    //char buffer[2048] = {0};
-    //read(client_fd,buffer, sizeof(buffer));
-    // ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
-    // std::cout << "byte read ----------->"<< bytes_received << std::endl;
-    // std::cout << "request :"<< buffer <<std::endl;
+    char buffer[2048] = {0};
+    ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
+    std::cout << "byte read ----------->"<< bytes_received << std::endl;
+    std::cout << "request :"<< buffer <<std::endl;
     std::istringstream iss(buffer);
-    std::cout << "im in handel"<< std::endl;
-    std::cout << "buffer" << buffer << std::endl;
     std::string methode , path ,version;
     std::string line;
     std::getline(iss , line ,  '\r');
@@ -60,27 +66,61 @@ while(std::getline(iss, line, '\r') && !line.empty())
     if(pos != std::string::npos)
     {
     std::string key = line.substr(0,pos);
-    while(!key.empty() &&(key[0] == ' ' || key[0] == '\t'))
-        key.erase(0,1);
+    key = trim(key);
     std::string value = line.substr(pos+1, line.size());
-    while(!value.empty() &&(value[0] == ' ' || value[0] == '\t'))
-        value.erase(0,1);
+    value = trim(value);
     r.set_header(key,value);
     }
 }
-//while()
-iss.ignore();
-std::string raw_request = buffer;
-size_t pos = raw_request.find("\r\n\r\n");
-if (pos != std::string::npos)
-{
-    pos += 4;
-    std::string body = raw_request.substr(pos);
-    r.set_body(body);
-}
 
-std::cout <<  "boyyyyyyyyyyyyyyyy" <<r.get_body()<< std::endl;
-if(!error_set(r).empty())
-    return 1;
+  std::string raw_request(buffer, bytes_received);
+    unsigned long content_length = 0;
+    std::map<std::string, std::string>::iterator it = r.get_header().find("Content-Length");
+    if (it != r.get_header().end())
+        content_length = std::strtoul(it->second.c_str(), NULL, 10);
+
+    
+    size_t pos = raw_request.find("\r\n\r\n");
+    if (pos != std::string::npos)
+    {
+        pos += 4;
+        std::string initial_body = raw_request.substr(pos);
+        r.get_body().append(initial_body);
+    }
+
+
+    while (r.get_body().size() < content_length)
+    {
+        ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
+        if (bytes_received <= 0)
+            break;
+        //buffer[bytes_received] = '\0';
+        r.get_body().append(buffer, bytes_received);
+        std::cout << "body size: " << r.get_body().size() << " / " << content_length << std::endl;
+    }
+
+    std::cout << "Final body size: " << r.get_body() << std::endl;
+    std::cout << "Expected: " << content_length << std::endl;
+
+
+
+
+// if(!error_set(r).empty())
+//     return 1;
+const char *response =
+    "HTTP/1.1 200 OK\r\n"
+    "Content-Type: text/plain\r\n"
+    "Content-Length: 13\r\n"
+    "\r\n"
+    "Hello, World!";
+size_t total = 0;
+size_t len = strlen(response);
+while (total < len) {
+    ssize_t sent = send(client_fd, response + total, len - total, 0);
+    if (sent <= 0)
+        break;
+    total += sent;
+}
+close(client_fd);
 return 0;
 }

@@ -29,17 +29,19 @@ Server::Server(const std::vector<ServerConfig>& configs)
 
 Server::~Server()
 {
-    for (size_t i = 0; i < listeningSockets.size(); ++i)
-        close(listeningSockets[i]);
+    // for (size_t i = 0; i < listeningSockets.size(); ++i)
+    //     close(listeningSockets[i]);
 }
 
 void Server:: setupSockets()
 {
     for(size_t i = 0; i < _configs.size(); i++)
     {
+        std::cout << "siz dyl config " <<  _configs.size()<< std::endl;
         //std::cout<<"i---->" <<i<<"         "<<_configs[i].port<<std::endl;
         if ( _configs[i].port != 0)
         {
+            std::cout << "syabat soket\n";
             const std::string &ip =_configs[i].host;
             int port = _configs[i].port;
            int sock = creatListeningSocket(ip, port);
@@ -86,7 +88,6 @@ int Server::creatListeningSocket(const std::string &ip, int port)
         close(sockfd);
         throw socketException("listen() failed");    
     }
-    std::cout << "Listening on " << ip << ":" << port << std::endl;
     return sockfd; 
 }
 
@@ -117,7 +118,8 @@ void Server::acceptNewClient(int listenFd, EpollManager &epollManager)
         struct sockaddr clientAddr;
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(listenFd, (struct sockaddr *)&clientAddr, &clientLen);
-        std::map<int, Client>::iterator it =clients.find(clientFd);
+        fcntl(clientFd, F_SETFL, O_NONBLOCK);
+        std::map<int, Client>::iterator it = clients.find(clientFd);
         if(it != clients.end())
         {
             return;
@@ -136,6 +138,7 @@ void Server::acceptNewClient(int listenFd, EpollManager &epollManager)
         std::cout << "New client connected on FD : " << clientFd << std::endl;       
         epollManager.addSocket(clientFd);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
+   
 }
 
 std::string readRequest(int clientFd)
@@ -162,33 +165,40 @@ std::string readRequest(int clientFd)
 
 void sendResponse( int clientFd)
 {
-    std::cout << "------->hi\n";
-    const char* response =
+   const char *response =
     "HTTP/1.1 200 OK\r\n"
     "Content-Type: text/plain\r\n"
     "Content-Length: 13\r\n"
     "\r\n"
     "Hello, World!";
-    ssize_t sent =send(clientFd, response, strlen(response), 0); 
-     if (sent < 0)
-        std::cerr << "send failed: " << strerror(errno) << std::endl;
-    else
-        std::cout << "[sendResponse] Response sent to FD: " << clientFd << std::endl;
+size_t total = 0;
+size_t len = strlen(response);
+while (total < len) {
+    ssize_t sent = send(clientFd, response + total, len - total, 0);
+    if (sent <= 0)
+        break;
+    total += sent;
+}
+close(clientFd);
 }
 void handleClient(int clientFd)
 {
     // while (true)
     // {
-        std::string request = readRequest(clientFd);
-        if (request.empty())
+       // std::string request = readRequest(clientFd);
+        if( parseRequest(clientFd)==0)
         {
-            std::cout << "[handleClient] Empty request or client closed" << std::endl;
-            close(clientFd);
-            return;
-        }
-        if (parseRequest(request) == 0)
             sendResponse(clientFd);
-        close(clientFd);   
+        }
+        // if (request.empty())
+        // {
+        //     std::cout << "[handleClient] Empty request or client closed" << std::endl;
+        //     close(clientFd);
+        //     return;
+        // }
+        // if (parseRequest(request) == 0)
+        //     sendResponse(clientFd);
+     //   close(clientFd);   
     //}
 }
 
@@ -201,39 +211,32 @@ void Server::run()
     }
     while (true)
     {
-        std::vector<int> fds;
-        fds.push_back(-1);
-        fds = epollManager.waitEvents(1000);
+
+       std::vector<int> fds = epollManager.waitEvents(1000);
         // for(std::vector<int>::iterator it = fds.begin() ; it != fds.end(); it++)
         // {
         //     std::cout << "hado homa les files lil9itt " << *it<<  std::endl;
         // }
         
-        for (int i =0; (unsigned long)i < fds.size() ; i++)
+        for (size_t i = 0; i < fds.size(); i++)
+    {
+        int fd = fds[i];
+        if (fd == -1)
+            continue;
+
+        if (isListeningSocket(fd))
         {
-            //std::cout << "] = " << fds[i]<< std::endl;
-            int fd = fds[0];  
-            if (isListeningSocket(fd))
-            {
-               // std::cout << " hiiii\n";
-                acceptNewClient(fd, epollManager);
-            }
-            else if (fd != -1)
-            {
-                // try
-                // {
-                     std::cout<<"hiiii i'am in "<<std::endl;
-                     handleClient(fd);
-                // }
-                // catch(const std::exception& e)
-                // {
-                //     std::cerr << "Client fd " << fd << " error: " << e.what() << std::endl;
-                //     closeClient(fd, epollManager);
-                // }
-            }
+            std::cout << "Listening socket event on fd: " << fd << std::endl;
+            acceptNewClient(fd, epollManager);
         }
-    } 
-}
+        else
+        {
+            std::cout << "Client socket event on fd: " << fd << std::endl;
+            handleClient(fd);
+        }
+    }
+
+}}
 
 void Server::closeClient(int fd, EpollManager &epollManager)
 {
