@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:24:39 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/15 11:15:32 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/17 21:53:32 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -30,7 +30,9 @@ int main(int argc, char** argv)
             return 1;
         }
         std::vector<ServerConfig> configs = obj.parseConfig(configFile);
+
         std::cout << "first server's port: " << configs[0].port << std::endl;
+        // std::cout << "first server's name: " << configs[0].server_name << std::endl;
         Server server(configs);
         server.run();
     }

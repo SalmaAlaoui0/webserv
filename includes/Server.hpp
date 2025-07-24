@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/15 23:39:17 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/19 14:37:51 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,35 +25,43 @@
 #include <fcntl.h>
 #include "ServerConfig.hpp"
 #include "EpollManager.hpp"
+#include "Request.hpp"
 #include "Client.hpp"
 
-
+class request;
 struct ServerConfig;
-
+class EpollManager;
 class Server
 {
     private:
         std::vector<ServerConfig> _configs;
-        std::vector<int> listeningSockets;
+        std::vector<int> serverSockets;
         std::map<int, Client> clients;
     public:
+        Server();
         Server(const std::vector<ServerConfig>& configs);
-        ~Server();
+       ~Server();
         
         void setupSockets();
-        int creatListeningSocket(const std::string &ip, int port);
+        int creatServerSocket(const std::string &ip, int port);
         void run();
-        bool isListeningSocket(int fd) const;
+        bool isServerSocket(int fd) const;
         void acceptNewClient(int listenFd, EpollManager &epollManager);
-        void closeClient(int fd, EpollManager &epollManager);
+        void handleClient(int clientFd, EpollManager &epollManager);
+        void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
+        std::string readRequest(int clientFd, EpollManager &epollManager);
+        void sendResponse(int clientFd, request r);
         
+        void closeClient(int fd, EpollManager &epollManager);
         class socketException : public std::exception 
         {
             private:
-                std::string _msg;
+            std::string _msg;
             public:
-                socketException(const std::string &msg);    
-               virtual ~socketException() throw();    
-                virtual const char* what() const throw();
+            socketException(const std::string &msg);    
+            virtual ~socketException() throw();    
+            virtual const char* what() const throw();
         };
-};
+    };
+    
+void handle_get_methode(request r, std::vector<ServerConfig> _configs);

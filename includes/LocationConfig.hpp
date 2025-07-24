@@ -18,6 +18,7 @@ struct LocationConfig
 	long	client_max_body_size;  // done ✅
 	std::string cgi_pass;  // done ✅
 	bool autoindex;  // done ✅
+	// parse a return key
 
     std::vector<std::string> allowed_methods;  // done ✅
 };
