@@ -13,10 +13,11 @@
 #define e505 "505 HTTP Version Not Supported"
 #define e400  "400 Bad Request"
 #define e413 "Payload Too Large"
+#include <cerrno>   // pour errno, EAGAIN, EWOULDBLOCK
+#include <cstdio> 
 
 
-
-int parseRequest(std::string buffer);
+int parseRequest(int client_fd);
 
 class request{
    private :
@@ -34,11 +35,11 @@ class request{
    std::string get_method(){return method;}
    std::string get_path(){return path;}
    std::string get_version(){return version;}
-   std::map<std::string,std::string>get_header() {
+   std::map<std::string,std::string>& get_header() {
     return map;
    }
    void set_body(std::string& b){body = b;}
-  std::string get_body(void){return body ;}
+  std::string& get_body(void){return body ;}
 };
 
 #endif
