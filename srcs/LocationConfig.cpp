@@ -27,6 +27,11 @@ int containsChar(std::string str, char target) {
 		return 2;
 	if (chunks.size() == 2 && (chunks[0] != "^~" && chunks[0] != "~"))
 		return 2;
+    if (chunks[0] == "~")
+    {
+        if (chunks[1][0] != '\\' || chunks[1][1] != '.')
+            return 2;
+    }
     return result;
 }
 

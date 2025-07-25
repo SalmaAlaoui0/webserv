@@ -113,7 +113,7 @@ request& request::parseRequest(int client_fd , EpollManager &epollManager, reque
          throw requestetException();
     }
     //std::cout << "byte read ----------->"<< bytes_received << std::endl;
-    std::cout << "request :"<< buffer <<std::endl;
+    // std::cout << "request :"<< buffer <<std::endl;
     std::istringstream iss(buffer);
     std::string methode , path ,version;
     std::string line;

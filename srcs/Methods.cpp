@@ -28,7 +28,29 @@ std::vector<std::string> pathchunks(std::string path)
 // std::cout << "--- and plus the rootifound is: " << matchedRoot << std::endl;
 
 
-std::map<int, std::string> getMatchingRootPath(request &r, const ServerConfig &config)
+std::string getFileExtension(std::string& path) 
+{
+    std::size_t lastSlash = path.find_last_of('/');
+	if (path[lastSlash + 1] == '\0')
+	{
+		path = path.substr(0, lastSlash);
+    	lastSlash = path.find_last_of('/');
+	}
+
+    std::string filename = (lastSlash == std::string::npos) ? path : path.substr(lastSlash + 1);
+
+    if (filename.empty())
+        return "";
+
+    std::size_t dotPos = filename.find_last_of('.');
+
+    if (dotPos == std::string::npos || dotPos == 0 || dotPos == filename.size() - 1)
+        return "";
+
+    return filename.substr(dotPos + 1);
+}
+
+std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
 	std::string matchedRoot;
@@ -36,9 +58,40 @@ std::map<int, std::string> getMatchingRootPath(request &r, const ServerConfig &c
 	std::string locPath;
 	std::vector<std::string> Pchunks;
 	size_t i = 0;
+	std::string extension;
+	size_t coorLoc = 0;
 
 	std::map<int, std::string> result;
-	for (i = 0; i < config.locations.size(); ++i)
+
+	if (!getFileExtension(requestedPath).empty())
+	{
+		extension = getFileExtension(requestedPath);
+		std::cout << "The request extension is: *_*" << extension << "*_*" << std::endl;
+		while (i < config.locations.size())
+		{
+			locPath = config.locations[i].path;
+			Pchunks = pathchunks(locPath);
+			if (Pchunks.size() == 2 && Pchunks[0] == "~")
+			{
+				std::cout << "your server location file extensions are: -" << Pchunks[1].substr(2) << "--" << std::endl;
+				if (Pchunks[1].substr(2) == extension)
+				{
+					// std::cout << "\n -->" << requestedPath << std::endl << std::endl;
+					matchedRoot = config.locations[i].root + requestedPath;
+					result[i] = matchedRoot;
+					return result;
+				}
+			}
+			i++;
+		}
+		// now search for the ~ in locations 
+		// and extract the extension 
+		// then see if there is some one that matches 
+		// if found make str matchedRoot
+		// That's itttt Let's Gooooo.
+	}
+	i = 0;
+	while (i < config.locations.size())
 	{
 		locPath = config.locations[i].path;
 		Pchunks = pathchunks(locPath);
@@ -59,13 +112,33 @@ std::map<int, std::string> getMatchingRootPath(request &r, const ServerConfig &c
 		{
 			maxMatchLength = locPath.length();
 			matchedRoot = config.locations[i].root + requestedPath.substr(locPath.length());
+			coorLoc = i;
+			std::cout << "root is: -" << config.locations[i].root << "- and req root is: -" << requestedPath.substr(locPath.length()) << "--\n";
 		}
+		i++;
 	}
-	result[i] = matchedRoot;
+	std::cout << "hello" << std::endl;
+	result[coorLoc] = matchedRoot;
 	return result;
 }
 
-void handle_get_methode(request r, const std::vector<ServerConfig> _configs)
+bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _configs, int servernum,  int locationum)
+{
+	std::vector<std::string>::iterator it;
+	std::cout << "HELLO WORLD THE LOC NUM IS: " << locationum << ", and it's in server: " << servernum << std::endl;
+	(void)method;
+	it = _configs[servernum].locations[locationum].allowed_methods.begin();
+	while (it != _configs[servernum].locations[locationum].allowed_methods.end())
+	{
+		if (method == *it)
+			return 1;
+		// std::cout << "Methodes are: ^^^" << *it << std::endl;
+		++it;
+	}
+	return 0;
+}
+
+void handle_get_methode(request r, std::vector<ServerConfig> _configs)
 {
 	int port = 8080;
 	std::map<int, std::string> map;
@@ -75,9 +148,27 @@ void handle_get_methode(request r, const std::vector<ServerConfig> _configs)
 		if (_configs[i].port == port)
 		{
 			map = getMatchingRootPath(r, _configs[i]);
-			for (std::map<int, std::string>::const_iterator it = map.begin(); it != map.end(); ++it) {
-			std::cout << it->first << ": " << it->second;
-			std::map<int, std::string>::const_iterator next = it;
+			int key = map.begin()->first;
+			// std::cout << map.size() << std::endl;
+			if (!CheckMethodeIsAllowed("GET", _configs, i, key))
+				std::cout << "This means method not allowed \n\n" << std::endl;
+			// here we should return the METHODE NOT ALLOWED ERROR
+			else
+				std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
+
+
+
+// done ✅ : // 1- Lbnat here the file is being readed and the correct location with the correct path are being send back in a map container type <int, string>
+// done ✅ : // 2- Now I will check if the methode asked from the request is avialable in the location and
+			 // 3- then I will check if the path is valid with the stat (system function)
+			 // 4- Lastly if those instructions are passed this mean we're good to start with the methods
+
+
+
+
+			for (std::map<int, std::string>::iterator it = map.begin(); it != map.end(); ++it) {
+			std::cout << it->first << ": -" << it->second << "-\n";
+			std::map<int, std::string>::iterator next = it;
 			++next;
 			if (next != map.end()) {
 				std::cout << ", ";
