@@ -1,44 +1,88 @@
 #include "../includes/Server.hpp"
 
 
-std::string getMatchingRootPath(request &r, const ServerConfig &config)
+std::vector<std::string> pathchunks(std::string path)
+{
+	int result;
+	std::vector<std::string> chunks;
+	std::string word;
+	result = path.find('{') != std::string::npos;
+	path = path.substr(0, path.find('{'));
+	std::istringstream iss(path);
+	while (iss >> word)
+	{
+		chunks.push_back(word);
+		// std::cout << "---" << word << "---" << std::endl;
+	}
+	return chunks;
+}
+
+// std::cout << "----" << locPath << "----" << std::endl;
+// exit (00);
+
+// std::cout << "req is: -" << requestedPath << "--" << std::endl;
+// std::cout << "loc is: -" << locPath << "--" << std::endl;
+
+
+// std::cout << "The request path is: " << requestedPath << "\nAnd the corr.loc path is: " << locPath << std::endl;
+// std::cout << "--- and plus the rootifound is: " << matchedRoot << std::endl;
+
+
+std::map<int, std::string> getMatchingRootPath(request &r, const ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
+	std::vector<std::string> Pchunks;
+	size_t i = 0;
 
-	for (size_t i = 0; i < config.locations.size(); ++i)
+	std::map<int, std::string> result;
+	for (i = 0; i < config.locations.size(); ++i)
 	{
 		locPath = config.locations[i].path;
-		locPath = locPath.substr(0, locPath.size() - 1);
-
-		// std::cout << "req is: -" << requestedPath << "--" << std::endl;
-		// std::cout << "loc is: -" << locPath << "--" << std::endl;
-		if (requestedPath == locPath)
-			std::cout << "Hello world\n";
-		// Check if location path is a prefix of the request path
-		if (requestedPath.find(locPath) == 0 && locPath.length() > maxMatchLength)
+		Pchunks = pathchunks(locPath);
+		if (Pchunks.size() == 1)
+			locPath = Pchunks[0];
+		else
+			locPath = Pchunks[1];
+		if (Pchunks.size() == 2 && Pchunks[0] == "^~")
+		{
+			if (requestedPath.find(locPath) == 0)
+			{
+				matchedRoot = config.locations[i].root + requestedPath.substr(locPath.length());
+				result[i] = matchedRoot;
+				return result;
+			}
+		}		
+		else if (requestedPath.find(locPath) == 0 && locPath.length() > maxMatchLength)
 		{
 			maxMatchLength = locPath.length();
 			matchedRoot = config.locations[i].root + requestedPath.substr(locPath.length());
 		}
 	}
-	std::cout << "The request path is: " << requestedPath << "\nAnd the corr.loc path is: " << locPath << std::endl;
-	std::cout << "--- and plus the rootifound is: " << matchedRoot << std::endl;
-	return matchedRoot;
+	result[i] = matchedRoot;
+	return result;
 }
 
 void handle_get_methode(request r, const std::vector<ServerConfig> _configs)
 {
 	int port = 8080;
+	std::map<int, std::string> map;
 
 	for (size_t i = 0; i < _configs.size(); ++i)
 	{
 		if (_configs[i].port == port)
 		{
-			std::string fullPath = getMatchingRootPath(r, _configs[i]);
-			std::cout << "Full path to serve: " << fullPath << std::endl;
+			map = getMatchingRootPath(r, _configs[i]);
+			for (std::map<int, std::string>::const_iterator it = map.begin(); it != map.end(); ++it) {
+			std::cout << it->first << ": " << it->second;
+			std::map<int, std::string>::const_iterator next = it;
+			++next;
+			if (next != map.end()) {
+				std::cout << ", ";
+			}
+		}
 
 			// 👉 Next step: check if file exists, open it, and send response
 
