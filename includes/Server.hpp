@@ -65,3 +65,5 @@ class Server
     };
     
 void handle_get_methode(request r, std::vector<ServerConfig> _configs);
+void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd);
+
