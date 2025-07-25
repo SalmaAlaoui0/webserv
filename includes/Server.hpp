@@ -28,7 +28,7 @@
 #include "Request.hpp"
 #include "Client.hpp"
 
-
+class request;
 struct ServerConfig;
 class EpollManager;
 class Server
@@ -38,6 +38,7 @@ class Server
         std::vector<int> serverSockets;
         std::map<int, Client> clients;
     public:
+        Server();
         Server(const std::vector<ServerConfig>& configs);
        ~Server();
         
@@ -47,20 +48,20 @@ class Server
         bool isServerSocket(int fd) const;
         void acceptNewClient(int listenFd, EpollManager &epollManager);
         void handleClient(int clientFd, EpollManager &epollManager);
-        void closeClient(int fd, EpollManager &epollManager);
         void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
         std::string readRequest(int clientFd, EpollManager &epollManager);
         void sendResponse(int clientFd, request r);
         
+        void closeClient(int fd, EpollManager &epollManager);
         class socketException : public std::exception 
         {
             private:
-                std::string _msg;
+            std::string _msg;
             public:
-                socketException(const std::string &msg);    
-               virtual ~socketException() throw();    
-                virtual const char* what() const throw();
+            socketException(const std::string &msg);    
+            virtual ~socketException() throw();    
+            virtual const char* what() const throw();
         };
-};
-
+    };
+    
 void handle_get_methode(request r, std::vector<ServerConfig> _configs);
