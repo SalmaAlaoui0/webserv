@@ -18,6 +18,9 @@ Server::Server(const std::vector<ServerConfig>& configs)
     setupSockets();
 }
 
+Server::Server()
+{
+}
 Server::~Server()
 {
     for (size_t i = 0; i < serverSockets.size(); ++i)
@@ -74,30 +77,7 @@ int Server::creatServerSocket(const std::string &ip, int port)
     return server_fd ; 
 }
 
-std::string Server::readRequest(int clientFd, EpollManager &epollManager)
-{
-    char buffer[1024]="";
-    ssize_t bytesRecv=recv(clientFd, buffer, sizeof(buffer) - 1, 0 );
-    if (bytesRecv == -1)
-    {
-        if (errno != EAGAIN && errno != EWOULDBLOCK)
-        {
-            std::cerr << "❌ recv failed: " << strerror(errno) << std::endl;
-            closeClient(clientFd, epollManager);
-        }
-    }
-    else if (bytesRecv == 0)
-    {
-        std::cerr << "❌ Client disconnected " << clientFd << std::endl;
-        closeClient(clientFd, epollManager);
-    }
-    else
-    {
-        buffer[bytesRecv] = '\0';   
-        // std::cout<< "📩 Data received \n" << buffer<<std::endl;
-    }
-    return (std::string)buffer;
-}
+
 
 void Server::sendResponse( int clientFd, request r)
 {
@@ -105,7 +85,7 @@ void Server::sendResponse( int clientFd, request r)
 // <head><h1><center>Hello world</center></h1>
 // </head>
 // </html>)";
-	(void)r;
+	//(void)r;
     std::string body = "<h1><center>Hello world</center></h1>";
 	if (r.get_path() == "/favicon.ico")
 	{
@@ -131,21 +111,22 @@ void Server::sendResponse( int clientFd, request r)
 
 void Server::handleClient(int clientFd, EpollManager &epollManager)
 {
-	request r;
-	std::string request = readRequest(clientFd, epollManager);
-	if (request.empty())
-	{
-		std::cout << "Empty request or client closed" << std::endl;
-		closeClient(clientFd, epollManager); 
-		return;
-	}
+    try{
+        request a;
+        a = a.parseRequest(clientFd, epollManager, a);
+		// std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello world";
+		// send(clientFd, response.c_str(), response.size(), 0);
+       sendResponse(clientFd, a);
+        }
+    catch(std::exception &e)
+    {
+        std::cout << e.what() << std::endl;
+    }
 	std::map<int, Client>::iterator it = clients.find(clientFd);
 	if (it != clients.end())
 	{
 		it->second.updateActivity();
 	}
-	if (parseRequest(request, r) == 0)
-		sendResponse(clientFd, r);
 }
 
 void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
@@ -153,6 +134,8 @@ void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
         struct sockaddr clientAddr;
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
+                std::cout << "client fd" << clientFd << std::endl;
+
         if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1)
         {
             close(clientFd);
@@ -222,7 +205,7 @@ void Server::run()
             }
 			else 
 			{
-                std::cout << "started handling an already there connection\n" << std::endl;
+               // std::cout << "started handling an already there connection\n" << std::endl;
 				handleClient(fds[i], epollManager);
 				// char buf[1024];
 				// int bytes = read(fds[i], buf, sizeof(buf));
@@ -245,6 +228,7 @@ void Server::closeClient(int fd, EpollManager &epollManager)
     close(fd);
     clients.erase(fd);
     std::cout << "🚪 Closed client fd: " << fd << std::endl;
+
 }
 
 Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
