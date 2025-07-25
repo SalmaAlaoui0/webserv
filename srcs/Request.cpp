@@ -17,11 +17,13 @@ request::request(request const &ref)
     *this = ref;
 }
 
-std::string error_set(request &r)
+void request::error_set(request &r)
 {
     std::map<std::string , std::string>headers = r.get_header();
     if(r.get_method() != "GET" && r.get_method() != "POST" && r.get_method() != "DELETE")
-        return e405;
+    {
+         throw requetetException("405 Method Not Allowed");
+    }
     if(r.get_method() == "POST")
     {
         std::map<std::string , std::string>::iterator ptr= headers.find("Content-Length"); 
@@ -30,10 +32,12 @@ std::string error_set(request &r)
 			std::string a = ptr->second;
 			unsigned long b = std::atoi(a.c_str());
 			if(b < 0 || (b != r.get_body().size()))
-				return e400;  
+            {
+                 throw requetetException("400 Bad Request");
+            }
         }
         else
-            return e400;
+             throw requetetException("400 Bad Request");
     }
 	
     // if((r.get_method() == "GET" || r.get_method() == "DELETE") && !r.get_body().size())
@@ -42,15 +46,15 @@ std::string error_set(request &r)
 		// 	return e400;
 		// }
 	if(r.get_version() != "HTTP/1.1")
-		return e505;
+		 throw requetetException("505 HTTP Version Not Supported");
 	if(headers.find("Host") == headers.end())	
-        return e400;
+       throw requetetException("400 Bad Request");
     if(r.get_method().empty() || r.get_path().empty())
-	    return e400;
+	    throw requetetException("400 Bad Request");
     const unsigned long max_body_size = 1024 * 1024; // 1 Mo
     if (r.get_body().size() > max_body_size)
-		return e413;
-    return "";
+		 throw requetetException("Payload Too Large");
+    return ;
 }
 
 static std::string trim1(std::string &s)
@@ -97,22 +101,20 @@ request& request::parseRequest(int client_fd , EpollManager &epollManager, reque
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
         {
-            std::cerr << "❌ recv failed: " << strerror(errno) << std::endl;
-             s.closeClient(client_fd, epollManager);
-            throw requestetException();
+            s.closeClient(client_fd, epollManager);
+            throw requetetException("❌ recv failed: ");
         }
     }
     else if ( bytes_received == 0)
     {
-        std::cerr << "❌ Client disconnected " << client_fd << std::endl;
-         throw requestetException();
+        throw requetetException("❌ Client disconnected ");
     }
     else if(buffer[bytes_received] == '\0' && bytes_received == 1 )
     {
-        std::cout << "Empty request or client closed" << std::endl;
-         throw requestetException();
+         throw requetetException("Empty request or client closed");
     }
     //std::cout << "byte read ----------->"<< bytes_received << std::endl;
+
     // std::cout << "request :"<< buffer <<std::endl;
     std::istringstream iss(buffer);
     std::string methode , path ,version;
@@ -159,10 +161,20 @@ while(std::getline(iss, line, '\r') && !line.empty())
             break;
         //buffer[bytes_received] = '\0';
         r.get_body().append(buffer, bytes_received);
-        std::cout << "body size: " << r.get_body().size() << " / " << content_length << std::endl;
+     //   std::cout << "body size: " << r.get_body().size() << " / " << content_length << std::endl;
     }
-     std::cout << "Final body size: " << r.get_body() << std::endl;
+  //   std::cout << "Final body size: " << r.get_body() << std::endl;
     // std::cout << "Expected: " << content_length << std::endl;
 return r;
 }
 
+
+request::requetetException::requetetException(const std::string &msg) :_msg(msg){}
+
+request::requetetException::~requetetException() throw() {}
+
+
+const char* request::requetetException::what() const throw()
+{
+    return (this->_msg).c_str();
+}

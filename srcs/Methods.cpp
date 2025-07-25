@@ -1,4 +1,5 @@
 #include "../includes/Server.hpp"
+#include "../includes/Response.hpp"
 
 
 std::vector<std::string> pathchunks(std::string path)
@@ -147,7 +148,7 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs)
 	{
 		if (_configs[i].port == port)
 		{
-			map = getMatchingRootPath(r, _configs[i]);
+			map = getMatchingRootPath(r, _configs[i]);///////Hereeeeeeeee
 			int key = map.begin()->first;
 			// std::cout << map.size() << std::endl;
 			if (!CheckMethodeIsAllowed("GET", _configs, i, key))
@@ -163,8 +164,8 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs)
 			 // 3- then I will check if the path is valid with the stat (system function)
 			 // 4- Lastly if those instructions are passed this mean we're good to start with the methods
 
-
-
+			//  ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ 
+			/// ****PRINT THE MAP VALUES****
 
 			for (std::map<int, std::string>::iterator it = map.begin(); it != map.end(); ++it) {
 			std::cout << it->first << ": -" << it->second << "-\n";
@@ -176,6 +177,55 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs)
 		}
 
 			// 👉 Next step: check if file exists, open it, and send response
+
+			return;
+		}
+	}
+}
+
+
+void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd)
+{
+	const size_t client_max_body_size = 10 * 1024 * 1024;
+	int port = 8080;
+reponse repo;
+	for (size_t i = 0; i < _configs.size(); ++i)
+	{
+		if (_configs[i].port == port)
+		{
+			/// Salam Mouna I chanded the return value dial had lfunction ⬇️ to return map blast string (chofi lfunction diali kifach kanprinti l values dial lmap)
+			std::string fullPath = getMatchingRootPath(r, _configs[i]);// getMatchingRootPath
+			std::cout << "Full path to serve: " << fullPath << std::endl;
+			std::ostringstream filename ;
+			filename << fullPath << "/upload_" << std::time(0) << ".txt";
+			std::ofstream out(filename.str().c_str(),std::ios::binary);
+			if(!out)
+			{
+				std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+				repo.reponse_status = 500;
+				repo.response_body = "Internal Server Error";
+				return;
+		
+			}
+			out << r.body;
+			out.close();
+			if(r.body.size() > client_max_body_size)
+			{
+				repo.reponse_status = 413;
+				repo.response_body =" Payload Too Large.";
+				return ;
+			}
+			/////////////chek method allowod or not
+			std::cout << "✅ Body written to: " << filename.str() << std::endl;
+			repo.reponse_status = 201;
+			repo.response_body = "File uploaded successfully!\n";
+
+
+    ssize_t sent = send(clientFd, repo.response_body.c_str(), repo.response_body.size(), 0);
+    if (sent < 0)
+        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    else
+        std::cout << "Response sent to FD: " << clientFd << std::endl;
 
 			return;
 		}
