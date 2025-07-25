@@ -30,6 +30,8 @@ class request{
     request& operator=(const request& other);
     request(request const &ref);
     request();
+   int reponse_status;
+  
    std::string body;
     std::string method;
     std::string path;
@@ -46,13 +48,16 @@ class request{
    std::map<std::string,std::string>& get_header();
    void set_body(std::string& b);
   std::string& get_body(void);
-class requestetException : public std::exception 
-  {
-    virtual const char* what() const throw()
-    {
-      return "error detected";
-    };
-};
+  void error_set(request &r);
+ class requetetException : public std::exception 
+        {
+          private:
+          std::string _msg;
+          public:
+          requetetException(const std::string &msg);    
+          virtual ~requetetException() throw();    
+          virtual const char* what() const throw();
+        };
 };
 
 
