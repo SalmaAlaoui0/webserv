@@ -178,3 +178,19 @@ const char* request::requetetException::what() const throw()
 {
     return (this->_msg).c_str();
 }
+int request::get_final_port(request &r)
+{
+    std::map<std::string, std::string> map = r.get_header();
+	std::map<std::string, std::string>::iterator it;
+	for(it = map.begin() ; it != map.end(); it++)
+	{
+		if(it->first == "Host")
+		{
+			int pos = it->second.find(":");
+			std::string port = it->second.substr(pos+1, it->second.size());
+			int final_port = std::atoi(port.c_str());
+            return final_port;
+		}
+	}
+    return 0;
+}

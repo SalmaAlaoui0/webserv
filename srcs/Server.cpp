@@ -91,11 +91,12 @@ void Server::sendResponse( int clientFd, request r)
 		send(clientFd, notFound.c_str(), notFound.size(), 0);
 		return;
 	}
+    
 	// std::cout << "your method is: " << r.get_method() << ", and the path is(ps: without file it's stored alone;): " << r.get_root() << ", and version is: " << r.get_version() << std::endl << std::endl;
 	if (r.get_method() == "GET")
 		handle_get_methode(r, this->_configs, clientFd);
-    // if(r.get_method()== "POST")
-    //     handle_post_methode(r, this->_configs, clientFd);
+    if(r.get_method()== "POST")
+        handle_post_methode(r, this->_configs, clientFd,r.get_final_port(r));
     // std::string body = "<h1><center>Hello world</center></h1>";
     // std::ostringstream response;
 	// response << "HTTP/1.1 200 OK\r\n"

@@ -36,6 +36,7 @@ class request{
     std::string method;
     std::string path;
     request& parseRequest(int client_fd , EpollManager &epollManager, request &a);
+    int get_final_port(request &r);
     std::string version;
     std::map<std::string, std::string> map;
     void set_method(std::string m);
