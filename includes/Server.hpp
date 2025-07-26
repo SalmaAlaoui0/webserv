@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/26 15:13:48 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/26 17:33:16 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -65,6 +65,6 @@ class Server
     };
     
 void handle_get_methode(request r, std::vector<ServerConfig> _configs, int);
-void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd);
+void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd, int port);
 void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd);
 
