@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/26 10:20:50 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/07/26 16:25:34 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,6 +97,8 @@ void Server::sendResponse( int clientFd, request r)
     // if(r.get_method()== "POST")
     //     handle_post_methode(r, this->_configs, clientFd);
     // std::string body = "<h1><center>Hello world</center></h1>";
+    else if (r.get_method() == "DELETE")
+		handle_delete_methode(r, this->_configs, clientFd);
     // std::ostringstream response;
 	// response << "HTTP/1.1 200 OK\r\n"
 	// 		 << "Content-Type: text/html\r\n"
@@ -137,9 +139,7 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
     sendResponse(clientFd, a);
 	std::map<int, Client>::iterator it = clients.find(clientFd);
 	if (it != clients.end())
-	{
 		it->second.updateActivity();
-	}
 }
 
 void Server::acceptNewClient(int serverFd, EpollManager &epollManager)

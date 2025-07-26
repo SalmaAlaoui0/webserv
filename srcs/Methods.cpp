@@ -2,6 +2,7 @@
 #include "../includes/Response.hpp"
 #include "../includes/ServerConfig.hpp"
 #include "../includes/LocationConfig.hpp"
+#include <unistd.h>
 
 
 std::vector<std::string> pathchunks(std::string path)
@@ -154,7 +155,7 @@ bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _config
 {
 	std::vector<std::string>::iterator it;
 	std::cout << "HELLO WORLD THE LOC NUM IS: " << locationum << ", and it's in server: " << servernum << std::endl;
-	(void)method;
+	//(void)method;
 	it = _configs[servernum].locations[locationum].allowed_methods.begin();
 	while (it != _configs[servernum].locations[locationum].allowed_methods.end())
 	{
@@ -188,8 +189,8 @@ std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector
 			
 			std::string index_file;
 			index_file = join_path(requested_path, config[key].index);
+			std::cout << "the index is: " << index_file << "\n\n";
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
-				// std::cout << "the index is: " << index_file << "\n\n";
                 return send_file_response(clientFd, index_file);
             } else if (config[key].autoindex) {
                 // return serve_autoindex_listing(requested_path);
@@ -260,54 +261,114 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 	}
 }
 
+// handleClient()
+//    └── parseRequest()
+//          └── if method == "DELETE"
+//                └── handle_delete_methode( r, _configs,clientFd)
+//                      ├── File exists? ─── No → 404
+//                      ├── Is directory? ─── Yes → 403
+//                      ├── Is allowed path? ─── No → 403
+//                      ├── Try delete
+//                      │     └── Success → 200
+//                      │     └── Fail → 500
+//                      └── Log result
 
-void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd)
+void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd)
 {
-	const size_t client_max_body_size = 10 * 1024 * 1024;
 	int port = 8080;
-reponse repo;
+	std::map<int, std::string> map;
+
 	for (size_t i = 0; i < _configs.size(); ++i)
 	{
 		if (_configs[i].port == port)
 		{
-			/// Salam Mouna I chanded the return value dial had lfunction ⬇️ to return map blast string (chofi lfunction diali kifach kanprinti l values dial lmap)
-			std::string fullPath = getMatchingRootPath(r, _configs[i]);// getMatchingRootPath
-			std::cout << "Full path to serve: " << fullPath << std::endl;
-			std::ostringstream filename ;
-			filename << fullPath << "/upload_" << std::time(0) << ".txt";
-			std::ofstream out(filename.str().c_str(),std::ios::binary);
-			if(!out)
+			map = getMatchingRootPath(r, _configs[i]);
+			int key = map.begin()->first;
+			if (!CheckMethodeIsAllowed("DELETE", _configs, i, key))
 			{
-				std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
-				repo.reponse_status = 500;
-				repo.response_body = "Internal Server Error";
+				std::string methodNotAllowed = "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n";
+				send(clientFd, methodNotAllowed.c_str(), methodNotAllowed.length(), 0);
 				return;
-		
 			}
-			out << r.body;
-			out.close();
-			if(r.body.size() > client_max_body_size)
+			std::string fullpath = map.begin()->second;
+			std::cout << "\nFull path is:" << fullpath << std::endl;
+			struct stat statfile;
+			if(stat(fullpath.c_str() , &statfile) != 0)
 			{
-				repo.reponse_status = 413;
-				repo.response_body =" Payload Too Large.";
-				return ;
+				std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+				send(clientFd, notFound.c_str(), notFound.length(), 0);
+				return;
 			}
-			/////////////chek method allowod or not
-			std::cout << "✅ Body written to: " << filename.str() << std::endl;
-			repo.reponse_status = 201;
-			repo.response_body = "File uploaded successfully!\n";
-
-
-    ssize_t sent = send(clientFd, repo.response_body.c_str(), repo.response_body.size(), 0);
-    if (sent < 0)
-        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-    else
-        std::cout << "Response sent to FD: " << clientFd << std::endl;
-
+			// if(S_ISDIR(statfile.st_mode))
+			// {
+			// 	std::string forbidden = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n";
+			// 	send(clientFd, forbidden.c_str(), forbidden.length(), 0);
+			// 	return;
+			// }
+			if (unlink(fullpath.c_str()) == 0)
+			{
+				std::string success = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
+				send(clientFd, success.c_str(), success.length(), 0);
+				std::cout << "✅ File deleted: " << fullpath << std::endl;
+			}
+			else
+			{
+				std::string serverError = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
+				send(clientFd, serverError.c_str(), serverError.length(), 0);
+				std::cerr << "❌ Failed to delete file: " << fullpath << " — " << strerror(errno) << std::endl;
+			}
 			return;
 		}
 	}
 }
+
+// void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd)
+// {
+// 	const size_t client_max_body_size = 10 * 1024 * 1024;
+// 	int port = 8080;
+// reponse repo;
+// 	for (size_t i = 0; i < _configs.size(); ++i)
+// 	{
+// 		if (_configs[i].port == port)
+// 		{
+// 			/// Salam Mouna I chanded the return value dial had lfunction ⬇️ to return map blast string (chofi lfunction diali kifach kanprinti l values dial lmap)
+// 			std::string fullPath = getMatchingRootPath(r, _configs[i]);// getMatchingRootPath
+// 			std::cout << "Full path to serve: " << fullPath << std::endl;
+// 			std::ostringstream filename ;
+// 			filename << fullPath << "/upload_" << std::time(0) << ".txt";
+// 			std::ofstream out(filename.str().c_str(),std::ios::binary);
+// 			if(!out)
+// 			{
+// 				std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+// 				repo.reponse_status = 500;
+// 				repo.response_body = "Internal Server Error";
+// 				return;
+		
+// 			}
+// 			out << r.body;
+// 			out.close();
+// 			if(r.body.size() > client_max_body_size)
+// 			{
+// 				repo.reponse_status = 413;
+// 				repo.response_body =" Payload Too Large.";
+// 				return ;
+// 			}
+// 			/////////////chek method allowod or not
+// 			std::cout << "✅ Body written to: " << filename.str() << std::endl;
+// 			repo.reponse_status = 201;
+// 			repo.response_body = "File uploaded successfully!\n";
+
+
+//     ssize_t sent = send(clientFd, repo.response_body.c_str(), repo.response_body.size(), 0);
+//     if (sent < 0)
+//         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+//     else
+//         std::cout << "Response sent to FD: " << clientFd << std::endl;
+
+// 			return;
+// 		}
+// 	}
+// }
 
 
 
