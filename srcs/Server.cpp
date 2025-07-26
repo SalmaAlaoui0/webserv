@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/25 19:08:48 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/07/26 10:20:50 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,8 +77,6 @@ int Server::creatServerSocket(const std::string &ip, int port)
     return server_fd ; 
 }
 
-
-
 void Server::sendResponse( int clientFd, request r)
 {
 //     std::string body = R"(<!DOCTYPE html> <html lang="en">
@@ -86,7 +84,7 @@ void Server::sendResponse( int clientFd, request r)
 // </head>
 // </html>)";
 	//(void)r;
-    std::string body = "<h1><center>Hello world</center></h1>";
+    // std::string body = "<h1><center>Hello world</center></h1>";
 	if (r.get_path() == "/favicon.ico")
 	{
 		std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
@@ -95,19 +93,20 @@ void Server::sendResponse( int clientFd, request r)
 	}
 	// std::cout << "your method is: " << r.get_method() << ", and the path is(ps: without file it's stored alone;): " << r.get_root() << ", and version is: " << r.get_version() << std::endl << std::endl;
 	if (r.get_method() == "GET")
-		handle_get_methode(r, this->_configs);
-    if(r.get_method()== "POST")
-        handle_post_methode(r, this->_configs, clientFd);
-// std::ostringstream response;
-// 	response << "HTTP/1.1 200 OK\r\n"
-// 			 << "Content-Type: text/html\r\n"
-// 			 << "Content-Length: " << body.size() << "\r\n\r\n" << body;
+		handle_get_methode(r, this->_configs, clientFd);
+    // if(r.get_method()== "POST")
+    //     handle_post_methode(r, this->_configs, clientFd);
+    // std::string body = "<h1><center>Hello world</center></h1>";
+    // std::ostringstream response;
+	// response << "HTTP/1.1 200 OK\r\n"
+	// 		 << "Content-Type: text/html\r\n"
+	// 		 << "Content-Length: " << body.size() << "\r\n\r\n" << body;
 
-//     ssize_t sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
-//     if (sent < 0)
-//         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-//     else
-//         std::cout << "Response sent to FD: " << clientFd << std::endl;
+    // ssize_t sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
+    // if (sent < 0)
+    //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    // else
+    //     std::cout << "Response sent to FD: " << clientFd << std::endl;
 }
 
 

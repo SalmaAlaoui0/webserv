@@ -133,3 +133,75 @@ void sendResponse(int clientFd, request r)
 	else
 		std::cout << "Sent external page to FD: " << clientFd << std::endl;
 }
+\
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+METHODES AND STAT
+
+&&& *I asked chatgpt:
+quick question stat is being executed and checked if the method is GET or in all the methodes 
+GET, POST, DELETE
+
+
+&&& *He answers: 
+ChatGPT said:
+✅ Short answer:
+You should use stat() in all methods (GET, POST, DELETE) — but what you do with the result depends on the method.
+
+📘 Breakdown per method:
+🔹 GET
+✅ Use stat() to check if the file exists.
+
+If file → serve it.
+
+If directory → check index file → maybe autoindex.
+
+If nothing → 404.
+
+🔹 POST
+✅ Use stat() if you're writing to a file (e.g., uploading).
+
+Might check if the target path exists:
+
+If the file already exists → you may overwrite or reject (depends on config).
+
+If writing to a directory → maybe append a filename.
+
+So yes, use stat() to validate the target path.
+
+🔹 DELETE
+✅ Use stat() to check if the file or directory exists before trying to delete.
+
+If it doesn’t exist → return 404.
+
+If it's a directory → maybe reject (unless recursive delete is supported).
+
+If file → try unlink/delete.
+
+✅ Summary Table:
+Method	Use stat()?	Purpose
+GET	✅ Yes	Check file or directory to serve
+POST	✅ Yes	Check if file/dir exists before write/upload
+DELETE	✅ Yes	Check if target exists before deleting
+
+So: yes, use stat() always — just make sure the logic after it matches the request type.
+
+Let me know if you want a sample logic flow for each method.

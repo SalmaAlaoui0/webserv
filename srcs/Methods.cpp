@@ -1,5 +1,7 @@
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
+#include "../includes/ServerConfig.hpp"
+#include "../includes/LocationConfig.hpp"
 
 
 std::vector<std::string> pathchunks(std::string path)
@@ -51,6 +53,25 @@ std::string getFileExtension(std::string& path)
     return filename.substr(dotPos + 1);
 }
 
+std::string join_path(std::string root, std::string suffix)
+{
+	std::string fixedRoot = root;
+	std::string fixedSuffix = suffix;
+
+	// Remove trailing '/' from root if present
+	if (!fixedRoot.empty() && fixedRoot[fixedRoot.length() - 1] == '/')
+		fixedRoot.erase(fixedRoot.length() - 1);
+
+	// Remove leading '/' from suffix if present
+	if (!fixedSuffix.empty() && fixedSuffix[0] == '/')
+		fixedSuffix = fixedSuffix.substr(1);
+
+	// Concatenate with a single '/'
+	return fixedRoot + "/" + fixedSuffix;
+}
+
+
+
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
@@ -61,20 +82,21 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 	size_t i = 0;
 	std::string extension;
 	size_t coorLoc = 0;
+	std::cout << "************" << requestedPath << std::endl;
 
 	std::map<int, std::string> result;
 
 	if (!getFileExtension(requestedPath).empty())
 	{
 		extension = getFileExtension(requestedPath);
-		std::cout << "The request extension is: *_*" << extension << "*_*" << std::endl;
+		// std::cout << "The request extension is: *_*" << extension << "*_*" << std::endl;
 		while (i < config.locations.size())
 		{
 			locPath = config.locations[i].path;
 			Pchunks = pathchunks(locPath);
 			if (Pchunks.size() == 2 && Pchunks[0] == "~")
 			{
-				std::cout << "your server location file extensions are: -" << Pchunks[1].substr(2) << "--" << std::endl;
+				// std::cout << "your server location file extensions are: -" << Pchunks[1].substr(2) << "--" << std::endl;
 				if (Pchunks[1].substr(2) == extension)
 				{
 					// std::cout << "\n -->" << requestedPath << std::endl << std::endl;
@@ -97,28 +119,33 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		locPath = config.locations[i].path;
 		Pchunks = pathchunks(locPath);
 		if (Pchunks.size() == 1)
+		{
 			locPath = Pchunks[0];
+			std::cout << "And the locpath is: " << locPath << "----- and it's len is: " << locPath.length() << std::endl;
+		}
 		else
 			locPath = Pchunks[1];
 		if (Pchunks.size() == 2 && Pchunks[0] == "^~")
 		{
 			if (requestedPath.find(locPath) == 0)
 			{
-				matchedRoot = config.locations[i].root + requestedPath.substr(locPath.length());
+				matchedRoot = join_path(config.locations[i].root, requestedPath.substr(locPath.length()));
 				result[i] = matchedRoot;
+				// std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
 				return result;
 			}
-		}		
+		}
 		else if (requestedPath.find(locPath) == 0 && locPath.length() > maxMatchLength)
 		{
+			std::cout << "CODE GOT TILL HERE hh but dono what to do\n" << std::endl;
 			maxMatchLength = locPath.length();
-			matchedRoot = config.locations[i].root + requestedPath.substr(locPath.length());
+			matchedRoot = join_path(config.locations[i].root, requestedPath.substr(locPath.length()));
 			coorLoc = i;
-			std::cout << "root is: -" << config.locations[i].root << "- and req root is: -" << requestedPath.substr(locPath.length()) << "--\n";
+			// std::cout << "root is: -" << config.locations[i].root << "- and req root is: -" << requestedPath.substr(locPath.length()) << "--\n";
 		}
 		i++;
 	}
-	std::cout << "hello" << std::endl;
+	std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
 	result[coorLoc] = matchedRoot;
 	return result;
 }
@@ -139,7 +166,51 @@ bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _config
 	return 0;
 }
 
-void handle_get_methode(request r, std::vector<ServerConfig> _configs)
+
+// std::string send_error(int errorNum)
+// {
+// 	std::string result;
+// 	result = ;
+// 	return result;
+// }
+
+std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<LocationConfig> config, int key)
+{
+	struct stat statbuf;
+	// std::cout << "\n\n Your fileis :" << requested_path << "\n\n";
+    if (stat(requested_path.c_str(), &statbuf) == 0) {
+        if (S_ISREG(statbuf.st_mode)) {
+            // ✅ It's a file → serve it
+			return send_file_response(clientFd, requested_path);
+        } else if (S_ISDIR(statbuf.st_mode)) {
+            // 📁 It's a directory → try index
+            // std::string index_file = requested_path + "/" + config[key].index;
+			
+			std::string index_file;
+			index_file = join_path(requested_path, config[key].index);
+            if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+				// std::cout << "the index is: " << index_file << "\n\n";
+                return send_file_response(clientFd, index_file);
+            } else if (config[key].autoindex) {
+                // return serve_autoindex_listing(requested_path);
+				return "still didn't handle autoindex yet\n";
+            } else {
+				std::cout << "1Hello beautiful world the error is: " << 403 << std::endl;
+                // return send_error(403); // Forbidden (index off and no index file)
+            }
+        } else {
+			std::cout << "2Hello beautiful world the error is: " << 403 << std::endl;
+            // return send_error(403); // Not a regular file or dir
+        }
+    } else {
+		std::cout << "3Hello beautiful world the error is: " << 404 << std::endl;
+        // return send_error(404); // ❌ Not found
+    }
+	return "  *";
+}
+
+
+void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd)
 {
 	int port = 8080;
 	std::map<int, std::string> map;
@@ -156,6 +227,12 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs)
 			// here we should return the METHODE NOT ALLOWED ERROR
 			else
 				std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
+			std::string value = map.begin()->second;
+			std::cout << "\nFull path is:" << value << std::endl;
+			std::string ret = CheckDirOrFile(value, clientFd, _configs[i].locations, key);
+			std::cout << ret << std::endl;
+
+			// std::cout << "***&&&" << value << "&&&***" << std::endl;
 
 
 
@@ -167,14 +244,14 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs)
 			//  ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ 
 			/// ****PRINT THE MAP VALUES****
 
-			for (std::map<int, std::string>::iterator it = map.begin(); it != map.end(); ++it) {
-			std::cout << it->first << ": -" << it->second << "-\n";
-			std::map<int, std::string>::iterator next = it;
-			++next;
-			if (next != map.end()) {
-				std::cout << ", ";
-			}
-		}
+			// for (std::map<int, std::string>::iterator it = map.begin(); it != map.end(); ++it) {
+			// std::cout << it->first << ": -" << it->second << "-\n";
+			// std::map<int, std::string>::iterator next = it;
+			// ++next;
+			// if (next != map.end()) {
+			// 	std::cout << ", ";
+			// }
+		// }
 
 			// 👉 Next step: check if file exists, open it, and send response
 
