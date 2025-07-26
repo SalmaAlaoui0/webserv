@@ -27,6 +27,11 @@ int containsChar(std::string str, char target) {
 		return 2;
 	if (chunks.size() == 2 && (chunks[0] != "^~" && chunks[0] != "~"))
 		return 2;
+    if (chunks[0] == "~")
+    {
+        if (chunks[1][0] != '\\' || chunks[1][1] != '.')
+            return 2;
+    }
     return result;
 }
 
@@ -48,6 +53,12 @@ std::string checkValidLocation(std::string line)
     return (path);
 }
 
+bool hasExtension(const std::string& filename)
+{
+    size_t dotPos = filename.rfind('.');
+    return dotPos != std::string::npos && dotPos != 0 && dotPos != filename.size() - 1;
+}
+
 void parseLoc_index(std::string line, std::vector<ServerConfig> &container, int i, int j)
 {
     std::string index;
@@ -55,7 +66,7 @@ void parseLoc_index(std::string line, std::vector<ServerConfig> &container, int 
     index = trim(index);
 	if (index[index.size() - 1] != ';')
         throw ::InvalidData();
-    if (!isValidIndex(index) || (index.substr(index.size() - 6, index.size()) != ".html;"))
+    if (!isValidIndex(index) || !hasExtension(index))
         throw ::InvalidData();
     index = index.substr(0, index.size() - 1);
     container[i].locations[j].index = index;

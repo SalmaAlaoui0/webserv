@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/19 14:37:51 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/07/26 10:20:56 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -64,4 +64,6 @@ class Server
         };
     };
     
-void handle_get_methode(request r, std::vector<ServerConfig> _configs);
+void handle_get_methode(request r, std::vector<ServerConfig> _configs, int);
+void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd);
+
