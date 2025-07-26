@@ -46,7 +46,7 @@ class request{
    std::map<std::string,std::string>& get_header();
    void set_body(std::string& b);
   std::string& get_body(void);
-class requestetException : public std::exception 
+  class requestetException : public std::exception 
   {
     virtual const char* what() const throw()
     {
