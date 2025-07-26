@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 
+
 std::vector<std::string> pathchunks(std::string path)
 {
 	int result;
@@ -83,7 +84,7 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 	size_t i = 0;
 	std::string extension;
 	size_t coorLoc = 0;
-	std::cout << "************" << requestedPath << std::endl;
+	//std::cout << "************" << requestedPath << std::endl;
 
 	std::map<int, std::string> result;
 
@@ -122,7 +123,7 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		if (Pchunks.size() == 1)
 		{
 			locPath = Pchunks[0];
-			std::cout << "And the locpath is: " << locPath << "----- and it's len is: " << locPath.length() << std::endl;
+		//	std::cout << "And the locpath is: " << locPath << "----- and it's len is: " << locPath.length() << std::endl;
 		}
 		else
 			locPath = Pchunks[1];
@@ -138,7 +139,7 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		}
 		else if (requestedPath.find(locPath) == 0 && locPath.length() > maxMatchLength)
 		{
-			std::cout << "CODE GOT TILL HERE hh but dono what to do\n" << std::endl;
+			//std::cout << "CODE GOT TILL HERE hh but dono what to do\n" << std::endl;
 			maxMatchLength = locPath.length();
 			matchedRoot = join_path(config.locations[i].root, requestedPath.substr(locPath.length()));
 			coorLoc = i;
@@ -146,7 +147,7 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		}
 		i++;
 	}
-	std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
+	//std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
 	result[coorLoc] = matchedRoot;
 	return result;
 }
@@ -154,15 +155,31 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _configs, int servernum,  int locationum)
 {
 	std::vector<std::string>::iterator it;
-	std::cout << "HELLO WORLD THE LOC NUM IS: " << locationum << ", and it's in server: " << servernum << std::endl;
-	//(void)method;
+// <<<<<<< HEAD
+// 	std::cout << "HELLO WORLD THE LOC NUM IS: " << locationum << ", and it's in server: " << servernum << std::endl;
+// 	//(void)method;
+// 	it = _configs[servernum].locations[locationum].allowed_methods.begin();
+// 	while (it != _configs[servernum].locations[locationum].allowed_methods.end())
+// 	{
+// 		if (method == *it)
+// 			return 1;
+// 		// std::cout << "Methodes are: ^^^" << *it << std::endl;
+// 		++it;
+// =======
 	it = _configs[servernum].locations[locationum].allowed_methods.begin();
-	while (it != _configs[servernum].locations[locationum].allowed_methods.end())
-	{
-		if (method == *it)
-			return 1;
-		// std::cout << "Methodes are: ^^^" << *it << std::endl;
-		++it;
+	
+	if(it ==  _configs[servernum].locations[locationum].allowed_methods.end())
+		return 1;
+	else{
+		while (it != _configs[servernum].locations[locationum].allowed_methods.end())
+		{
+			if (method == *it)
+			{
+				std::cout << "method in it "<< *it<< std::endl;
+				return 1;
+			}
+			++it;
+		}
 	}
 	return 0;
 }
@@ -189,9 +206,13 @@ std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector
 			
 			std::string index_file;
 			index_file = join_path(requested_path, config[key].index);
+
 			std::cout << "the index is: " << index_file << "\n\n";
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
                 return send_file_response(clientFd, index_file);
+
+            // if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+			// 	// std::cout << "the index is: " << index_file << "\n\n";
             } else if (config[key].autoindex) {
                 // return serve_autoindex_listing(requested_path);
 				return "still didn't handle autoindex yet\n";
@@ -261,6 +282,7 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 	}
 }
 
+
 // handleClient()
 //    └── parseRequest()
 //          └── if method == "DELETE"
@@ -299,12 +321,12 @@ void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int cl
 				send(clientFd, notFound.c_str(), notFound.length(), 0);
 				return;
 			}
-			// if(S_ISDIR(statfile.st_mode))
-			// {
-			// 	std::string forbidden = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n";
-			// 	send(clientFd, forbidden.c_str(), forbidden.length(), 0);
-			// 	return;
-			// }
+			if(S_ISDIR(statfile.st_mode))
+			{
+				std::string forbidden = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n";
+				send(clientFd, forbidden.c_str(), forbidden.length(), 0);
+				return;
+			}
 			if (unlink(fullpath.c_str()) == 0)
 			{
 				std::string success = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
@@ -322,63 +344,65 @@ void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int cl
 	}
 }
 
-// void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd)
-// {
-// 	const size_t client_max_body_size = 10 * 1024 * 1024;
-// 	int port = 8080;
-// reponse repo;
-// 	for (size_t i = 0; i < _configs.size(); ++i)
-// 	{
-// 		if (_configs[i].port == port)
-// 		{
-// 			/// Salam Mouna I chanded the return value dial had lfunction ⬇️ to return map blast string (chofi lfunction diali kifach kanprinti l values dial lmap)
-// 			std::string fullPath = getMatchingRootPath(r, _configs[i]);// getMatchingRootPath
-// 			std::cout << "Full path to serve: " << fullPath << std::endl;
-// 			std::ostringstream filename ;
-// 			filename << fullPath << "/upload_" << std::time(0) << ".txt";
-// 			std::ofstream out(filename.str().c_str(),std::ios::binary);
-// 			if(!out)
-// 			{
-// 				std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
-// 				repo.reponse_status = 500;
-// 				repo.response_body = "Internal Server Error";
-// 				return;
-		
-// 			}
-// 			out << r.body;
-// 			out.close();
-// 			if(r.body.size() > client_max_body_size)
-// 			{
-// 				repo.reponse_status = 413;
-// 				repo.response_body =" Payload Too Large.";
-// 				return ;
-// 			}
-// 			/////////////chek method allowod or not
-// 			std::cout << "✅ Body written to: " << filename.str() << std::endl;
-// 			repo.reponse_status = 201;
-// 			repo.response_body = "File uploaded successfully!\n";
 
+void send_repons_post(int clientFd, const reponse& repo)
+{
+	std::ostringstream response;
+	response << "HTTP/1.1 " << repo.reponse_status << " OK\r\n";
+	response << "Content-Length: " << repo.response_body.size() << "\r\n";
+	response << "Content-Type: text/plain\r\n";
+	response << "\r\n";
+	response << repo.response_body;
+	send(clientFd, response.str().c_str(), response.str().size(), 0);
+}
 
-//     ssize_t sent = send(clientFd, repo.response_body.c_str(), repo.response_body.size(), 0);
-//     if (sent < 0)
-//         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-//     else
-//         std::cout << "Response sent to FD: " << clientFd << std::endl;
-
-// 			return;
-// 		}
-// 	}
-// }
-
-
-
-
-
-
-
-
-
-
+void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, int port)
+{
+	std::map<int, std::string> map;
+	//const size_t client_max_body_size = 10 * 1024 * 1024;
+	reponse repo;
+	for (size_t i = 0; i < _configs.size(); ++i)
+	{
+		if (_configs[i].port == port)
+		{
+			map = getMatchingRootPath(r, _configs[i]);
+			if(r.get_path() == "/upload")
+			{
+				std::map<int, std::string> fullPath_map = getMatchingRootPath(r, _configs[i]);
+				std::map<int, std::string>::iterator it = fullPath_map.begin();
+				if (!CheckMethodeIsAllowed("POST", _configs, i, it->first))
+				{
+						repo.reponse_status = 405 ;
+						repo.response_body =" Method Not Allowed.";
+						send_repons_post(clientFd, repo);
+						return ;
+				}
+				else if ((long)r.body.size() > _configs[i].client_max_body_size)
+				{
+						repo.reponse_status = 413;
+						repo.response_body =" Payload Too Large.";
+						send_repons_post(clientFd, repo);
+						return ;
+				}
+				std::ostringstream filename;
+			 filename << it->second<< "/upload_" << std::time(0) << ".txt";;
+			std::ofstream out(filename.str().c_str(),std::ios::binary);
+				if(!out)
+				{
+					std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+					repo.reponse_status = 500;
+					repo.response_body = "Internal Server Error";
+					return;
+				}
+				out << r.body;
+				out.close();
+				repo.reponse_status = 201;
+				repo.response_body = "File uploaded successfully!\n";
+				send_repons_post(clientFd, repo);
+			}
+			return;
+		}
+}}
 
 // void SplitPath(std::string requestPath, std::vector<std::string> &parts)
 // {
