@@ -1,7 +1,20 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Methods.cpp                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
+/*   Updated: 2025/07/28 18:43:33 by wzahir           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
 #include "../includes/ServerConfig.hpp"
 #include "../includes/LocationConfig.hpp"
+#include "../includes/Utils.hpp"
 #include <unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -309,29 +322,6 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 }
 
 
-
-    // A[Receive DELETE request with path] --> B{Does path exist?}
-    // B -- No --> C[Send 404 Not Found]
-    // B -- Yes --> D{Is path a directory?}
-    // D -- Yes --> E[Open directory]
-    // E --> F{Can open directory?}
-    // F -- No --> G[Send 500 Internal Server Error]
-    // F -- Yes --> H{Is directory empty?}
-    // H -- No --> I[Send 403 Forbidden (Cannot delete non-empty directory)]
-    // H -- Yes --> J[Try rmdir()]
-    // J --> K{rmdir success?}
-    // K -- Yes --> L[Send 204 No Content (Deleted successfully)]
-    // K -- No --> M[Send 500 Internal Server Error]
-    // D -- No --> N{Is path a regular file?}
-    // N -- No --> O[Send 403 Forbidden (Unsupported file type)]
-    // N -- Yes --> P{Check write/delete permissions?}
-    // P -- No --> Q[Send 403 Forbidden (Permission denied)]
-    // P -- Yes --> R[Try remove()/unlink()]
-    // R --> S{remove success?}
-    // S -- Yes --> T[Send 204 No Content (Deleted successfully)]
-    // S -- No --> U[Send 500 Internal Server Error]
-
-
 void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body)
 {
     std::ostringstream response;
@@ -376,6 +366,68 @@ bool is_directory_empty(const std::string& path)
     return true;
 }
 
+void handle_case(std::string const &fullpath, int clientFd)
+{
+	struct stat statfile;
+	if(stat(fullpath.c_str() , &statfile) != 0)
+	{
+		send_response(clientFd, 404, "Forbidden", load_html_file("www/404.html"));
+		return ;
+	}
+	if(S_ISDIR(statfile.st_mode))
+	{
+		if (fullpath[fullpath.size() - 1] != '/')
+		{
+			send_response(clientFd, 409, "conflict", load_html_file("www/409.html"));
+			return ;
+		}
+		if(!is_directory_empty(fullpath))
+		{
+			handle_case(fullpath, clientFd);
+			return ;
+		}
+		if(remove(fullpath.c_str()) == 0) //dir empty remove it 
+		{
+			send_response(clientFd, 204, "No Content", load_html_file("www/204.html"));
+			return ;
+		}
+		else  // Failed to remove directory
+		{
+			std::ostringstream oss;
+			oss << "<html><body><h1>500 Internal Server Error</h1>"
+				<< "<p>Failed to delete directory: " << strerror(errno) << "</p></body></html>";
+			send_response(clientFd, 500, "Internal Server Error", oss.str());
+			return ;
+		}
+	}
+	else if (S_ISREG(statfile.st_mode))
+	{
+		if(access(fullpath.c_str(), W_OK) != 0)  // doesn't have permission for delete
+		{
+			send_response(clientFd, 403, "Forbidden", load_html_file("www/403.html"));
+			return;
+		}
+		if (std::remove(fullpath.c_str()) == 0)
+		{
+			send_response(clientFd, 204, "No Content", load_html_file("www/204.html"));
+			std::cout << "✅ File deleted: " << fullpath << std::endl;
+			return;
+		}
+		else
+		{
+			std::ostringstream oss;
+			oss << "<html><body><h1>500 Internal Server Error</h1>"
+				<< "<p>Failed to delete directory: " << strerror(errno) << "</p></body></html>";
+			send_response(clientFd, 500, "Internal Server Error", oss.str());
+			return;
+		}
+	}
+	else //Unsupported file type (e.g., socket, symlink)
+	{
+		send_response(clientFd, 403, "Forbidden", load_html_file("www/403.html"));
+		return;
+	}
+}
 
 void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd)
 {
@@ -385,7 +437,6 @@ void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int cl
 		return;
 	}
 	int port = r.get_final_port(r);
-	std::cout<<"port---->"<<port<<std::endl;
 	std::map<int, std::string> map;
 
 	for (size_t i = 0; i < _configs.size(); ++i)
@@ -396,98 +447,12 @@ void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int cl
 			int key = map.begin()->first;
 			if (!CheckMethodeIsAllowed("DELETE", _configs, i, key))
 			{
-				send_response(clientFd, 405, "methodNotAllowed", "<html><body><h1>405 Method Not Allowed</h1></body></html>");
+				send_response(clientFd, 405, "methodNotAllowed", load_html_file("www/405.html"));
 				return;
 			}
 			std::string fullpath = map.begin()->second;
 			std::cout << "\nFull path is:" << fullpath << std::endl;
-			struct stat statfile;
-			if(stat(fullpath.c_str() , &statfile) != 0)
-			{
-					// std::string response_body =
-					// "<html><head><title>404 Not Found</title></head>"
-					// "<body><h1>404 Not Found</h1>"
-					// "<p>The requested resource could not be found.</p></body></html> ""<html><head><title>404 - Oops!</title></head>"
-					// "<body style='text-align: center; font-family: sans-serif; background-color: #fefefe;'>"
-					// "<h1 style='font-size: 60px;'>🕵️‍";
-
-					//<html><body><h1>404 Not Found</h1></body></html>"
-					std::string response_body =
-					"<html><head><title>Oopsie! 💖</title></head>"
-					"<body style=\"font-family: Comic Sans MS; text-align: center; background-color: #fff0f5; color: #ff69b4;\">"
-					"<h1>404 Not Found 🌸</h1>"
-					"<p>Uh-oh... we couldn't find what you're looking for! 🧸</p>"
-					"<p>Maybe try another link, sweetie? 💌</p>"
-					"</body></html>";
-
-					std::ostringstream response;
-					response << "HTTP/1.1 404 Not Found\r\n";
-					response << "Content-Type: text/html\r\n";
-					response << "Content-Length: " << response_body.size() << "\r\n";
-					response << "Connection: close\r\n";
-					response << "\r\n";
-					response << response_body;
-					send_response(clientFd, 404, "Not Found", response_body);
-					return;
-			}
-			if (S_ISLNK(statfile.st_mode)) //symbolic link is a special file that points to another file or directory.
-            {
-                send_response(clientFd, 403, "Forbidden", "<html><body><h1>403 Forbidden</h1><p>Deleting symbolic links is not allowed.</p></body></html>");
-                return;
-            }
-			if(S_ISDIR(statfile.st_mode))
-			{
-				if(!is_directory_empty(fullpath))  // dir is full -> forbidden remove it
-				{
-					//recursion
-					std::string body = "<html><body><h1>403 Forbidden</h1><p>Directory is not empty.</p></body></html>";
-					send_response(clientFd, 403, "Forbidden", body);
-					return ;
-				}
-				if (remove(fullpath.c_str()) == 0) //dir empty remove it 
-				{
-					send_response(clientFd, 204, "No Content", "");
-					return ;
-				}
-				else  // Failed to remove directory
-				{
-					std::ostringstream oss;
-					oss << "<html><body><h1>500 Internal Server Error</h1>"
-						<< "<p>Failed to delete directory: " << strerror(errno) << "</p></body></html>";
-					send_response(clientFd, 500, "Internal Server Error", oss.str());
-					return ;
-				}
-			}
-			else if (S_ISREG(statfile.st_mode))  //is regular file
-			{
-				if(access(fullpath.c_str(), W_OK) != 0)  // doesn't have permission for delete
-				{
-					std::string body = "<html><body><h1>403 Forbidden</h1><p>Permission denied.</p></body></html>";
-					send_response(clientFd, 403, "Forbidden", body);
-					return;
-				}
-				if (std::remove(fullpath.c_str()) == 0)
-				{
-					send_response(clientFd, 204, "No Content", "<html><body><h1>✅ Deleted successfully</h1></body></html>");
-					std::cout << "✅ File deleted: " << fullpath << std::endl;
-					return;
-				}
-				else
-				{
-					std::ostringstream oss;
-					oss << "<html><body><h1>500 Internal Server Error</h1>"
-						<< "<p>Failed to delete directory: " << strerror(errno) << "</p></body></html>";
-					send_response(clientFd, 500, "Internal Server Error", oss.str());
-					std::cerr << "❌ Failed to delete file: " << fullpath << " — " << strerror(errno) << std::endl;
-					return;
-				}
-			}
-			else //Unsupported file type (e.g., socket, symlink)
-			{
-				std::string body = "<html><body><h1>403 Forbidden</h1><p>Unsupported file type.</p></body></html>";
-				send_response(clientFd, 403, "Forbidden", body);
-				return;
-			}
+			handle_case(fullpath, clientFd);
 			return;
 		}
 	}
