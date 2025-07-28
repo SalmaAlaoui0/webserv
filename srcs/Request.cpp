@@ -22,7 +22,8 @@ void request::error_set(request &r)
     std::map<std::string , std::string>headers = r.get_header();
     if(r.get_method() != "GET" && r.get_method() != "POST" && r.get_method() != "DELETE")
     {
-         throw requetetException("405 Method Not Allowed");
+        std::cout << "Method is: " << r.get_method() << std::endl; /// telnet 127.0.0.1 8080 there is a problem here the get method does not return the method but the path if we're using telnet as a client try it!
+        throw requetetException("405 Method Not Allowed");
     }
     if(r.get_method() == "POST")
     {

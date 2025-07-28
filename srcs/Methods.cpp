@@ -127,7 +127,14 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		//	std::cout << "And the locpath is: " << locPath << "----- and it's len is: " << locPath.length() << std::endl;
 		}
 		else
+		{
 			locPath = Pchunks[1];
+		}
+		if (locPath[1] == '\0' && requestedPath.empty())
+		{
+			result[i] = config.locations[i].root;
+			return result;
+		}
 		if (Pchunks.size() == 2 && Pchunks[0] == "^~")
 		{
 			if (requestedPath.find(locPath) == 0)
@@ -193,40 +200,54 @@ bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _config
 // 	return result;
 // }
 
-std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<LocationConfig> config, int key)
+
+std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, std::string uri)
 {
 	struct stat statbuf;
+	(void) uri;
 	// std::cout << "\n\n Your fileis :" << requested_path << "\n\n";
-    if (stat(requested_path.c_str(), &statbuf) == 0) {
-        if (S_ISREG(statbuf.st_mode)) {
-            // ✅ It's a file → serve it
+    if (stat(requested_path.c_str(), &statbuf) == 0)
+	{
+        if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
+		{
 			return send_file_response(clientFd, requested_path);
-        } else if (S_ISDIR(statbuf.st_mode)) {
-            // 📁 It's a directory → try index
-            // std::string index_file = requested_path + "/" + config[key].index;
-			
+        }
+		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
+		{
 			std::string index_file;
-			index_file = join_path(requested_path, config[key].index);
+			index_file = join_path(requested_path, config[i].locations[key].index);
 
 			std::cout << "the index is: " << index_file << "\n\n";
-            if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+            if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
+			{
                 return send_file_response(clientFd, index_file);
-
             // if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
 			// 	// std::cout << "the index is: " << index_file << "\n\n";
-            } else if (config[key].autoindex) {
-                // return serve_autoindex_listing(requested_path);
-				return "still didn't handle autoindex yet\n";
-            } else {
-				std::cout << "1Hello beautiful world the error is: " << 403 << std::endl;
-                // return send_error(403); // Forbidden (index off and no index file)
             }
-        } else {
-			std::cout << "2Hello beautiful world the error is: " << 403 << std::endl;
-            // return send_error(403); // Not a regular file or dir
+			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
+			{
+                // return serve_autoindex_listing(requested_path);
+				// return serve_autoindex_listing(clientFd, requested_path, uri);
+				return send_file_response(clientFd, "/home/salaoui/Desktop/webserv/www/autoindex.html");
+				return "still didn't handle autoindex yet\n";
+            }
+			else
+			{
+				std::cout << "1 Forbidden (index off and no index file) the error is: " << 403 << std::endl;
+				return send_file_response(clientFd, config[i].ErrorPages[403]);
+            }
         }
-    } else {
-		std::cout << "3Hello beautiful world the error is: " << 404 << std::endl;
+		else // If we did attach the file but still it's not found
+		{
+			return send_file_response(clientFd, config[i].ErrorPages[403]);
+			std::cout << "2 Not a regular file or dir the error is: " << 403 << std::endl;
+        }
+    }
+	else
+	{
+		// return send_file_response(clientFd, "/home/salaoui/Desktop/webserv/www/404.html");
+		std::cout << "3 Not found the error is: " << 404 << std::endl;
+		return send_file_response(clientFd, config[i].ErrorPages[404]);
         // return send_error(404); // ❌ Not found
     }
 	return "  *";
@@ -246,13 +267,17 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 			int key = map.begin()->first;
 			// std::cout << map.size() << std::endl;
 			if (!CheckMethodeIsAllowed("GET", _configs, i, key))
+			{
+				send_file_response(clientFd, _configs[i].ErrorPages[405]);
+				return;
 				std::cout << "This means method not allowed \n\n" << std::endl;
+			}
 			// here we should return the METHODE NOT ALLOWED ERROR
-			else
-				std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
+			// else
+			// 	std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
 			std::string value = map.begin()->second;
 			std::cout << "\nFull path is:" << value << std::endl;
-			std::string ret = CheckDirOrFile(value, clientFd, _configs[i].locations, key);
+			std::string ret = CheckDirOrFile(value, clientFd, _configs, i, key, r.get_path());
 			std::cout << ret << std::endl;
 
 			// std::cout << "***&&&" << value << "&&&***" << std::endl;
