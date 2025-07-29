@@ -3,6 +3,7 @@
 Client::Client() : _fd(-1)
 {
     updateActivity();
+    body_complete = false;
 }
 
 Client::Client(int fd) : _fd(fd)
