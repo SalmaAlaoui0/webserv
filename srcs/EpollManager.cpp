@@ -56,7 +56,7 @@ std::vector<int> EpollManager::waitEvents(Server &obj)
     int n = epoll_wait(epollFd, events, MAX_EVENTS , 1000);
     if (n == -1)
         throw epollException("❌ epoll_wait failed");
-    for (int i =0; i < n ; i++)
+    for (int i = 0; i < n ; i++)
     {
             int fd = events[i].data.fd;
         if (events[i].events & EPOLLRDHUP)

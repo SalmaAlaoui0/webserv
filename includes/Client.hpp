@@ -8,10 +8,11 @@ class Client
 {
     private:
         int _fd;
-        // std::string _requestBuffer;
         // std::string _responseBuffer;
         std::time_t lastActivity;
-    public :
+        public :
+        bool body_complete ;
+        std::string _requestBuffer;
         Client();
         Client(int fd);
         ~Client();
