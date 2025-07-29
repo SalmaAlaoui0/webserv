@@ -1,9 +1,23 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   Methods.cpp                                        :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
+/*   Updated: 2025/07/28 18:43:33 by wzahir           ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
 #include "../includes/ServerConfig.hpp"
 #include "../includes/LocationConfig.hpp"
+#include "../includes/Utils.hpp"
 #include <unistd.h>
-
+#include <sys/stat.h>
+#include <dirent.h>
 
 
 std::vector<std::string> pathchunks(std::string path)
@@ -126,7 +140,14 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		//	std::cout << "And the locpath is: " << locPath << "----- and it's len is: " << locPath.length() << std::endl;
 		}
 		else
+		{
 			locPath = Pchunks[1];
+		}
+		if (locPath[1] == '\0' && requestedPath.empty())
+		{
+			result[i] = config.locations[i].root;
+			return result;
+		}
 		if (Pchunks.size() == 2 && Pchunks[0] == "^~")
 		{
 			if (requestedPath.find(locPath) == 0)
@@ -192,40 +213,54 @@ bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _config
 // 	return result;
 // }
 
-std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<LocationConfig> config, int key)
+
+std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, std::string uri)
 {
 	struct stat statbuf;
+	(void) uri;
 	// std::cout << "\n\n Your fileis :" << requested_path << "\n\n";
-    if (stat(requested_path.c_str(), &statbuf) == 0) {
-        if (S_ISREG(statbuf.st_mode)) {
-            // ✅ It's a file → serve it
+    if (stat(requested_path.c_str(), &statbuf) == 0)
+	{
+        if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
+		{
 			return send_file_response(clientFd, requested_path);
-        } else if (S_ISDIR(statbuf.st_mode)) {
-            // 📁 It's a directory → try index
-            // std::string index_file = requested_path + "/" + config[key].index;
-			
+        }
+		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
+		{
 			std::string index_file;
-			index_file = join_path(requested_path, config[key].index);
+			index_file = join_path(requested_path, config[i].locations[key].index);
 
 			std::cout << "the index is: " << index_file << "\n\n";
-            if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
+            if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
+			{
                 return send_file_response(clientFd, index_file);
-
             // if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
 			// 	// std::cout << "the index is: " << index_file << "\n\n";
-            } else if (config[key].autoindex) {
-                // return serve_autoindex_listing(requested_path);
-				return "still didn't handle autoindex yet\n";
-            } else {
-				std::cout << "1Hello beautiful world the error is: " << 403 << std::endl;
-                // return send_error(403); // Forbidden (index off and no index file)
             }
-        } else {
-			std::cout << "2Hello beautiful world the error is: " << 403 << std::endl;
-            // return send_error(403); // Not a regular file or dir
+			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
+			{
+                // return serve_autoindex_listing(requested_path);
+				// return serve_autoindex_listing(clientFd, requested_path, uri);
+				return send_file_response(clientFd, "/home/salaoui/Desktop/webserv/www/autoindex.html");
+				return "still didn't handle autoindex yet\n";
+            }
+			else
+			{
+				std::cout << "1 Forbidden (index off and no index file) the error is: " << 403 << std::endl;
+				return send_file_response(clientFd, config[i].ErrorPages[403]);
+            }
         }
-    } else {
-		std::cout << "3Hello beautiful world the error is: " << 404 << std::endl;
+		else // If we did attach the file but still it's not found
+		{
+			return send_file_response(clientFd, config[i].ErrorPages[403]);
+			std::cout << "2 Not a regular file or dir the error is: " << 403 << std::endl;
+        }
+    }
+	else
+	{
+		// return send_file_response(clientFd, "/home/salaoui/Desktop/webserv/www/404.html");
+		std::cout << "3 Not found the error is: " << 404 << std::endl;
+		return send_file_response(clientFd, config[i].ErrorPages[404]);
         // return send_error(404); // ❌ Not found
     }
 	return "  *";
@@ -245,13 +280,17 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 			int key = map.begin()->first;
 			// std::cout << map.size() << std::endl;
 			if (!CheckMethodeIsAllowed("GET", _configs, i, key))
+			{
+				send_file_response(clientFd, _configs[i].ErrorPages[405]);
+				return;
 				std::cout << "This means method not allowed \n\n" << std::endl;
+			}
 			// here we should return the METHODE NOT ALLOWED ERROR
-			else
-				std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
+			// else
+			// 	std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
 			std::string value = map.begin()->second;
 			std::cout << "\nFull path is:" << value << std::endl;
-			std::string ret = CheckDirOrFile(value, clientFd, _configs[i].locations, key);
+			std::string ret = CheckDirOrFile(value, clientFd, _configs, i, key, r.get_path());
 			std::cout << ret << std::endl;
 
 			// std::cout << "***&&&" << value << "&&&***" << std::endl;
@@ -283,21 +322,121 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 }
 
 
-// handleClient()
-//    └── parseRequest()
-//          └── if method == "DELETE"
-//                └── handle_delete_methode( r, _configs,clientFd)
-//                      ├── File exists? ─── No → 404
-//                      ├── Is directory? ─── Yes → 403
-//                      ├── Is allowed path? ─── No → 403
-//                      ├── Try delete
-//                      │     └── Success → 200
-//                      │     └── Fail → 500
-//                      └── Log result
+void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body)
+{
+    std::ostringstream response;
+    response << "HTTP/1.1 " << status_code << " " << status_text << "\r\n";
+    if (!body.empty())
+    {
+        response << "Content-Type: text/html\r\n";
+        response << "Content-Length: " << body.size() << "\r\n";
+    }
+    response << "Connection: close\r\n";
+    response << "\r\n";
+    response << body;
+
+    std::string resp_str = response.str();
+    ssize_t sent = send(clientFd, resp_str.c_str(), resp_str.size(), 0);
+    if (sent < 0)
+        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    else
+        std::cout << "Response sent to FD: " << clientFd << std::endl;
+}
+
+bool is_directory_empty(const std::string& path)
+{
+    DIR* dir = opendir(path.c_str());
+    if (!dir)
+        return false;
+
+    struct dirent* entry;
+    int count = 0;
+    while ((entry = readdir(dir)) != NULL)
+    {
+        std::string name = entry->d_name;
+        if (name != "." && name != "..")
+            count++;
+        if (count > 0)
+        {
+            closedir(dir);
+            return false;
+        }
+    }
+    closedir(dir);
+    return true;
+}
+
+void handle_case(std::string const &fullpath, int clientFd)
+{
+	struct stat statfile;
+	if(stat(fullpath.c_str() , &statfile) != 0)
+	{
+		send_response(clientFd, 404, "Forbidden", load_html_file("www/404.html"));
+		return ;
+	}
+	if(S_ISDIR(statfile.st_mode))
+	{
+		if (fullpath[fullpath.size() - 1] != '/')
+		{
+			send_response(clientFd, 409, "conflict", load_html_file("www/409.html"));
+			return ;
+		}
+		if(!is_directory_empty(fullpath))
+		{
+			handle_case(fullpath, clientFd);
+			return ;
+		}
+		if(remove(fullpath.c_str()) == 0) //dir empty remove it 
+		{
+			send_response(clientFd, 204, "No Content", load_html_file("www/204.html"));
+			return ;
+		}
+		else  // Failed to remove directory
+		{
+			std::ostringstream oss;
+			oss << "<html><body><h1>500 Internal Server Error</h1>"
+				<< "<p>Failed to delete directory: " << strerror(errno) << "</p></body></html>";
+			send_response(clientFd, 500, "Internal Server Error", oss.str());
+			return ;
+		}
+	}
+	else if (S_ISREG(statfile.st_mode))
+	{
+		if(access(fullpath.c_str(), W_OK) != 0)  // doesn't have permission for delete
+		{
+			send_response(clientFd, 403, "Forbidden", load_html_file("www/403.html"));
+			return;
+		}
+		if (std::remove(fullpath.c_str()) == 0)
+		{
+			send_response(clientFd, 204, "No Content", load_html_file("www/204.html"));
+			std::cout << "✅ File deleted: " << fullpath << std::endl;
+			return;
+		}
+		else
+		{
+			std::ostringstream oss;
+			oss << "<html><body><h1>500 Internal Server Error</h1>"
+				<< "<p>Failed to delete directory: " << strerror(errno) << "</p></body></html>";
+			send_response(clientFd, 500, "Internal Server Error", oss.str());
+			return;
+		}
+	}
+	else //Unsupported file type (e.g., socket, symlink)
+	{
+		send_response(clientFd, 403, "Forbidden", load_html_file("www/403.html"));
+		return;
+	}
+}
 
 void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd)
 {
-	int port = 8080;
+	if (r.get_path().find("..") != std::string::npos) //If you do not block paths containing .., an attacker might delete or access files outside the allowed web root directory, leading to security vulnerabilities.
+	{
+		send_response(clientFd, 400, "Bad Request", "<html><body><h1>400 Bad Request</h1><p>Invalid path.</p></body></html>");
+		return;
+	}
+	int port = r.get_final_port(r);
 	std::map<int, std::string> map;
 
 	for (size_t i = 0; i < _configs.size(); ++i)
@@ -308,37 +447,12 @@ void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int cl
 			int key = map.begin()->first;
 			if (!CheckMethodeIsAllowed("DELETE", _configs, i, key))
 			{
-				std::string methodNotAllowed = "HTTP/1.1 405 Method Not Allowed\r\nContent-Length: 0\r\n\r\n";
-				send(clientFd, methodNotAllowed.c_str(), methodNotAllowed.length(), 0);
+				send_response(clientFd, 405, "methodNotAllowed", load_html_file("www/405.html"));
 				return;
 			}
 			std::string fullpath = map.begin()->second;
 			std::cout << "\nFull path is:" << fullpath << std::endl;
-			struct stat statfile;
-			if(stat(fullpath.c_str() , &statfile) != 0)
-			{
-				std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
-				send(clientFd, notFound.c_str(), notFound.length(), 0);
-				return;
-			}
-			if(S_ISDIR(statfile.st_mode))
-			{
-				std::string forbidden = "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\n\r\n";
-				send(clientFd, forbidden.c_str(), forbidden.length(), 0);
-				return;
-			}
-			if (unlink(fullpath.c_str()) == 0)
-			{
-				std::string success = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n";
-				send(clientFd, success.c_str(), success.length(), 0);
-				std::cout << "✅ File deleted: " << fullpath << std::endl;
-			}
-			else
-			{
-				std::string serverError = "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n";
-				send(clientFd, serverError.c_str(), serverError.length(), 0);
-				std::cerr << "❌ Failed to delete file: " << fullpath << " — " << strerror(errno) << std::endl;
-			}
+			handle_case(fullpath, clientFd);
 			return;
 		}
 	}
@@ -385,8 +499,8 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
 						return ;
 				}
 				std::ostringstream filename;
-			 filename << it->second<< "/upload_" << std::time(0) << ".txt";;
-			std::ofstream out(filename.str().c_str(),std::ios::binary);
+			 	filename << it->second<< "/upload_" << std::time(0) << ".txt";;
+				std::ofstream out(filename.str().c_str(),std::ios::binary);
 				if(!out)
 				{
 					std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;

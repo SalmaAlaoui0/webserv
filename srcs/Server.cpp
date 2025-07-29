@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/26 16:25:34 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/27 14:30:26 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -88,18 +88,26 @@ void Server::sendResponse( int clientFd, request r)
 	if (r.get_path() == "/favicon.ico")
 	{
 		std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
-		send(clientFd, notFound.c_str(), notFound.size(), 0);
+		if (send(clientFd, notFound.c_str(), notFound.size(), 0) < 0)
+            std::cerr << "❌ send failed: " << strerror(errno) << std::endl; 
 		return;
 	}
     
 	// std::cout << "your method is: " << r.get_method() << ", and the path is(ps: without file it's stored alone;): " << r.get_root() << ", and version is: " << r.get_version() << std::endl << std::endl;
 	if (r.get_method() == "GET")
 		handle_get_methode(r, this->_configs, clientFd);
-    if(r.get_method()== "POST")
+    else if(r.get_method()== "POST")
         handle_post_methode(r, this->_configs, clientFd,r.get_final_port(r));
     // std::string body = "<h1><center>Hello world</center></h1>";
     else if (r.get_method() == "DELETE")
 		handle_delete_methode(r, this->_configs, clientFd);
+    else
+    {
+        std::string invalidMethod = "HTTP/1.1 404 invalid method\r\nContent-Length: 0\r\n\r\n";
+		if (send(clientFd, invalidMethod.c_str(), invalidMethod.size(), 0) < 0)
+            std::cerr << "❌ send failed: " << strerror(errno) << std::endl;    
+		return;
+    }
     // std::ostringstream response;
 	// response << "HTTP/1.1 200 OK\r\n"
 	// 		 << "Content-Type: text/html\r\n"
