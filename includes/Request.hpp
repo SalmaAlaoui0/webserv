@@ -16,6 +16,7 @@
 #define e400  "400 Bad Request"
 #define e413 "Payload Too Large"
 #include"Server.hpp"
+#include"Client.hpp"
 #include <cerrno>   // pour errno, EAGAIN, EWOULDBLOCK
 #include <cstdio> 
 class EpollManager;
@@ -35,7 +36,8 @@ class request{
    std::string body;
     std::string method;
     std::string path;
-    request& parseRequest(int client_fd , EpollManager &epollManager, request &a);
+    std::string body_chnked;
+    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r);
     int get_final_port(request &r);
     std::string version;
     std::map<std::string, std::string> map;
