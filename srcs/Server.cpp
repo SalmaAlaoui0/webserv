@@ -125,30 +125,33 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
 {
     request a;
     try{
-        a = a.parseRequest(clientFd, epollManager, a);
+        
+        a = a.parseRequest(this->clients, epollManager, a);
     }
     catch(std::exception &e)
     {
         std::cout << e.what() << std::endl;
         return ;
     }
-    try{
-        a.error_set(a);
-    }
-    catch(std::exception &e)
-    {
-    std::string response = e.what();
-    ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
-    if (sent < 0)
-        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-    else
-        std::cout << "Response sent to FD: " << clientFd << std::endl;
-    return ;
-    }
-    sendResponse(clientFd, a);
-	std::map<int, Client>::iterator it = clients.find(clientFd);
-	if (it != clients.end())
-		it->second.updateActivity();
+    std::cout << "fd = "<< clientFd << std::endl;
+    // (void)clientFd;//////////////////////////////////
+    // try{
+    //     a.error_set(a);
+    // }
+    // catch(std::exception &e)
+    // {
+    // std::string response = e.what();
+    // ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
+    // if (sent < 0)
+    //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    // else
+    //     std::cout << "Response sent to FD: " << clientFd << std::endl;
+    // return ;
+    // }
+    // sendResponse(clientFd, a);
+	// std::map<int, Client>::iterator it = clients.find(clientFd);
+	// if (it != clients.end())
+	// 	it->second.updateActivity();
 }
 
 void Server::acceptNewClient(int serverFd, EpollManager &epollManager)

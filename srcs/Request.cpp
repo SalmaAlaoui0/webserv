@@ -1,4 +1,18 @@
+///awal haja nsayab object n7at fih data li9rit men and kola ciete nder while mahad kayn /r/t
 
+   //unsigned long content_length = 0;
+  // std::cout << "buffer ["<< buffer<< "]" << std::endl;
+   // std::map<std::string,std::string>&map = r.get_header();
+
+    // std::map<std::string, std::string>::iterator it= map.begin();
+    // if(it == map.end())
+    // {
+    //     std::cout << "ana khawiiiiiiiiiiiiiiiii\n";
+    //     return r;
+    // }
+    // for(it= map.begin() ; it!= map.end(); it++)
+    // {
+    //    
 
 #include "../includes/Request.hpp"
 request& request::operator=(const request& other)
@@ -41,11 +55,6 @@ void request::error_set(request &r)
              throw requetetException("400 Bad Request");
     }
 	
-    // if((r.get_method() == "GET" || r.get_method() == "DELETE") && !r.get_body().size())
-	// {
-		// 	std::cout << "💡💡💡💡💡💡💡💡💡💡here is the error\n bodysize is: " << r.get_body().size() << std::endl;
-		// 	return e400;
-		// }
 	if(r.get_version() != "HTTP/1.1")
 		 throw requetetException("505 HTTP Version Not Supported");
 	if(headers.find("Host") == headers.end())	
@@ -93,16 +102,17 @@ void request::set_body(std::string& b){body = b;}
 
 std::string& request::get_body(void){return body ;}
 
-request& request::parseRequest(int client_fd , EpollManager &epollManager, request &r)
+request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r)
 {
     Server s;
     char buffer[2048] = {0};
-    ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
+    std::map<int,Client>::iterator it = clientobj.begin();
+    ssize_t bytes_received = recv(it->first, buffer, sizeof(buffer), 0);
     if ( bytes_received == -1)
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
         {
-            s.closeClient(client_fd, epollManager);
+            s.closeClient(it->first, epollManager);
             throw requetetException("❌ recv failed: ");
         }
     }
@@ -114,7 +124,6 @@ request& request::parseRequest(int client_fd , EpollManager &epollManager, reque
     {
          throw requetetException("Empty request or client closed");
     }
-    //std::cout << "byte read ----------->"<< bytes_received << std::endl;
 
     // std::cout << "request :"<< buffer <<std::endl;
     std::istringstream iss(buffer);
@@ -135,19 +144,16 @@ while(std::getline(iss, line, '\r') && !line.empty())
     {
     std::string key = line.substr(0,pos);
     key = trim1(key);
+    //std::cout << key<<std::endl;
+
     std::string value = line.substr(pos+1, line.size());
     value = trim1(value);
+   // std::cout << value<<std::endl;
+
     r.set_header(key,value);
     }
 }
-
-  std::string raw_request(buffer, bytes_received);
-    unsigned long content_length = 0;
-    std::map<std::string, std::string>::iterator it = r.get_header().find("Content-Length");
-    if (it != r.get_header().end())
-        content_length = std::strtoul(it->second.c_str(), NULL, 10);
-
-    
+  std::string raw_request(buffer);//, bytes_received);
     size_t pos = raw_request.find("\r\n\r\n");
     if (pos != std::string::npos)
     {
@@ -155,16 +161,68 @@ while(std::getline(iss, line, '\r') && !line.empty())
         std::string initial_body = raw_request.substr(pos);
         r.get_body().append(initial_body);
     }
-    while (r.get_body().size() < content_length)
+  
+    if (r.get_header()["Transfer-Encoding"] == "chunked")
     {
-        ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
-        if (bytes_received <= 0)
-            break;
-        //buffer[bytes_received] = '\0';
-        r.get_body().append(buffer, bytes_received);
-     //   std::cout << "body size: " << r.get_body().size() << " / " << content_length << std::endl;
+        std::string body = r.get_body();
+        char *buffer1;
+        int b = 0;
+    size_t pos2 =0;
+    size_t pos1 = body.find("\r\n",pos2);
+
+    while( pos1 != std::string::npos)
+    {
+    std::string a = body.substr(pos2,pos1);
+    b = std::strtol(a.c_str(),NULL,16);
+    if(b <= 0)
+    {
+        it->second.body_complete = true;
+        break;
     }
-  //   std::cout << "Final body size: " << r.get_body() << std::endl;
+   buffer1 = new char[1024];
+      //std::cout << "a ==>" << a<< std::endl;
+      //std::cout << "b ==>" << b<< std::endl;
+     int i =0;
+      pos1 += 2;
+      std::string c = body.substr(pos1,b);
+
+    pos2 = b +pos1 + 2;
+     
+      while(i < b)
+      {
+          buffer1[i] = c[i];
+          i++;
+        }
+       buffer1[b]= '\0';
+        Client client = it->second;
+        it->second._requestBuffer += buffer1;
+        delete[] buffer1;
+        pos1 = body.find("\r\n",pos2);
+      //  std::cout <<"pos 1--->"<< pos1<< "pos 2--->"<< pos2 << std::endl; 
+        std::cout <<   it->second._requestBuffer<< std::endl;
+    }
+    std::cout << "b = "<< b<< std::endl;
+    if (it->second.body_complete == true) {
+        //std::cout << " ana hna salitttt\n";
+
+}
+else {
+   
+
+}
+}
+
+
+    // while (r.get_body().size() < content_length)
+    // {
+    //     ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
+    //     if (bytes_received <= 0)
+    //         break;
+    //     //buffer[bytes_received] = '\0';
+    //     r.get_body().append(buffer, bytes_received);
+    //  //   std::cout << "body size: " << r.get_body().size() << " / " << content_length << std::endl;
+    // }
+    // std::cout << "Final body size: " << r.get_body() << std::endl;
     // std::cout << "Expected: " << content_length << std::endl;
 return r;
 }
