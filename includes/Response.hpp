@@ -8,7 +8,7 @@ class reponse{
 
 };
 
-std::string send_file_response(int clientFd, std::string filePath);
+std::string RequestResponse(int clientFd, std::string filePath);
 
 
 #endif

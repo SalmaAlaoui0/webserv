@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/27 14:30:26 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/07/29 09:39:06 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -97,7 +97,7 @@ void Server::sendResponse( int clientFd, request r)
 	if (r.get_method() == "GET")
 		handle_get_methode(r, this->_configs, clientFd);
     else if(r.get_method()== "POST")
-        handle_post_methode(r, this->_configs, clientFd,r.get_final_port(r));
+        handle_post_methode(r, this->_configs, clientFd, r.get_final_port(r));
     // std::string body = "<h1><center>Hello world</center></h1>";
     else if (r.get_method() == "DELETE")
 		handle_delete_methode(r, this->_configs, clientFd);
