@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/02 21:18:38 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/03 20:24:27 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -479,7 +479,7 @@ void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int cl
 			int key = map.begin()->first;
 			if (!CheckMethodeIsAllowed("DELETE", _configs, i, key))
 			{
-				send_response(clientFd, 405, "methodNotAllowed", load_html_file("www/405.html"));
+				send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
 				return;
 			}
 			std::string fullpath = map.begin()->second;
