@@ -139,6 +139,7 @@ std::vector<ServerConfig> ConfigParser::parseConfig(std::string file)
 			}
 			if (isKey(line, "server"))
 			{
+				std::cout << "New server: "  << server_counter << std::endl;
 				server_counter++;
 				lcounter = -1;
 				container.push_back(ServerConfig());
