@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/30 10:36:42 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/04 13:03:36 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -250,7 +250,7 @@ std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
 		{
-			return RequestResponse(clientFd, requested_path);
+			return RequestResponse(clientFd, requested_path, "200 OK");
         }
 		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
 		{
@@ -260,7 +260,7 @@ std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector
 			// std::cout << "the index is: " << index_file << "\n\n";
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
-                return RequestResponse(clientFd, index_file);
+                return RequestResponse(clientFd, index_file, "200 OK");
             // if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
 			// 	// std::cout << "the index is: " << index_file << "\n\n";
             }
@@ -274,12 +274,12 @@ std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector
 			else
 			{
 				std::cout << "1 Forbidden (index off and no index file) the error is: " << 403 << std::endl;
-				return RequestResponse(clientFd, config[i].ErrorPages[403]);
+				return RequestResponse(clientFd, config[i].ErrorPages[403], "403 Forbidden");
             }
         }
 		else // If we did attach the file but still it's not found
 		{
-			return RequestResponse(clientFd, config[i].ErrorPages[403]);
+			return RequestResponse(clientFd, config[i].ErrorPages[403], "403 Forbidden");
 			std::cout << "2 Not a regular file or dir the error is: " << 403 << std::endl;
         }
     }
@@ -287,7 +287,7 @@ std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector
 	{
 		// return RequestResponse(clientFd, "/home/salaoui/Desktop/webserv/www/404.html");
 		std::cout << "3 Not found the error is: " << 404 << std::endl;
-		return RequestResponse(clientFd, config[i].ErrorPages[404]);
+		return RequestResponse(clientFd, config[i].ErrorPages[404], "404 Not Found");
         // return send_error(404); // ❌ Not found
     }
 	return "  *";
@@ -308,7 +308,7 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 			if (!CheckMethodeIsAllowed("GET", _configs, i, key))
 			{
 				std::cout << "This means method not allowed \n\n" << std::endl;
-				RequestResponse(clientFd, _configs[i].ErrorPages[405]);
+				RequestResponse(clientFd, _configs[i].ErrorPages[405], "405 Method Not Allowed");
 				return;
 			}
 			std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;

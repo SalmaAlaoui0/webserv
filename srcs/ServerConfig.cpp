@@ -1,6 +1,14 @@
 #include "../includes/ServerConfig.hpp"
 #include "../includes/ConfigParser.hpp"
 
+InvalidErrorFile::InvalidErrorFile(const std::string &msg) :errorMsg(msg){}
+
+InvalidErrorFile::~InvalidErrorFile() throw() {}
+
+const char* ::InvalidErrorFile::what() const throw()
+{
+    return errorMsg.c_str();
+}
 
 const char * ::InvalidData::what() const throw()
 {
@@ -141,17 +149,29 @@ void parsepages(std::string line, std::vector<ServerConfig> &container, int i) /
 {
     std::string error_page;
     std::string error_code;
+    std::string error_path;
     error_page = line.substr(isKey(line, "error_page") + 1);
     error_page = trim(error_page);
-    error_code = error_page.substr(0, error_page.find(' '));
-    error_page = error_page.substr(error_page.find(' '));
-    error_page = trim(error_page);
-    if (error_page[error_page.size() - 1] != ';')
+    std::istringstream iss(error_page);
+    if (!(iss >> error_code))
         throw ::InvalidData();
-    error_page = error_page.substr(0, error_page.size() - 1);
-    if (!isAllDigits(error_code) || (error_page.substr(error_page.size() - 5, error_page.size()) != ".html"))
+    if (!(iss >> error_path))
         throw ::InvalidData();
-    container[i].ErrorPages[toInt(error_code)] = error_page;    
+    error_path = trim(error_path);
+    if (error_path[error_path.size() - 1] != ';')
+        throw ::InvalidData();
+    error_path = error_path.substr(0, error_path.size() - 1);
+    if (!isAllDigits(error_code) || (error_path.substr(error_path.size() - 5, error_path.size()) != ".html"))
+        throw ::InvalidData();
+    std::ifstream file(error_path.c_str(), std::ios::in | std::ios::binary);// we open file in binary read mode to support text && binary files
+    if (!file)
+    {
+        std::string err;
+        err = "❌ Invalid page for error: ";
+        err += error_code;
+        throw InvalidErrorFile(err);
+    }
+    container[i].ErrorPages[toInt(error_code)] = error_path;
     // std::cout << "ur error page is: -" << error_page << "-" << std::endl;
     // std::cout << "     and it's error code is: -" << error_code << "-" << std::endl;
     // exit (0);

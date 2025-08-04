@@ -1,7 +1,7 @@
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
 
-std::string RequestResponse(int clientFd, std::string filePath)
+std::string RequestResponse(int clientFd, std::string filePath, std::string resCode)
 {
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);// we open file in binary read mode to support text && binary files
     if (!file) {
@@ -21,7 +21,7 @@ std::string RequestResponse(int clientFd, std::string filePath)
     else if (filePath.find(".png") != std::string::npos) contentType = "image/png";
 
     std::ostringstream response;// last but not least ofc building proper HTTP response!
-    response << "HTTP/1.1 200 OK\r\n"
+    response << "HTTP/1.1 " << resCode << "\r\n"
              << "Content-Type: " << contentType << "\r\n"
              << "Content-Length: " << body.size() << "\r\n\r\n"
              << body;

@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/29 09:39:06 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/07/30 10:57:36 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -148,7 +148,7 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
     //     std::cout << "Response sent to FD: " << clientFd << std::endl;
     // return ;
     // }
-    // sendResponse(clientFd, a);
+    sendResponse(clientFd, a);
 	// std::map<int, Client>::iterator it = clients.find(clientFd);
 	// if (it != clients.end())
 	// 	it->second.updateActivity();

@@ -8,7 +8,7 @@ class reponse{
 
 };
 
-std::string RequestResponse(int clientFd, std::string filePath);
+std::string RequestResponse(int clientFd, std::string filePath, std::string resCode);
 
 
 #endif
