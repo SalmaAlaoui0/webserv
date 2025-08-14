@@ -6,9 +6,10 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/04 13:03:36 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/04 14:40:26 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
@@ -165,7 +166,8 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		}
 		i++;
 	}
-	//std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
+	matchedRoot += "/";
+	std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
 	result[coorLoc] = matchedRoot;
 	return result;
 }
@@ -343,6 +345,33 @@ void send_response(int clientFd, int status_code, const std::string &status_text
         std::cout << "Response sent to FD: " << clientFd << std::endl;
 }
 
+bool delete_dir_recursive(std::string &path, int clientFd)
+{
+	DIR *dir = opendir(path.c_str());
+	if (!dir)
+		return false;
+	struct dirent *entry;
+	while((entry=readdir(dir)) != NULL)
+	{
+		std::string name = entry->d_name;
+		if(name == "." || name == "..")
+			continue;
+		std::string fullpath = path + "/" + name;
+		struct stat st;
+		if(stat(fullpath.c_str(), &st) == 0)
+		{
+			if (S_ISDIR(st.st_mode))
+				delete_dir_recursive(fullpath, clientFd);
+			else
+				remove(fullpath.c_str());
+		}
+		else
+			send_response(clientFd, 404, "Not Found", load_html_file("www/404.html"));
+	}
+	closedir(dir);
+	return remove(path.c_str()) == 0;
+}
+
 bool is_directory_empty(const std::string& path)
 {
     DIR* dir = opendir(path.c_str());
@@ -366,15 +395,15 @@ bool is_directory_empty(const std::string& path)
     return true;
 }
 
-void handle_case(std::string const &fullpath, int clientFd)
+void dir_or_file(std::string &fullpath, int clientFd)
 {
-	struct stat statfile;
-	if(stat(fullpath.c_str() , &statfile) != 0)
+	struct stat st;
+	if(stat(fullpath.c_str() , &st) != 0)
 	{
-		send_response(clientFd, 404, "Forbidden", load_html_file("www/404.html"));
+		send_response(clientFd, 404, "Not Found", load_html_file("www/404.html"));
 		return ;
 	}
-	if(S_ISDIR(statfile.st_mode))
+	if(S_ISDIR(st.st_mode))
 	{
 		if (fullpath[fullpath.size() - 1] != '/')
 		{
@@ -383,7 +412,12 @@ void handle_case(std::string const &fullpath, int clientFd)
 		}
 		if(!is_directory_empty(fullpath))
 		{
-			handle_case(fullpath, clientFd);
+			if (!delete_dir_recursive(fullpath, clientFd))
+			{
+				send_response(clientFd, 500, "Internal Server Error", "<html><body><h1>500 Internal Server Error</h1><p>Could not recursively delete directory.</p></body></html>");
+				return;
+			}
+			send_response(clientFd, 204, "No Content", load_html_file("www/204.html"));
 			return ;
 		}
 		if(remove(fullpath.c_str()) == 0) //dir empty remove it 
@@ -400,7 +434,7 @@ void handle_case(std::string const &fullpath, int clientFd)
 			return ;
 		}
 	}
-	else if (S_ISREG(statfile.st_mode))
+	else if (S_ISREG(st.st_mode))
 	{
 		if(access(fullpath.c_str(), W_OK) != 0)  // doesn't have permission for delete
 		{
@@ -447,12 +481,12 @@ void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int cl
 			int key = map.begin()->first;
 			if (!CheckMethodeIsAllowed("DELETE", _configs, i, key))
 			{
-				send_response(clientFd, 405, "methodNotAllowed", load_html_file("www/405.html"));
+				send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
 				return;
 			}
 			std::string fullpath = map.begin()->second;
 			std::cout << "\nFull path is:" << fullpath << std::endl;
-			handle_case(fullpath, clientFd);
+			dir_or_file(fullpath, clientFd);
 			return;
 		}
 	}
