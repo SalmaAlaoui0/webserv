@@ -131,29 +131,31 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
     std::string line;
     std::getline(iss , line ,  '\r');
     iss.ignore();
-   std::istringstream line_stream(line);
-   line_stream >>  methode >> path >> version;
+    std::istringstream line_stream(line);
+    line_stream >>  methode >> path >> version;
     r.set_method(methode);
     r.set_path(path);
     r.set_vergion(version);
-while(std::getline(iss, line, '\r') && !line.empty())
-{
-    iss.ignore();
-    size_t pos = line.find(":");
-    if(pos != std::string::npos)
+    std::cout << "ur method and path and version are: \n" << "method: " << r.get_method() << std::endl
+    << "path: " << r.get_path() << std::endl << "version: " << r.get_version() << std::endl;
+    while(std::getline(iss, line, '\r') && !line.empty())
     {
-    std::string key = line.substr(0,pos);
-    key = trim1(key);
-    //std::cout << key<<std::endl;
+        iss.ignore();
+        size_t pos = line.find(":");
+        if(pos != std::string::npos)
+        {
+        std::string key = line.substr(0,pos);
+        key = trim1(key);
+        //std::cout << key<<std::endl;
 
-    std::string value = line.substr(pos+1, line.size());
-    value = trim1(value);
-   // std::cout << value<<std::endl;
+        std::string value = line.substr(pos+1, line.size());
+        value = trim1(value);
+    // std::cout << value<<std::endl;
 
-    r.set_header(key,value);
+        r.set_header(key,value);
+        }
     }
-}
-  std::string raw_request(buffer);//, bytes_received);
+    std::string raw_request(buffer);//, bytes_received);
     size_t pos = raw_request.find("\r\n\r\n");
     if (pos != std::string::npos)
     {
@@ -167,19 +169,19 @@ while(std::getline(iss, line, '\r') && !line.empty())
         std::string body = r.get_body();
         char *buffer1;
         int b = 0;
-    size_t pos2 =0;
-    size_t pos1 = body.find("\r\n",pos2);
+        size_t pos2 = 0;
+        size_t pos1 = body.find("\r\n",pos2);
 
-    while( pos1 != std::string::npos)
-    {
-    std::string a = body.substr(pos2,pos1);
-    b = std::strtol(a.c_str(),NULL,16);
-    if(b <= 0)
-    {
-        it->second.body_complete = true;
-        break;
-    }
-   buffer1 = new char[1024];
+        while( pos1 != std::string::npos)
+        {
+        std::string a = body.substr(pos2,pos1);
+        b = std::strtol(a.c_str(),NULL,16);
+        if(b <= 0)
+        {
+            it->second.body_complete = true;
+            break;
+        }
+        buffer1 = new char[1024];
       //std::cout << "a ==>" << a<< std::endl;
       //std::cout << "b ==>" << b<< std::endl;
      int i =0;
@@ -199,7 +201,7 @@ while(std::getline(iss, line, '\r') && !line.empty())
         delete[] buffer1;
         pos1 = body.find("\r\n",pos2);
       //  std::cout <<"pos 1--->"<< pos1<< "pos 2--->"<< pos2 << std::endl; 
-        std::cout <<   it->second._requestBuffer<< std::endl;
+        std::cout <<   it->second._requestBuffer << std::endl;
     }
     std::cout << "b = "<< b<< std::endl;
     if (it->second.body_complete == true) {

@@ -205,3 +205,81 @@ DELETE	✅ Yes	Check if target exists before deleting
 So: yes, use stat() always — just make sure the logic after it matches the request type.
 
 Let me know if you want a sample logic flow for each method.
+
+
+
+
+
+
+
+Test 
+send the header with the same size as buffer size (in telnet)
+
+
+
+
+How does the interpreter execute statements in script mode?
+
+
+
+An interpreter doesn’t execute statements, it tokenises them, then hands them to an execution engine.
+
+The execution engine is then responsible for executing the tokenised stream.
+
+Many people think that interpreters and compilers are radically different, but the actual truth is that, there not as different as people think.
+
+Starting with the source code, both of them have the main job of tokenizing the code.
+
+Now this might be as simple as transforming your source into another readable text like output, but usually it’s some kind of intermediary binary format.
+
+Your functions are often encoded into streams of bytes that mean something elsewhere, for a compiler, thats often an object file, for an interpreter that’s some kind of runnable instructions.
+
+With an interpreter, the code is then held in memory and executed from there, and every time you re-run the source, you re-interpret it into this byte code again, and run it anew.
+
+With a compiler, it produces an on disk file from it’s intermediate code, this on disk file is usually specific to the OS in question, but from then on will always just be runnable as is without needing the compiler.
+
+So you see, the main difference is that one re-generates the runnable code every time it’s used, the other generates it once then just uses the generated output, only changing it when asked to.
+
+
+/*** ---This is actually a very important part of CGI, because the only way a CGI script knows what request it’s handling is through environment variables that the server sets before calling execve.
+
+When you run execve, you pass:
+
+The path to the script
+
+The argv[] (arguments list, usually just the script name + maybe extra args)
+
+The envp[] (array of environment variables, e.g. "REQUEST_METHOD=GET")
+
+The CGI specification defines a set of environment variables that must or should be set. These tell the script about the request, headers, and connection.
+
+Mandatory CGI environment variables
+
+At minimum, most CGI scripts expect:
+
+REQUEST_METHOD → GET, POST, etc.
+
+SCRIPT_FILENAME or SCRIPT_NAME → path to the script being executed
+
+QUERY_STRING → part of the URL after ? (for GET params)
+
+CONTENT_LENGTH → number of bytes in the body (for POST/PUT)
+
+CONTENT_TYPE → type of body (e.g. application/x-www-form-urlencoded, multipart/form-data)
+
+Other common ones (from headers / context)
+
+SERVER_PROTOCOL → HTTP/1.1
+
+SERVER_SOFTWARE → name/version of your server (webserv/1.0)
+
+SERVER_NAME → host name (localhost, or domain)
+
+SERVER_PORT → port number (8080)
+
+GATEWAY_INTERFACE → CGI/1.1 (always this)
+
+REMOTE_ADDR → client’s IP address
+
+REMOTE_PORT → client’s port*****/
+
