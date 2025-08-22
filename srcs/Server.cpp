@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/04 14:49:25 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/22 09:50:04 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -194,6 +194,7 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
     std::map<int, Client>::iterator it = clients.begin();
     while (it != clients.end())
     {
+        now = it->second.getLastActivity();
         if (now - it->second.getLastActivity() > 60)
         {
             std::cout << "⏱️ Client timed out: " << it->first << std::endl;
