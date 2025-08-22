@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/27 14:30:26 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/22 18:41:04 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,9 +18,8 @@ Server::Server(const std::vector<ServerConfig>& configs)
     setupSockets();
 }
 
-Server::Server()
-{
-}
+Server::Server() {}
+
 Server::~Server()
 {
     for (size_t i = 0; i < serverSockets.size(); ++i)
@@ -31,7 +30,7 @@ void Server:: setupSockets()
 {
     for(size_t i = 0; i < _configs.size(); i++)
     {
-        if ( _configs[i].port != 0)
+        if (_configs[i].port != 0)
         {
             const std::string &ip =_configs[i].host;
             int port = _configs[i].port;
@@ -134,24 +133,24 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
         return ;
     }
     std::cout << "fd = "<< clientFd << std::endl;
-    // (void)clientFd;//////////////////////////////////
-    // try{
-    //     a.error_set(a);
-    // }
-    // catch(std::exception &e)
-    // {
-    // std::string response = e.what();
-    // ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
-    // if (sent < 0)
-    //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-    // else
-    //     std::cout << "Response sent to FD: " << clientFd << std::endl;
-    // return ;
-    // }
-    // sendResponse(clientFd, a);
-	// std::map<int, Client>::iterator it = clients.find(clientFd);
-	// if (it != clients.end())
-	// 	it->second.updateActivity();
+    //(void)clientFd;//////////////////////////////////
+    try{
+        a.error_set(a);
+    }
+    catch(std::exception &e)
+    {
+    std::string response = e.what();
+    ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
+    if (sent < 0)
+        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    else
+        std::cout << "Response sent to FD: " << clientFd << std::endl;
+    return ;
+    }
+    sendResponse(clientFd, a);
+	std::map<int, Client>::iterator it = clients.find(clientFd);
+	if (it != clients.end())
+		it->second.updateActivity();
 }
 
 void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
@@ -214,8 +213,8 @@ void Server::run()
 	EpollManager epollManager;
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
-        std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
         epollManager.addSocket(serverSockets[i]);
+        std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
     }
 	while (true) 
 	{
@@ -230,7 +229,6 @@ void Server::run()
             }
 			else 
 			{
-               // std::cout << "started handling an already there connection\n" << std::endl;
 				handleClient(fds[i], epollManager);
 				// char buf[1024];
 				// int bytes = read(fds[i], buf, sizeof(buf));

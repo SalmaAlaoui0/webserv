@@ -124,15 +124,13 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
     {
          throw requetetException("Empty request or client closed");
     }
-
     // std::cout << "request :"<< buffer <<std::endl;
     std::istringstream iss(buffer);
-    std::string methode , path ,version;
-    std::string line;
+    std::string methode , path ,version, line;
     std::getline(iss , line ,  '\r');
     iss.ignore();
-   std::istringstream line_stream(line);
-   line_stream >>  methode >> path >> version;
+    std::istringstream line_stream(line);
+    line_stream >>  methode >> path >> version;
     r.set_method(methode);
     r.set_path(path);
     r.set_vergion(version);
