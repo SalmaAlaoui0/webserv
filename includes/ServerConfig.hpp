@@ -20,6 +20,16 @@ struct	ServerConfig
 	std::vector<LocationConfig> locations;
 };
 
+class InvalidErrorFile : public std::exception
+{
+private:
+	std::string errorMsg;
+public:
+	InvalidErrorFile(const std::string &msg);    
+    virtual ~InvalidErrorFile() throw();
+	virtual const char* what() const throw();
+};
+
 class InvalidData : public std::exception
 {
 public:

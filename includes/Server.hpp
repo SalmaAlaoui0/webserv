@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/26 17:33:16 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/23 12:03:33 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,6 +27,7 @@
 #include "EpollManager.hpp"
 #include "Request.hpp"
 #include "Client.hpp"
+#include "Utils.hpp"
 
 class request;
 struct ServerConfig;
@@ -63,8 +64,8 @@ class Server
             virtual const char* what() const throw();
         };
     };
-    
-void handle_get_methode(request r, std::vector<ServerConfig> _configs, int);
-void handle_post_methode(request & r, const std::vector<ServerConfig> _configs, int clientFd, int port);
-void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd);
+void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body);    
+void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
+void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
+void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
 

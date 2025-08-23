@@ -1,0 +1,17 @@
+ the header is: Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8
+ the header is: Accept-Encoding: gzip, deflate, br, zstd
+ the header is: Accept-Language: en-US,en;q=0.5
+ the header is: Cache-Control: max-age=0
+ the header is: Connection: keep-alive
+ the header is: Host: 127.0.0.1:8080
+ the header is: Sec-Fetch-Dest: document
+ the header is: Sec-Fetch-Mode: navigate
+ the header is: Sec-Fetch-Site: none
+ the header is: Sec-Fetch-User: ?1
+ the header is: Sec-GPC: 1
+ the header is: Transfer-Encoding: 
+ the header is: Upgrade-Insecure-Requests: 1
+ the header is: User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36
+ the header is: sec-ch-ua: "Not)A;Brand";v="8", "Chromium";v="138", "Brave";v="138"
+ the header is: sec-ch-ua-mobile: ?0
+ the header is: sec-ch-ua-platform: "Linux"

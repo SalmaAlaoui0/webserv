@@ -53,14 +53,14 @@ class request{
   std::string& get_body(void);
   void error_set(request &r);
  class requetetException : public std::exception 
-        {
-          private:
-          std::string _msg;
-          public:
-          requetetException(const std::string &msg);    
-          virtual ~requetetException() throw();    
-          virtual const char* what() const throw();
-        };
+  {
+    private:
+      std::string _msg;
+    public:
+      requetetException(const std::string &msg);    
+      virtual ~requetetException() throw();    
+      virtual const char* what() const throw();
+  };
 };
 
 

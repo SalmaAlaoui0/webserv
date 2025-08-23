@@ -1,23 +1,21 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Methods.cpp                                        :+:      :+:    :+:   */
+/*   methods.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/03 20:24:27 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/23 22:00:14 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
 #include "../includes/ServerConfig.hpp"
 #include "../includes/LocationConfig.hpp"
 #include "../includes/Utils.hpp"
-#include <unistd.h>
-#include <sys/stat.h>
-#include <dirent.h>
 
 
 std::vector<std::string> pathchunks(std::string path)
@@ -168,7 +166,8 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		}
 		i++;
 	}
-	//std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
+	// matchedRoot += "/"; ///////////to handle this because without it get methode works with it delete works
+	std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
 	result[coorLoc] = matchedRoot;
 	return result;
 }
@@ -176,22 +175,12 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _configs, int servernum,  int locationum)
 {
 	std::vector<std::string>::iterator it;
-// <<<<<<< HEAD
-// 	std::cout << "HELLO WORLD THE LOC NUM IS: " << locationum << ", and it's in server: " << servernum << std::endl;
-// 	//(void)method;
-// 	it = _configs[servernum].locations[locationum].allowed_methods.begin();
-// 	while (it != _configs[servernum].locations[locationum].allowed_methods.end())
-// 	{
-// 		if (method == *it)
-// 			return 1;
-// 		// std::cout << "Methodes are: ^^^" << *it << std::endl;
-// 		++it;
-// =======
 	it = _configs[servernum].locations[locationum].allowed_methods.begin();
 	
 	if(it ==  _configs[servernum].locations[locationum].allowed_methods.end())
 		return 1;
-	else{
+	else
+	{
 		while (it != _configs[servernum].locations[locationum].allowed_methods.end())
 		{
 			if (method == *it)
@@ -206,119 +195,138 @@ bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _config
 }
 
 
-// std::string send_error(int errorNum)
-// {
-// 	std::string result;
-// 	result = ;
-// 	return result;
-// }
+std::string send_dir_list(int clientFd, std::string requested_path)
+{
+	std::stringstream body;
+	DIR* directory = opendir(requested_path.c_str());
+	struct dirent *entry;
+	if (!directory)
+	{
+		body << "<html><body><h1>Unable to open director" << requested_path << "</h1></body></html>";
+		return "Couldn't open dir!";
+	}
+	else
+	{
+		body << "<html><body><h1>AutoIndex ON: Listing Path files and directories Of" << requested_path << "!</h1><ul>";
+		while ((entry = readdir(directory)) != NULL)
+		{
+			std::string name = entry->d_name;
+			std::string new_path = requested_path;
+			if (requested_path[requested_path.size() - 1] != '/')
+				new_path += "/";
+			new_path += name;
+			body << "<li><a href=\"" << new_path << "\">" << name << "</a></li>";
+			// std::cout << new_path << std::endl;
+		}
+		closedir(directory);
+		body << "</ul></body></html>";
+	}
+	// body << "<html><body><h1>Hello Atoindex Is On !</h1></body></html>";
+
+	std::ostringstream response;
+	response << "HTTP/1.1 200 OK\r\n";
+	response << "Content-Length:" << body.str().size() << "\r\n";
+	response << "Content-Type: text/html\r\n";
+	response << "Connection: close\r\n";
+	response << "\r\n";
+	response << body.str();
+
+	ssize_t sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
+	if (sent < 0)
+		std::cerr << "Something went wrong send < 0" << std::endl;
+	else
+	{
+		std::cout << "✅ Response being send to FD: " << clientFd << std::endl;
+		return "autoindex:Dooone ✅";
+	}
+    return ("SomeThing went wrong");
+}
 
 
-std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, std::string uri)
+std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key)
 {
 	struct stat statbuf;
-	(void) uri;
 	// std::cout << "\n\n Your fileis :" << requested_path << "\n\n";
     if (stat(requested_path.c_str(), &statbuf) == 0)
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
 		{
-			return send_file_response(clientFd, requested_path);
+			return RequestResponse(clientFd, requested_path, "200 OK");
         }
 		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
 		{
 			std::string index_file;
 			index_file = join_path(requested_path, config[i].locations[key].index);
 
-			std::cout << "the index is: " << index_file << "\n\n";
+			// std::cout << "the index is: " << index_file << "\n\n";
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
-                return send_file_response(clientFd, index_file);
+                return RequestResponse(clientFd, index_file, "200 OK");
             // if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
 			// 	// std::cout << "the index is: " << index_file << "\n\n";
             }
 			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
 			{
-                // return serve_autoindex_listing(requested_path);
 				// return serve_autoindex_listing(clientFd, requested_path, uri);
-				return send_file_response(clientFd, "/home/salaoui/Desktop/webserv/www/autoindex.html");
-				return "still didn't handle autoindex yet\n";
+				// return RequestResponse(clientFd, "/home/salaoui/Desktop/webserv/www/autoindex.html");
+				// std::cout << "handling autoindex en cours...\n";
+				return send_dir_list(clientFd, requested_path);// using requested path only !
             }
 			else
 			{
 				std::cout << "1 Forbidden (index off and no index file) the error is: " << 403 << std::endl;
-				return send_file_response(clientFd, config[i].ErrorPages[403]);
+				return RequestResponse(clientFd, config[i].ErrorPages[403], "403 Forbidden");
             }
         }
 		else // If we did attach the file but still it's not found
 		{
-			return send_file_response(clientFd, config[i].ErrorPages[403]);
+			return RequestResponse(clientFd, config[i].ErrorPages[403], "403 Forbidden");
 			std::cout << "2 Not a regular file or dir the error is: " << 403 << std::endl;
         }
     }
 	else
 	{
-		// return send_file_response(clientFd, "/home/salaoui/Desktop/webserv/www/404.html");
+		// return RequestResponse(clientFd, "/home/salaoui/Desktop/webserv/www/404.html");
 		std::cout << "3 Not found the error is: " << 404 << std::endl;
-		return send_file_response(clientFd, config[i].ErrorPages[404]);
+		return RequestResponse(clientFd, config[i].ErrorPages[404], "404 Not Found");
         // return send_error(404); // ❌ Not found
     }
-	return "  *";
+	return NULL;
 }
 
 
-void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd)
+void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
 {
-	int port = 8080;
 	std::map<int, std::string> map;
-
-	for (size_t i = 0; i < _configs.size(); ++i)
+	std::map<std::string, std::string> my_map = r.get_header();
+	for (auto i : my_map)
 	{
-		if (_configs[i].port == port)
-		{
-			map = getMatchingRootPath(r, _configs[i]);///////Hereeeeeeeee
-			int key = map.begin()->first;
-			// std::cout << map.size() << std::endl;
-			if (!CheckMethodeIsAllowed("GET", _configs, i, key))
-			{
-				send_file_response(clientFd, _configs[i].ErrorPages[405]);
-				return;
-				std::cout << "This means method not allowed \n\n" << std::endl;
-			}
-			// here we should return the METHODE NOT ALLOWED ERROR
-			// else
-			// 	std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
-			std::string value = map.begin()->second;
-			std::cout << "\nFull path is:" << value << std::endl;
-			std::string ret = CheckDirOrFile(value, clientFd, _configs, i, key, r.get_path());
-			std::cout << ret << std::endl;
-
-			// std::cout << "***&&&" << value << "&&&***" << std::endl;
-
-
-
-// done ✅ : // 1- Lbnat here the file is being readed and the correct location with the correct path are being send back in a map container type <int, string>
-// done ✅ : // 2- Now I will check if the methode asked from the request is avialable in the location and
-			 // 3- then I will check if the path is valid with the stat (system function)
-			 // 4- Lastly if those instructions are passed this mean we're good to start with the methods
-
-			//  ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ ⬇️ 
-			/// ****PRINT THE MAP VALUES****
-
-			// for (std::map<int, std::string>::iterator it = map.begin(); it != map.end(); ++it) {
-			// std::cout << it->first << ": -" << it->second << "-\n";
-			// std::map<int, std::string>::iterator next = it;
-			// ++next;
-			// if (next != map.end()) {
-			// 	std::cout << ", ";
-			// }
-		// }
-
-			// 👉 Next step: check if file exists, open it, and send response
-
-			return;
-		}
+		std::cout << " the header is: " << i.first << ": " << i.second << std::endl;
 	}
+	std::cout << "hello I am trying to know some data here:\n";
+	std::cout << " the body is: " << r.get_body() << std::endl;
+	std::cout << " and it's len is going to be: " << r.get_body().size() << std::endl;
+    map = getMatchingRootPath(r, _configs[conf_i]);
+    int key = map.begin()->first;
+    std::string value = map.begin()->second;
+    std::cout << "the path in appropriate location in app. server->" << _configs[conf_i].locations[key].path << std::endl;
+    // if (isKey(_configs[i].locations[key].path, "/cgi-bin") && CheckMethodeIsAllowed("GET", _configs, i, key))
+    // {
+    // 	std::cout << "salam it's a cgi hereee\n";
+    // 	std::string ret = CheckDirOrFileCGI(value, clientFd, _configs, i, key, r);
+    // 	std::cout << ret << std::endl;
+    // 	return ;
+    // }
+    if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
+    {
+        std::cout << "This means method not allowed \n\n" << std::endl;
+        RequestResponse(clientFd, _configs[conf_i].ErrorPages[405], "405 Method Not Allowed");
+        return;
+    }
+    std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
+    std::cout << "\nFull path is:" << value << std::endl;
+    std::string ret = CheckDirOrFile(value, clientFd, _configs, conf_i, key);
+    std::cout << ret << std::endl;
 }
 
 
@@ -461,33 +469,24 @@ void dir_or_file(std::string &fullpath, int clientFd)
 	}
 }
 
-void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd)
+void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
 {
 	if (r.get_path().find("..") != std::string::npos) //If you do not block paths containing .., an attacker might delete or access files outside the allowed web root directory, leading to security vulnerabilities.
 	{
 		send_response(clientFd, 400, "Bad Request", "<html><body><h1>400 Bad Request</h1><p>Invalid path.</p></body></html>");
 		return;
 	}
-	int port = r.get_final_port(r);
 	std::map<int, std::string> map;
-
-	for (size_t i = 0; i < _configs.size(); ++i)
-	{
-		if (_configs[i].port == port)
-		{
-			map = getMatchingRootPath(r, _configs[i]);
-			int key = map.begin()->first;
-			if (!CheckMethodeIsAllowed("DELETE", _configs, i, key))
-			{
-				send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
-				return;
-			}
-			std::string fullpath = map.begin()->second;
-			std::cout << "\nFull path is:" << fullpath << std::endl;
-			dir_or_file(fullpath, clientFd);
-			return;
-		}
-	}
+    map = getMatchingRootPath(r, _configs[conf_i]);
+    int key = map.begin()->first;
+    if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
+    {
+        send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+        return;
+    }
+    std::string fullpath = map.begin()->second;
+    std::cout << "\nFull path is:" << fullpath << std::endl;
+    dir_or_file(fullpath, clientFd);
 }
 
 
@@ -502,127 +501,85 @@ void send_repons_post(int clientFd, const reponse& repo)
 	send(clientFd, response.str().c_str(), response.str().size(), 0);
 }
 
-void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, int port)
+void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
 {
 	std::map<int, std::string> map;
-	//const size_t client_max_body_size = 10 * 1024 * 1024;
 	reponse repo;
-	for (size_t i = 0; i < _configs.size(); ++i)
-	{
-		if (_configs[i].port == port)
-		{
-			map = getMatchingRootPath(r, _configs[i]);
-			if(r.get_path() == "/upload")
-			{
-				std::map<int, std::string> fullPath_map = getMatchingRootPath(r, _configs[i]);
-				std::map<int, std::string>::iterator it = fullPath_map.begin();
-				if (!CheckMethodeIsAllowed("POST", _configs, i, it->first))
-				{
-						repo.reponse_status = 405 ;
-						repo.response_body =" Method Not Allowed.";
-						send_repons_post(clientFd, repo);
-						return ;
-				}
-				else if ((long)r.body.size() > _configs[i].client_max_body_size)
-				{
-						repo.reponse_status = 413;
-						repo.response_body =" Payload Too Large.";
-						send_repons_post(clientFd, repo);
-						return ;
-				}
-				std::ostringstream filename;
-			 	filename << it->second<< "/upload_" << std::time(0) << ".txt";;
-				std::ofstream out(filename.str().c_str(),std::ios::binary);
-				if(!out)
-				{
-					std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
-					repo.reponse_status = 500;
-					repo.response_body = "Internal Server Error";
-					return;
-				}
-				out << r.body;
-				out.close();
-				repo.reponse_status = 201;
-				repo.response_body = "File uploaded successfully!\n";
-				send_repons_post(clientFd, repo);
-			}
-			return;
-		}
-}}
 
-// void SplitPath(std::string requestPath, std::vector<std::string> &parts)
+    map = getMatchingRootPath(r, _configs[conf_i]);
+    if (!CheckMethodeIsAllowed("POST", _configs, conf_i, map.begin()->first))
+    {
+        send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+        return;
+    }
+    std::string fullpath = map.begin()->second;
+    std::cout << "\nFull path is:" << fullpath << std::endl;
+    if(r.get_path() == "/upload")
+    {
+        if ((long)r.body.size() > _configs[conf_i].client_max_body_size)
+        {
+            send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+            return ;
+        }
+        std::ostringstream filename;
+        filename << fullpath << "/upload_" << std::time(0) << "_" << rand() <<".bin";
+        std::ofstream out(filename.str().c_str(),std::ios::binary);
+        if(!out)
+        {
+            std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+            send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
+            return;
+        }
+        out .write(r.body.data(), r.body.size());
+        out.close();
+        send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
+    }
+}
+
+// void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, int port)
 // {
-// 	std::stringstream ss(requestPath);
-// 	std::string split;
-	
-// 	while (std::getline(ss, split, '/'))
-// 	{
-// 		if (!split.empty())
-// 			parts.push_back(split);
-// 	}
-// }
-
-// int CorrectPath(std::vector<std::string> paths, std::string requestroot)
-// {
-// 	size_t i = 0;
-// 	if (!requestroot.empty())
-// 	{
-// 		while (i < paths.size())
-// 		{
-// 			if (paths[i] == requestroot)
-// 			{
-// 				std::cout << "found index: " << i << std::endl;
-// 				return i; // just returning the index of the location
-// 				/* what is waiting for u next */
-
-// 				/* Use stat() to find out what kind of resource the path is:
-// 				Is it a regular file?
-
-// 				Is it a directory?
-
-// 				Based on that:
-
-// 				👉 If it’s a regular file:
-// 				→ Open, read it, and send the contents back with a 200 OK response.
-
-// 				👉 If it’s a directory:
-
-// 				If there's an index file configured (like index.html) → look for it and serve it.
-
-// 				If no index is found → check if autoindex is enabled and generate a directory listing.
-
-// 				Otherwise → send 403 Forbidden.
-
-// 				👉 If stat() fails (file not found) → return 404 Not Found. */
-// 			}
-// 			i++;
-// 		}
-// 	}
-// 	return 1;
-// }
-
-// void handle_get_methode(request r, std::vector<ServerConfig> _configs)
-// {
-// 	size_t i = 0;
-// 	size_t j = 0;
-// 	std::vector<std::string> paths;
-//     std::cout << "Started appliquing Method -: " << r.get_method() << std::endl;
-// 	//supposed all of this if coming from server with port num 8080
-// 	int port = 8080;
-// 	while (i < _configs.size())
+// 	std::map<int, std::string> map;
+// 	reponse repo;
+// 	for (size_t i = 0; i < _configs.size(); ++i)
 // 	{
 // 		if (_configs[i].port == port)
 // 		{
-// 			j = 0;
-// 			while (j < _configs[i].locations.size())
+// 			map = getMatchingRootPath(r, _configs[i]);
+// 			if(r.get_path() == "/upload")
 // 			{
-// 				paths.push_back(_configs[i].locations[j].path);
-// 				j++;
+// 				std::map<int, std::string> fullPath_map = getMatchingRootPath(r, _configs[i]);
+// 				std::map<int, std::string>::iterator it = fullPath_map.begin();
+// 				if (!CheckMethodeIsAllowed("POST", _configs, i, it->first))
+// 				{
+// 						repo.reponse_status = 405 ;
+// 						repo.response_body =" Method Not Allowed.";
+// 						send_repons_post(clientFd, repo);
+// 						return ;
+// 				}
+// 				else if ((long)r.body.size() > _configs[i].client_max_body_size)
+// 				{
+// 						repo.reponse_status = 413;
+// 						repo.response_body =" Payload Too Large.";
+// 						send_repons_post(clientFd, repo);
+// 						return ;
+// 				}
+// 				std::ostringstream filename;
+// 			 	filename << it->second<< "/upload_" << std::time(0) << ".txt";;
+// 				std::ofstream out(filename.str().c_str(),std::ios::binary);
+// 				if(!out)
+// 				{
+// 					std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+// 					repo.reponse_status = 500;
+// 					repo.response_body = "Internal Server Error";
+// 					return;
+// 				}
+// 				out << r.body;
+// 				out.close();
+// 				repo.reponse_status = 201;
+// 				repo.response_body = "File uploaded successfully!\n";
+// 				send_repons_post(clientFd, repo);
 // 			}
-// 			int correspondantPath = CorrectPath(paths, r.get_path());
-// 			std::cout << "the data I should respond with is: " << _configs[i].locations[correspondantPath].index << std::endl << std::endl;
-// 			// send the appropriate respond from the appropriate server's location
+// 			return;
 // 		}
-// 		i++;
-// 	}
+// }
 // }
