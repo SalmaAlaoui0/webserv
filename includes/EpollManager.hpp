@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EpollManager.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:09:23 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/17 22:46:43 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/04 12:03:28 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -40,7 +40,7 @@ class EpollManager
                 std::string _msg;
             public:
                 epollException(const std::string &msg);    
-                virtual ~epollException() throw();    
+                virtual ~epollException() throw();
                 virtual const char* what() const throw();
         };
 };

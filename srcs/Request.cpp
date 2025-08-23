@@ -41,20 +41,19 @@ void request::error_set(request &r)
     }
     if(r.get_method() == "POST")
     {
-        std::map<std::string , std::string>::iterator ptr= headers.find("Content-Length"); 
+        std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
         if(ptr != headers.end())
         {
 			std::string a = ptr->second;
 			unsigned long b = std::atoi(a.c_str());
 			if(b < 0 || (b != r.get_body().size()))
             {
-                 throw requetetException("400 Bad Request");
+                throw requetetException("400 Bad Request");
             }
         }
         else
-             throw requetetException("400 Bad Request");
+            throw requetetException("400 Bad Request");
     }
-	
 	if(r.get_version() != "HTTP/1.1")
 		 throw requetetException("505 HTTP Version Not Supported");
 	if(headers.find("Host") == headers.end())	
@@ -76,10 +75,8 @@ static std::string trim1(std::string &s)
         return "";
     return s.substr(start, end - start + 1);
 }
- request::request()
- {
+ request::request() {}
 
- }
 void request::set_method(std::string m) {method= m;}
 
 void request::set_path(std::string p){path = p;}
@@ -117,13 +114,9 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
         }
     }
     else if ( bytes_received == 0)
-    {
         throw requetetException("❌ Client disconnected ");
-    }
     else if(buffer[bytes_received] == '\0' && bytes_received == 1 )
-    {
-         throw requetetException("Empty request or client closed");
-    }
+        throw requetetException("Empty request or client closed");
     // std::cout << "request :"<< buffer <<std::endl;
     std::istringstream iss(buffer);
     std::string methode , path ,version, line;
@@ -134,24 +127,24 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
     r.set_method(methode);
     r.set_path(path);
     r.set_vergion(version);
-while(std::getline(iss, line, '\r') && !line.empty())
-{
-    iss.ignore();
-    size_t pos = line.find(":");
-    if(pos != std::string::npos)
+    std::cout << "ur method and path and version are: \n" << "method: " << r.get_method() << std::endl
+    << "path: " << r.get_path() << std::endl << "version: " << r.get_version() << std::endl;
+    while(std::getline(iss, line, '\r') && !line.empty())
     {
-    std::string key = line.substr(0,pos);
-    key = trim1(key);
-    //std::cout << key<<std::endl;
-
-    std::string value = line.substr(pos+1, line.size());
-    value = trim1(value);
-   // std::cout << value<<std::endl;
-
-    r.set_header(key,value);
+        iss.ignore();
+        size_t pos = line.find(":");
+        if(pos != std::string::npos)
+        {
+        std::string key = line.substr(0,pos);
+        key = trim1(key);
+        //std::cout << key<<std::endl;
+        std::string value = line.substr(pos+1, line.size());
+        value = trim1(value);
+    // std::cout << value<<std::endl;
+        r.set_header(key,value);
+        }
     }
-}
-  std::string raw_request(buffer);//, bytes_received);
+    std::string raw_request(buffer);//, bytes_received);
     size_t pos = raw_request.find("\r\n\r\n");
     if (pos != std::string::npos)
     {
@@ -165,19 +158,19 @@ while(std::getline(iss, line, '\r') && !line.empty())
         std::string body = r.get_body();
         char *buffer1;
         int b = 0;
-    size_t pos2 =0;
-    size_t pos1 = body.find("\r\n",pos2);
+        size_t pos2 = 0;
+        size_t pos1 = body.find("\r\n",pos2);
 
-    while( pos1 != std::string::npos)
-    {
-    std::string a = body.substr(pos2,pos1);
-    b = std::strtol(a.c_str(),NULL,16);
-    if(b <= 0)
-    {
-        it->second.body_complete = true;
-        break;
-    }
-   buffer1 = new char[1024];
+        while( pos1 != std::string::npos)
+        {
+        std::string a = body.substr(pos2,pos1);
+        b = std::strtol(a.c_str(),NULL,16);
+        if(b <= 0)
+        {
+            it->second.body_complete = true;
+            break;
+        }
+        buffer1 = new char[1024];
       //std::cout << "a ==>" << a<< std::endl;
       //std::cout << "b ==>" << b<< std::endl;
      int i =0;
@@ -197,12 +190,11 @@ while(std::getline(iss, line, '\r') && !line.empty())
         delete[] buffer1;
         pos1 = body.find("\r\n",pos2);
       //  std::cout <<"pos 1--->"<< pos1<< "pos 2--->"<< pos2 << std::endl; 
-        std::cout <<   it->second._requestBuffer<< std::endl;
+        std::cout <<   it->second._requestBuffer << std::endl;
     }
     std::cout << "b = "<< b<< std::endl;
     if (it->second.body_complete == true) {
         //std::cout << " ana hna salitttt\n";
-
 }
 else {
    
