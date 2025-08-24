@@ -16,7 +16,7 @@ std::string send_video(int clientFd, std::string filePath, std::string resCode)
     file.seekg(0, std::ios::beg);
 
     std::cout << "\n\n----Hello world----\n\n";
-    std::string contentType = "video/mp4";
+    std::string contentType = "video/png";
     std::ostringstream headers;
     headers << "HTTP/1.1 " << resCode << "\r\n"
             << "Content-Type: " << contentType << "\r\n"

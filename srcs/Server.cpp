@@ -6,9 +6,10 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/23 13:18:10 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/24 09:47:20 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 
 #include "../includes/Server.hpp"
 
@@ -18,9 +19,8 @@ Server::Server(const std::vector<ServerConfig>& configs)
     setupSockets();
 }
 
-Server::Server()
-{
-}
+Server::Server() {}
+
 Server::~Server()
 {
     for (size_t i = 0; i < serverSockets.size(); ++i)
@@ -31,7 +31,7 @@ void Server:: setupSockets()
 {
     for(size_t i = 0; i < _configs.size(); i++)
     {
-        if ( _configs[i].port != 0)
+        if (_configs[i].port != 0)
         {
             const std::string &ip =_configs[i].host;
             int port = _configs[i].port;
@@ -79,12 +79,6 @@ int Server::creatServerSocket(const std::string &ip, int port)
 
 void Server::sendResponse( int clientFd, request r)
 {
-//     std::string body = R"(<!DOCTYPE html> <html lang="en">
-// <head><h1><center>Hello world</center></h1>
-// </head>
-// </html>)";
-	//(void)r;
-    // std::string body = "<h1><center>Hello world</center></h1>";
 	if (r.get_path() == "/favicon.ico")
 	{
 		std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
@@ -92,15 +86,26 @@ void Server::sendResponse( int clientFd, request r)
             std::cerr << "❌ send failed: " << strerror(errno) << std::endl; 
 		return;
 	}
-    
-	// std::cout << "your method is: " << r.get_method() << ", and the path is(ps: without file it's stored alone;): " << r.get_root() << ", and version is: " << r.get_version() << std::endl << std::endl;
+    size_t conf_i = _configs.size();
+    for (size_t i = 0; i < _configs.size(); ++i) 
+    {
+        if (_configs[i].port == r.get_final_port(r))
+        { 
+            conf_i = i; 
+            break;
+        }
+    }
+    if (conf_i == _configs.size()) 
+    {
+		send_response(clientFd, 500, "Internal Server Error (no matching server)", load_html_file("www/500.html"));
+        return;
+    }
 	if (r.get_method() == "GET")
-		handle_get_methode(r, this->_configs, clientFd);
+		handle_get_methode(r, this->_configs, clientFd, conf_i);
     else if(r.get_method()== "POST")
-        handle_post_methode(r, this->_configs, clientFd, r.get_final_port(r));
-    // std::string body = "<h1><center>Hello world</center></h1>";
+        handle_post_methode(r, this->_configs, clientFd, conf_i);
     else if (r.get_method() == "DELETE")
-		handle_delete_methode(r, this->_configs, clientFd);
+		handle_delete_methode(r, this->_configs, clientFd, conf_i);
     else
     {
         std::string invalidMethod = "HTTP/1.1 404 invalid method\r\nContent-Length: 0\r\n\r\n";
@@ -108,24 +113,13 @@ void Server::sendResponse( int clientFd, request r)
             std::cerr << "❌ send failed: " << strerror(errno) << std::endl;    
 		return;
     }
-    // std::ostringstream response;
-	// response << "HTTP/1.1 200 OK\r\n"
-	// 		 << "Content-Type: text/html\r\n"
-	// 		 << "Content-Length: " << body.size() << "\r\n\r\n" << body;
-
-    // ssize_t sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
-    // if (sent < 0)
-    //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-    // else
-    //     std::cout << "Response sent to FD: " << clientFd << std::endl;
 }
-
 
 void Server::handleClient(int clientFd, EpollManager &epollManager)
 {
     request a;
-    try{
-        
+    try
+    {
         a = a.parseRequest(this->clients, epollManager, a);
     }
     catch(std::exception &e)
@@ -134,24 +128,23 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
         return ;
     }
     std::cout << "fd = "<< clientFd << std::endl;
-    // (void)clientFd;//////////////////////////////////
-    // try{
-    //     a.error_set(a);
-    // }
-    // catch(std::exception &e)
-    // {
-    // std::string response = e.what();
-    // ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
-    // if (sent < 0)
-    //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-    // else
-    //     std::cout << "Response sent to FD: " << clientFd << std::endl;
-    // return ;
-    // }
+    try{
+        a.error_set(a);
+    }
+    catch(std::exception &e)
+    {
+    std::string response = e.what();
+    ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
+    if (sent < 0)
+        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    else
+        std::cout << "Response sent to FD: " << clientFd << std::endl;
+    return ;
+    }
     sendResponse(clientFd, a);
-	// std::map<int, Client>::iterator it = clients.find(clientFd);
-	// if (it != clients.end())
-	// 	it->second.updateActivity();
+	std::map<int, Client>::iterator it = clients.find(clientFd);
+	if (it != clients.end())
+		it->second.updateActivity();
 }
 
 void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
@@ -174,7 +167,7 @@ void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
         }
         epollManager.addSocket(clientFd);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
-        // std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
+        std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
     
 }
 
@@ -209,14 +202,13 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
     }
 }
 
-
 void Server::run()
 {
 	EpollManager epollManager;
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
-        std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
         epollManager.addSocket(serverSockets[i]);
+        std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
     }
 	while (true) 
 	{
@@ -224,27 +216,13 @@ void Server::run()
 		checkTimeout(clients, epollManager);
 		for (size_t i = 0; i < fds.size(); ++i) 
 		{
-			if (isServerSocket(fds[i])) 
-			{
-                // std::cout << "hehehahahahh just detected a new connection\n" << std::endl;
+			if (isServerSocket(fds[i]))
                 acceptNewClient(fds[i], epollManager);
-            }
-			else 
-			{
-               // std::cout << "started handling an already there connection\n" << std::endl;
+			else
+            {
 				handleClient(fds[i], epollManager);
                 close(fds[i]);
                 std::cout << "client has been closed after sending response :))\n";
-				// char buf[1024];
-				// int bytes = read(fds[i], buf, sizeof(buf));
-				// if (bytes <= 0) {
-				//     std::cout << "❌ Client disconnected " << fds[i] << std::endl;
-				//     close(fds[i]);
-				// } else {
-				//     std::cout << "📥 Received: " << std::string(buf, bytes) << std::endl;
-				//     std::string response = "HTTP/1.1 200 OK\r\nContent-Length: 12\r\n\r\nHello world";
-				//     send(fds[i], response.c_str(), response.size(), 0);
-				// }
             }
         }
     }

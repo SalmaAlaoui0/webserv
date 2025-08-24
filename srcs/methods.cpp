@@ -1,14 +1,15 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        :::      ::::::::   */
-/*   Methods.cpp                                        :+:      :+:    :+:   */
+/*   methods.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/22 15:44:53 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/24 09:43:50 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 
 
 #include "../includes/Server.hpp"
@@ -294,15 +295,10 @@ std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector
 	return NULL;
 }
 
-
-void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd)
+void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
 {
-	int port = r.get_final_port(r);
 	std::map<int, std::string> map;
-	
-
 	std::map<std::string, std::string> my_map = r.get_header();
-	
 	for (auto i : my_map)
 	{
 		std::cout << " the header is: " << i.first << ": " << i.second << std::endl;
@@ -310,34 +306,27 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 	std::cout << "hello I am trying to know some data here:\n";
 	std::cout << " the body is: " << r.get_body() << std::endl;
 	std::cout << " and it's len is going to be: " << r.get_body().size() << std::endl;
-	for (size_t i = 0; i < _configs.size(); ++i)
-	{
-		if (_configs[i].port == port)
-		{
-			map = getMatchingRootPath(r, _configs[i]);
-			int key = map.begin()->first;
-			std::string value = map.begin()->second;
-			std::cout << "the................... path in appropriate location in app. server->" << _configs[i].locations[key].path << std::endl;
-			if (isKey(_configs[i].locations[key].path, "/cgi-bin") && CheckMethodeIsAllowed("GET", _configs, i, key))
-			{
-				std::cout << "salam it's a cgi hereee\n";
-				std::string ret = CheckDirOrFileCGI(value, clientFd, _configs, i, key, r);
-				std::cout << ret << std::endl;
-				return ;
-			}
-			if (!CheckMethodeIsAllowed("GET", _configs, i, key))
-			{
-				std::cout << "This means method not allowed \n\n" << std::endl;
-				RequestResponse(clientFd, _configs[i].ErrorPages[405], "405 Method Not Allowed");
-				return;
-			}
-			std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
-			std::cout << "\nFull path is:" << value << std::endl;
-			std::string ret = CheckDirOrFile(value, clientFd, _configs, i, key);
-			std::cout << ret << std::endl;
-			return;
-		}
-	}
+    map = getMatchingRootPath(r, _configs[conf_i]);
+    int key = map.begin()->first;
+    std::string value = map.begin()->second;
+    std::cout << "the path in appropriate location in app. server->" << _configs[conf_i].locations[key].path << std::endl;
+    // if (isKey(_configs[i].locations[key].path, "/cgi-bin") && CheckMethodeIsAllowed("GET", _configs, i, key))
+    // {
+    // 	std::cout << "salam it's a cgi hereee\n";
+    // 	std::string ret = CheckDirOrFileCGI(value, clientFd, _configs, i, key, r);
+    // 	std::cout << ret << std::endl;
+    // 	return ;
+    // }
+    if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
+    {
+        std::cout << "This means method not allowed \n\n" << std::endl;
+        RequestResponse(clientFd, _configs[conf_i].ErrorPages[405], "405 Method Not Allowed");
+        return;
+    }
+    std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
+    std::cout << "\nFull path is:" << value << std::endl;
+    std::string ret = CheckDirOrFile(value, clientFd, _configs, conf_i, key);
+    std::cout << ret << std::endl;
 }
 
 
@@ -480,33 +469,24 @@ void dir_or_file(std::string &fullpath, int clientFd)
 	}
 }
 
-void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd)
+void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
 {
 	if (r.get_path().find("..") != std::string::npos) //If you do not block paths containing .., an attacker might delete or access files outside the allowed web root directory, leading to security vulnerabilities.
 	{
 		send_response(clientFd, 400, "Bad Request", "<html><body><h1>400 Bad Request</h1><p>Invalid path.</p></body></html>");
 		return;
 	}
-	int port = r.get_final_port(r);
 	std::map<int, std::string> map;
-
-	for (size_t i = 0; i < _configs.size(); ++i)
-	{
-		if (_configs[i].port == port)
-		{
-			map = getMatchingRootPath(r, _configs[i]);
-			int key = map.begin()->first;
-			if (!CheckMethodeIsAllowed("DELETE", _configs, i, key))
-			{
-				send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
-				return;
-			}
-			std::string fullpath = map.begin()->second;
-			std::cout << "\nFull path is:" << fullpath << std::endl;
-			dir_or_file(fullpath, clientFd);
-			return;
-		}
-	}
+    map = getMatchingRootPath(r, _configs[conf_i]);
+    int key = map.begin()->first;
+    if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
+    {
+        send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+        return;
+    }
+    std::string fullpath = map.begin()->second;
+    std::cout << "\nFull path is:" << fullpath << std::endl;
+    dir_or_file(fullpath, clientFd);
 }
 
 
@@ -521,51 +501,85 @@ void send_repons_post(int clientFd, const reponse& repo)
 	send(clientFd, response.str().c_str(), response.str().size(), 0);
 }
 
-void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, int port)
+void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
 {
 	std::map<int, std::string> map;
-	//const size_t client_max_body_size = 10 * 1024 * 1024;
 	reponse repo;
-	for (size_t i = 0; i < _configs.size(); ++i)
-	{
-		if (_configs[i].port == port)
-		{
-			map = getMatchingRootPath(r, _configs[i]);
-			if(r.get_path() == "/upload")
-			{
-				std::map<int, std::string> fullPath_map = getMatchingRootPath(r, _configs[i]);
-				std::map<int, std::string>::iterator it = fullPath_map.begin();
-				if (!CheckMethodeIsAllowed("POST", _configs, i, it->first))
-				{
-						repo.reponse_status = 405 ;
-						repo.response_body =" Method Not Allowed.";
-						send_repons_post(clientFd, repo);
-						return ;
-				}
-				else if ((long)r.body.size() > _configs[i].client_max_body_size)
-				{
-						repo.reponse_status = 413;
-						repo.response_body =" Payload Too Large.";
-						send_repons_post(clientFd, repo);
-						return ;
-				}
-				std::ostringstream filename;
-			 	filename << it->second<< "/upload_" << std::time(0) << ".txt";;
-				std::ofstream out(filename.str().c_str(),std::ios::binary);
-				if(!out)
-				{
-					std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
-					repo.reponse_status = 500;
-					repo.response_body = "Internal Server Error";
-					return;
-				}
-				out << r.body;
-				out.close();
-				repo.reponse_status = 201;
-				repo.response_body = "File uploaded successfully!\n";
-				send_repons_post(clientFd, repo);
-			}
-			return;
-		}
+
+    map = getMatchingRootPath(r, _configs[conf_i]);
+    if (!CheckMethodeIsAllowed("POST", _configs, conf_i, map.begin()->first))
+    {
+        send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+        return;
+    }
+    std::string fullpath = map.begin()->second;
+    std::cout << "\nFull path is:" << fullpath << std::endl;
+    if(r.get_path() == "/upload")
+    {
+        if ((long)r.body.size() > _configs[conf_i].client_max_body_size)
+        {
+            send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+            return ;
+        }
+        std::ostringstream filename;
+        filename << fullpath << "/upload_" << std::time(0) << "_" << rand() <<".bin";
+        std::ofstream out(filename.str().c_str(),std::ios::binary);
+        if(!out)
+        {
+            std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+            send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
+            return;
+        }
+        out .write(r.body.data(), r.body.size());
+        out.close();
+        send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
+    }
 }
-}
+
+// void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, int port)
+// {
+// 	std::map<int, std::string> map;
+// 	reponse repo;
+// 	for (size_t i = 0; i < _configs.size(); ++i)
+// 	{
+// 		if (_configs[i].port == port)
+// 		{
+// 			map = getMatchingRootPath(r, _configs[i]);
+// 			if(r.get_path() == "/upload")
+// 			{
+// 				std::map<int, std::string> fullPath_map = getMatchingRootPath(r, _configs[i]);
+// 				std::map<int, std::string>::iterator it = fullPath_map.begin();
+// 				if (!CheckMethodeIsAllowed("POST", _configs, i, it->first))
+// 				{
+// 						repo.reponse_status = 405 ;
+// 						repo.response_body =" Method Not Allowed.";
+// 						send_repons_post(clientFd, repo);
+// 						return ;
+// 				}
+// 				else if ((long)r.body.size() > _configs[i].client_max_body_size)
+// 				{
+// 						repo.reponse_status = 413;
+// 						repo.response_body =" Payload Too Large.";
+// 						send_repons_post(clientFd, repo);
+// 						return ;
+// 				}
+// 				std::ostringstream filename;
+// 			 	filename << it->second<< "/upload_" << std::time(0) << ".txt";;
+// 				std::ofstream out(filename.str().c_str(),std::ios::binary);
+// 				if(!out)
+// 				{
+// 					std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+// 					repo.reponse_status = 500;
+// 					repo.response_body = "Internal Server Error";
+// 					return;
+// 				}
+// 				out << r.body;
+// 				out.close();
+// 				repo.reponse_status = 201;
+// 				repo.response_body = "File uploaded successfully!\n";
+// 				send_repons_post(clientFd, repo);
+// 			}
+// 			return;
+// 		}
+// }
+// }
