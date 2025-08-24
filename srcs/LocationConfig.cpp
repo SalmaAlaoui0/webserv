@@ -86,6 +86,19 @@ void parseLoc_root(std::string line, std::vector<ServerConfig> &container, int i
     // exit (0);
 }
 
+void parseLoc_upload_store(std::string line, std::vector<ServerConfig> &container, int i, int j)
+{
+	std::string upload_store;
+    upload_store = line.substr(isKey(line, "upload_store") + 1);
+    upload_store = trim(upload_store);
+	// if (root[root.creatListeningSocket() - 1] != ';' || root[root.size() - 2] == ';')
+    //     throw ::InvalidData();
+    upload_store = upload_store.substr(0, upload_store.size() - 1);
+    container[i].locations[j].upload_store = upload_store;
+	// std::cout << "ur location root is: -" << container[i].locations[j].root << "-" << std::endl;
+    // exit (0);
+}
+
 void parseAutoIndex(std::string line, std::vector<ServerConfig> &container, int i, int j)
 {
     std::string value;
@@ -210,6 +223,8 @@ void parseLocationConfig(std::string line, std::vector<ServerConfig> &container,
         parseLoc_max_size(line, container[i].locations[j].client_max_body_size);
     else if(isKey(line, "cgi_pass"))
 		parseLoc_cgi(line, container, i, j);
+    else if(isKey(line, "upload_store"))
+		parseLoc_upload_store(line, container, i, j);
     else if(isKey(line, "allowed_methods"))
     {
         parseMethods(line, methods);

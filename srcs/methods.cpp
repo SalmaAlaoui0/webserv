@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/24 09:43:50 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/24 17:02:41 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -351,6 +351,28 @@ void send_response(int clientFd, int status_code, const std::string &status_text
         std::cout << "Response sent to FD: " << clientFd << std::endl;
 }
 
+void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type)
+{
+    std::ostringstream response;
+    response << "HTTP/1.1 " << status_code << " " << status_text << "\r\n";
+    if (!body.empty())
+    {
+        response << "Content-Type: " << type << "\r\n";
+        response << "Content-Length: " << body.size() << "\r\n";
+    }
+    response << "Connection: close\r\n";
+    response << "\r\n";
+    response << body;
+
+    std::string resp_str = response.str();
+    ssize_t sent = send(clientFd, resp_str.c_str(), resp_str.size(), 0);
+    if (sent < 0)
+        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    else
+        std::cout << "Response sent to FD: " << clientFd << std::endl;
+}
+
+
 bool delete_dir_recursive(std::string &path, int clientFd)
 {
 	DIR *dir = opendir(path.c_str());
@@ -505,35 +527,50 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
 {
 	std::map<int, std::string> map;
 	reponse repo;
-
+	
     map = getMatchingRootPath(r, _configs[conf_i]);
+		std::cout << "&&&&&&&&in return here \n\n";
     if (!CheckMethodeIsAllowed("POST", _configs, conf_i, map.begin()->first))
     {
         send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
         return;
     }
+	if (_configs[conf_i].locations[map.begin()->first].upload_store.empty())
+	{
+		send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
+		return ;
+	}
     std::string fullpath = map.begin()->second;
+	fullpath = join_path(fullpath, _configs[conf_i].locations[map.begin()->first].upload_store);
     std::cout << "\nFull path is:" << fullpath << std::endl;
-    if(r.get_path() == "/upload")
-    {
-        if ((long)r.body.size() > _configs[conf_i].client_max_body_size)
-        {
-            send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
-            return ;
-        }
-        std::ostringstream filename;
-        filename << fullpath << "/upload_" << std::time(0) << "_" << rand() <<".bin";
-        std::ofstream out(filename.str().c_str(),std::ios::binary);
-        if(!out)
-        {
-            std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
-            send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
-            return;
-        }
-        out .write(r.body.data(), r.body.size());
-        out.close();
-        send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
-    }
+	
+	if ((long)r.body.size() > _configs[conf_i].client_max_body_size)
+	{
+		send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+		return ;
+	}
+	std::ostringstream filename;
+	std::cout << "^^^^^" << r.ContentType << std::endl;
+	filename << fullpath << "/" << rand() <<"."<<r.ContentType;
+	std::cout << "****" << filename.str() << std::endl;
+	std::ofstream out(filename.str().c_str(),std::ios::binary);
+	if(!out)
+	{
+		std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+		send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
+		return;
+	}
+	std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body<<"\n\n";
+	//out << r.body;
+	std::cout << "the body is; " << r.body.c_str();
+	out .write(r.body.c_str(), r.body.size());
+	out.close();
+	send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
+	// else
+	// {
+    // 	 send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
+	// 	return ;
+	// }
 }
 
 // void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, int port)
