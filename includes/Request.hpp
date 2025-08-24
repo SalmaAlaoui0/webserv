@@ -37,6 +37,7 @@ class request{
     std::string method;
     std::string path;
     std::string body_chnked;
+    std::string ContentType;
     request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r);
     int get_final_port(request &r);
     std::string version;
@@ -44,6 +45,7 @@ class request{
     void set_method(std::string m);
     void set_path(std::string p);
    void set_vergion(std::string v);
+   void set_content(std::string content);
    void set_header(std::string key, std::string value);
    std::string get_method();
    std::string get_version();
@@ -51,7 +53,7 @@ class request{
    std::map<std::string,std::string>& get_header();
    void set_body(std::string& b);
   std::string& get_body(void);
-  void error_set(request &r);
+  bool error_set(request &r, int clientfd);
  class requetetException : public std::exception 
   {
     private:

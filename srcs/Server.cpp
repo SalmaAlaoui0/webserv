@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/24 09:47:20 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/24 15:44:41 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -128,20 +128,18 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
         return ;
     }
     std::cout << "fd = "<< clientFd << std::endl;
-    try{
-        a.error_set(a);
-    }
-    catch(std::exception &e)
+    if (a.error_set(a, clientFd) == 1)
     {
-    std::string response = e.what();
-    ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
-    if (sent < 0)
-        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-    else
-        std::cout << "Response sent to FD: " << clientFd << std::endl;
-    return ;
+        sendResponse(clientFd, a);
     }
-    sendResponse(clientFd, a);
+    // std::map<std::string, std::string> response = e.what();
+    // send_response(clientFd, 400, "Bad Request", load_html_file("www/403.html"));
+    // // ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
+    // // if (sent < 0)
+    // //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    // // else
+    // //     std::cout << "Response sent to FD: " << clientFd << std::endl;
+    // return ;
 	std::map<int, Client>::iterator it = clients.find(clientFd);
 	if (it != clients.end())
 		it->second.updateActivity();

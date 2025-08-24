@@ -31,13 +31,14 @@ request::request(request const &ref)
     *this = ref;
 }
 
-void request::error_set(request &r)
+bool request::error_set(request &r, int clientfd)
 {
     std::map<std::string , std::string>headers = r.get_header();
     if(r.get_method() != "GET" && r.get_method() != "POST" && r.get_method() != "DELETE")
     {
         std::cout << "Method is: " << r.get_method() << std::endl; /// telnet 127.0.0.1 8080 there is a problem here the get method does not return the method but the path if we're using telnet as a client try it!
-        throw requetetException("405 Method Not Allowed");
+        send_response(clientfd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+        return 0;
     }
     if(r.get_method() == "POST")
     {
@@ -46,24 +47,44 @@ void request::error_set(request &r)
         {
 			std::string a = ptr->second;
 			unsigned long b = std::atoi(a.c_str());
-			if(b < 0 || (b != r.get_body().size()))
+			if(b < 0) // || (b != r.get_body().size())
             {
-                throw requetetException("400 Bad Request");
+                std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
+                send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+                return 0;
             }
         }
         else
-            throw requetetException("400 Bad Request");
+        {
+            std::cout << "22222222222222222\n";
+            send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+            return 0;
+        }
     }
 	if(r.get_version() != "HTTP/1.1")
-		 throw requetetException("505 HTTP Version Not Supported");
+    {
+        send_response(clientfd, 505, "HTTP Version Not Supported", load_html_file("www/505.html"));
+        return 0;
+    }
 	if(headers.find("Host") == headers.end())	
-       throw requetetException("400 Bad Request");
+    {
+        std::cout << "3333333333333333\n";
+        send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+        return 0;
+    }
     if(r.get_method().empty() || r.get_path().empty())
-	    throw requetetException("400 Bad Request");
+    {
+        std::cout << "the method and path are: " << r.get_method() << "---" << r.get_path() << std::endl;;
+        send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+        return 0;
+    }
     const unsigned long max_body_size = 1024 * 1024; // 1 Mo
     if (r.get_body().size() > max_body_size)
-		 throw requetetException("Payload Too Large");
-    return ;
+    {
+        send_response(clientfd, 413, "Payload Too Large", load_html_file("www/413.html"));
+        return 0;
+    }
+    return 1;
 }
 
 static std::string trim1(std::string &s)
@@ -102,7 +123,8 @@ std::string& request::get_body(void){return body ;}
 request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r)
 {
     Server s;
-    char buffer[2048] = {0};
+    //std::vector<char> buffer;
+    char buffer [204800] = {0};
     std::map<int,Client>::iterator it = clientobj.begin();
     ssize_t bytes_received = recv(it->first, buffer, sizeof(buffer), 0);
     if ( bytes_received == -1)
@@ -144,8 +166,20 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
         r.set_header(key,value);
         }
     }
+        std::cout << "we reached untill heereeeeee\n";
+    std::map<std::string, std::string>::iterator iterator;
+    iterator = r.get_header().begin();
+    while (iterator != r.get_header().end())
+    {
+        if (iterator->first == "Content-Type")
+            r.ContentType = iterator->second;
+        // std::cout << iterator->first << "-first and second-> "<< iterator->second << std::endl;
+        iterator++;
+    }
     std::string raw_request(buffer);//, bytes_received);
     size_t pos = raw_request.find("\r\n\r\n");
+    // std::cout << "BUFFER IIIIIIIIS: " << buffer << ":::::::::" << std::endl;
+    std::cout << "size of body is: " << r.get_body().size() << std::endl;
     if (pos != std::string::npos)
     {
         pos += 4;
@@ -155,6 +189,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
   
     if (r.get_header()["Transfer-Encoding"] == "chunked")
     {
+        std::cout << "chunkedddddddd\n";
         std::string body = r.get_body();
         char *buffer1;
         int b = 0;
