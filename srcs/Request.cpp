@@ -41,20 +41,19 @@ void request::error_set(request &r)
     }
     if(r.get_method() == "POST")
     {
-        std::map<std::string , std::string>::iterator ptr= headers.find("Content-Length"); 
+        std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
         if(ptr != headers.end())
         {
 			std::string a = ptr->second;
 			unsigned long b = std::atoi(a.c_str());
 			if(b < 0 || (b != r.get_body().size()))
             {
-                 throw requetetException("400 Bad Request");
+                throw requetetException("400 Bad Request");
             }
         }
         else
-             throw requetetException("400 Bad Request");
+            throw requetetException("400 Bad Request");
     }
-	
 	if(r.get_version() != "HTTP/1.1")
 		 throw requetetException("505 HTTP Version Not Supported");
 	if(headers.find("Host") == headers.end())	
@@ -76,10 +75,8 @@ static std::string trim1(std::string &s)
         return "";
     return s.substr(start, end - start + 1);
 }
- request::request()
- {
+ request::request() {}
 
- }
 void request::set_method(std::string m) {method= m;}
 
 void request::set_path(std::string p){path = p;}
@@ -117,18 +114,12 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
         }
     }
     else if ( bytes_received == 0)
-    {
         throw requetetException("❌ Client disconnected ");
-    }
     else if(buffer[bytes_received] == '\0' && bytes_received == 1 )
-    {
-         throw requetetException("Empty request or client closed");
-    }
-
+        throw requetetException("Empty request or client closed");
     // std::cout << "request :"<< buffer <<std::endl;
     std::istringstream iss(buffer);
-    std::string methode , path ,version;
-    std::string line;
+    std::string methode , path ,version, line;
     std::getline(iss , line ,  '\r');
     iss.ignore();
     std::istringstream line_stream(line);
@@ -147,11 +138,9 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
         std::string key = line.substr(0,pos);
         key = trim1(key);
         //std::cout << key<<std::endl;
-
         std::string value = line.substr(pos+1, line.size());
         value = trim1(value);
     // std::cout << value<<std::endl;
-
         r.set_header(key,value);
         }
     }
@@ -206,7 +195,6 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
     std::cout << "b = "<< b<< std::endl;
     if (it->second.body_complete == true) {
         //std::cout << " ana hna salitttt\n";
-
 }
 else {
    

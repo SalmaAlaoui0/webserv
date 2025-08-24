@@ -215,6 +215,8 @@ void parseLocationConfig(std::string line, std::vector<ServerConfig> &container,
         parseMethods(line, methods);
         container[i].locations[j].allowed_methods = methods;
     }
+    else if (!emptylines(line))
+        throw ::InvalidData();
 }
 
 bool noClosing(std::string line)
