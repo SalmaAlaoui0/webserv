@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/23 22:00:14 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/24 11:41:24 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -530,10 +530,16 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
             send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
             return;
         }
-        out .write(r.body.data(), r.body.size());
+		//out << r.body;
+        out .write(r.body.c_str(), r.body.size());
         out.close();
         send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
     }
+	// else
+	// {
+    // 	 send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
+	// 	return ;
+	// }
 }
 
 // void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, int port)
