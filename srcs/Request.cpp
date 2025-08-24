@@ -102,7 +102,8 @@ std::string& request::get_body(void){return body ;}
 request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r)
 {
     Server s;
-    char buffer[2048] = {0};
+    //std::vector<char> buffer;
+    char buffer [2048] = {0};
     std::map<int,Client>::iterator it = clientobj.begin();
     ssize_t bytes_received = recv(it->first, buffer, sizeof(buffer), 0);
     if ( bytes_received == -1)
