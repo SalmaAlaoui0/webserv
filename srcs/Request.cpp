@@ -136,8 +136,8 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
     r.set_method(methode);
     r.set_path(path);
     r.set_vergion(version);
-    std::cout << "ur method and path and version are: \n" << "method: " << r.get_method() << std::endl
-    << "path: " << r.get_path() << std::endl << "version: " << r.get_version() << std::endl;
+    // std::cout << "ur method and path and version are: \n" << "method: " << r.get_method() << std::endl
+    // << "path: " << r.get_path() << std::endl << "version: " << r.get_version() << std::endl;
     while(std::getline(iss, line, '\r') && !line.empty())
     {
         iss.ignore();
