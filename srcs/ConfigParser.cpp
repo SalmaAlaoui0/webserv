@@ -45,7 +45,6 @@ int isKey(std::string line, std::string target)
 	iss >> word;
 	if (word == target)
 		return i;
-	// std::cout << "..." << word << "..." << std::endl;
 	return 0;
 }
 

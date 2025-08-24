@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:11:36 by wzahir            #+#    #+#             */
-/*   Updated: 2025/07/20 09:43:34 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/23 12:09:41 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -58,7 +58,7 @@ std::vector<int> EpollManager::waitEvents(Server &obj)
         throw epollException("❌ epoll_wait failed");
     for (int i = 0; i < n ; i++)
     {
-            int fd = events[i].data.fd;
+        int fd = events[i].data.fd;
         if (events[i].events & EPOLLRDHUP)
         {
             std::cout << "Client disconnected fd: " << fd << std::endl;

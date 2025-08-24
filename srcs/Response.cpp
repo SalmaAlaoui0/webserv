@@ -28,59 +28,59 @@ std::string send_video(int clientFd, std::string filePath, std::string resCode)
     std::string headerStr = headers.str();
     send(clientFd, headerStr.c_str(), headerStr.size(), 0);
 
-    // const size_t bufsize = 1024;
-    // char buffer[bufsize];
-    // int i = 0;
-    // while (file.read(buffer, bufsize) || file.gcount() > 0) 
-    // {
-    //     std::cout << "\n\n----Hello world  " << i << "----\n\n";
-    //     if (send(clientFd, buffer, file.gcount(), 0) == -1)
-    //     {
-    //         perror("send failed");
-    //         std::cout << "send failed here" << i << "------\n\n";
-    //         break; // Or handle error properly
-    //     }      
-    //     i++;
-    // }
-
-    const size_t bufsize = 8192;
+    const size_t bufsize = 1024;
     char buffer[bufsize];
     int i = 0;
-
-    while (file.read(buffer, bufsize) || file.gcount() > 0) {
-        size_t toSend = file.gcount();
-        size_t sent = 0;
-
-        while (sent < toSend) {
-            ssize_t n = send(clientFd, buffer + sent, toSend - sent, 0);
-            if (n == -1) {
-                if (errno == EINTR) {
-                    // Interrupted by signal, retry
-                    continue;
-                } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                    // Socket buffer full → wait until writable
-                    fd_set wfds;
-                    FD_ZERO(&wfds);
-                    FD_SET(clientFd, &wfds);
-
-                    // wait (blocking) until socket is ready
-                    if (select(clientFd + 1, NULL, &wfds, NULL, NULL) > 0) {
-                        continue; // try again
-                    } else {
-                        perror("select failed");
-                        return "Failed";
-                    }
-                } else {
-                    perror("send failed");
-                    return "Failed";
-                }
-            }
-            sent += n; // advance pointer by the number of bytes actually sent
-        }
-
-        std::cout << "✅ Sent chunk " << i << " (" << toSend << " bytes)\n";
+    while (file.read(buffer, bufsize) || file.gcount() > 0) 
+    {
+        std::cout << "\n\n----Hello world  " << i << "----\n\n";
+        if (send(clientFd, buffer, file.gcount(), 0) == -1)
+        {
+            perror("send failed");
+            std::cout << "send failed here" << i << "------\n\n";
+            break; // Or handle error properly
+        }      
         i++;
-}
+    }
+
+//     const size_t bufsize = 8192;
+//     char buffer[bufsize];
+//     int i = 0;
+
+//     while (file.read(buffer, bufsize) || file.gcount() > 0) {
+//         size_t toSend = file.gcount();
+//         size_t sent = 0;
+
+//         while (sent < toSend) {
+//             ssize_t n = send(clientFd, buffer + sent, toSend - sent, 0);
+//             if (n == -1) {
+//                 if (errno == EINTR) {
+//                     // Interrupted by signal, retry
+//                     continue;
+//                 } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
+//                     // Socket buffer full → wait until writable
+//                     fd_set wfds;
+//                     FD_ZERO(&wfds);
+//                     FD_SET(clientFd, &wfds);
+
+//                     // wait (blocking) until socket is ready
+//                     if (select(clientFd + 1, NULL, &wfds, NULL, NULL) > 0) {
+//                         continue; // try again
+//                     } else {
+//                         perror("select failed");
+//                         return "Failed";
+//                     }
+//                 } else {
+//                     perror("send failed");
+//                     return "Failed";
+//                 }
+//             }
+//             sent += n; // advance pointer by the number of bytes actually sent
+//         }
+
+//         std::cout << "✅ Sent chunk " << i << " (" << toSend << " bytes)\n";
+//         i++;
+// }
 
     std::cout << "✅ File sent\n";
     return "Done";

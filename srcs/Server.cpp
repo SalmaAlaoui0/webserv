@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/22 09:50:04 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/23 13:18:10 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -233,6 +233,8 @@ void Server::run()
 			{
                // std::cout << "started handling an already there connection\n" << std::endl;
 				handleClient(fds[i], epollManager);
+                close(fds[i]);
+                std::cout << "client has been closed after sending response :))\n";
 				// char buf[1024];
 				// int bytes = read(fds[i], buf, sizeof(buf));
 				// if (bytes <= 0) {

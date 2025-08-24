@@ -1,82 +1,65 @@
 #include "../includes/Response.hpp"
 #include "../includes/Request.hpp"
-#include "../includes/Response.hpp"
-#include "../includes/Request.hpp"
 
+extern char **environ;
 
-extern char **environ; // for execve
+std::string to_string(size_t size) {
+    std::ostringstream oss;
+    oss << size;
+    return oss.str();
+}
 
-std::string execute_cgi(const std::string &script_path, request &r, const std::string &interpreter)
+std::string execute_cgi(std::string &path, request r, std::string interpreter)
 {
-    int pipe_fd[2];
-    if (pipe(pipe_fd) == -1) {
-        // return a small HTTP-like payload so SendCGIResponse can handle it
-        return std::string("Content-Type: text/plain\r\n\r\n") + "CGI pipe error\n";
+    int pipeFD[2];
+    if (pipe(pipeFD) == -1)
+    {
+        std::string HttpHeader = "Cotent-Type: text/plain\r\n\r\n";
+        return HttpHeader + "A CGI pipe error\n";
     }
-
     pid_t pid = fork();
-    if (pid < 0) {
-        close(pipe_fd[0]); close(pipe_fd[1]);
-        return std::string("Content-Type: text/plain\r\n\r\n") + "CGI fork error\n";
-    }
-
+    // std::cout << "HELLLLLLO WORLD\n";
     if (pid == 0)
     {
-        // --- child ---
-        // send child's stdout to parent through pipe
-        dup2(pipe_fd[1], STDOUT_FILENO);
-        // optionally redirect stderr to stdout if you want script errors in output:
-        // dup2(pipe_fd[1], STDERR_FILENO);
+        dup2(pipeFD[1], STDOUT_FILENO);
+        close(pipeFD[0]);
+        close(pipeFD[1]);
 
-        close(pipe_fd[0]);
-        close(pipe_fd[1]);
-
-        // set env vars for CGI (GET)
         setenv("REQUEST_METHOD", "GET", 1);
+        setenv("SCRIPT_FILENAME", path.c_str(), 1);
         setenv("QUERY_STRING", r.get_body().c_str(), 1);
-        setenv("CONTENT_LENGTH", "0", 1);
-        setenv("SCRIPT_FILENAME", script_path.c_str(), 1);// script path
-        setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);// which protocol
+		std::string len = to_string(r.get_body().size());
+		setenv("CONTENT_LENGTH", len.c_str(), 1);
+		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+		// so only and only if the request has a body like post we should add the environment
+		// variable called "CONTENT_TYPE"
 
-        // SERVER_NAME and SERVER_PORT should be taken from the request/config
-        // Example:
-        setenv("SERVER_NAME", "localhost", 1);
-        {
-            std::ostringstream portoss; portoss << r.get_final_port(r);
-            setenv("SERVER_PORT", portoss.str().c_str(), 1);
-        }
 
-        // build args for execve: interpreter + script_path
-        std::vector<char*> args;
-        args.push_back(const_cast<char*>(interpreter.c_str()));
-        args.push_back(const_cast<char*>(script_path.c_str()));
-        args.push_back(NULL);
+		std::vector<char *> args;
+		args.push_back(const_cast<char*>(interpreter.c_str()));
+		args.push_back(const_cast<char*>(path.c_str()));
+		args.push_back(NULL);
+		execve(args[0], &args[0], environ);
 
-        // execve — pass current environ so standard env is kept
-        execve(args[0], &args[0], environ);
-
-        // if execve fails:
         const char *err = "Content-Type: text/plain\r\n\r\nexecve failed\n";
-        write(STDOUT_FILENO, err, strlen(err));
-        _exit(1);
+        write(1, err, strlen(err));
+        exit (1);
     }
     else
     {
-        // --- parent ---
-        close(pipe_fd[1]);
-        std::string output;
-        char buf[4096];
-        ssize_t n;
-        while ((n = read(pipe_fd[0], buf, sizeof(buf))) > 0)
+        close(pipeFD[1]);
+        std::string scriptContent;
+        char buffer[4096];
+        ssize_t length;
+        while ((length = read(pipeFD[0], buffer, sizeof(buffer))) > 0)
         {
-            output.append(buf, n);
+            scriptContent.append(buffer, length);
         }
-        close(pipe_fd[0]);
+        close(pipeFD[0]);
 
-        int wstatus = 0; waitpid(pid, &wstatus, 0);
-        // optionally inspect wstatus for exit code
-
-        return output; // raw CGI stdout (usually contains headers + body)
+        int wstatus;
+        waitpid(pid, &wstatus, 0);
+        return scriptContent;
     }
 }
 
@@ -130,7 +113,7 @@ std::string SendCGIResponse(int clientFd, const std::string &cgi_output, const s
     if (headers.find("Content-Type") == headers.end())
         headers["Content-Type"] = "text/html";
 
-    headers["Content-Length"] = std::to_string(body.size());
+    headers["Content-Length"] = to_string(body.size());
 
     // 4) build HTTP response
     std::ostringstream response;
@@ -153,6 +136,7 @@ std::string SendCGIResponse(int clientFd, const std::string &cgi_output, const s
     std::cout << "✅ CGI response sent to FD: " << clientFd << std::endl;
     return "Done ✅";
 }
+
 
 
 std::string CheckDirOrFileCGI(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request r)

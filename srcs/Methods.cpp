@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/21 11:11:41 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/22 15:44:53 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -317,14 +317,14 @@ void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clien
 			map = getMatchingRootPath(r, _configs[i]);
 			int key = map.begin()->first;
 			std::string value = map.begin()->second;
-			std::cout << "the path in appropriate location in app. server->" << _configs[i].locations[key].path << std::endl;
-			// if (isKey(_configs[i].locations[key].path, "/cgi-bin") && CheckMethodeIsAllowed("GET", _configs, i, key))
-			// {
-			// 	std::cout << "salam it's a cgi hereee\n";
-			// 	std::string ret = CheckDirOrFileCGI(value, clientFd, _configs, i, key, r);
-			// 	std::cout << ret << std::endl;
-			// 	return ;
-			// }
+			std::cout << "the................... path in appropriate location in app. server->" << _configs[i].locations[key].path << std::endl;
+			if (isKey(_configs[i].locations[key].path, "/cgi-bin") && CheckMethodeIsAllowed("GET", _configs, i, key))
+			{
+				std::cout << "salam it's a cgi hereee\n";
+				std::string ret = CheckDirOrFileCGI(value, clientFd, _configs, i, key, r);
+				std::cout << ret << std::endl;
+				return ;
+			}
 			if (!CheckMethodeIsAllowed("GET", _configs, i, key))
 			{
 				std::cout << "This means method not allowed \n\n" << std::endl;
