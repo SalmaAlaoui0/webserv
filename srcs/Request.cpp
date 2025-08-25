@@ -47,7 +47,7 @@ bool request::error_set(request &r, int clientfd)
         {
 			std::string a = ptr->second;
 			unsigned long b = std::atoi(a.c_str());
-			if(b < 0) // || (b != r.get_body().size())
+			if(b < 0 )//|| (b != r.get_body().size())) // 
             {
                 std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
                 send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
@@ -124,9 +124,11 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
 {
     Server s;
     //std::vector<char> buffer;
-    char buffer [204800] = {0};
+    char buffer [1024] = {0};
     std::map<int,Client>::iterator it = clientobj.begin();
-    ssize_t bytes_received = recv(it->first, buffer, sizeof(buffer), 0);
+    ssize_t bytes_received = recv(it->first, buffer, sizeof(buffer)-1, 0);
+    buffer[bytes_received] = '\0';
+    std::cout << "==================" << buffer << "========================\n";
     if ( bytes_received == -1)
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -178,6 +180,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
         }
         iterator++;
     }
+    std::cout << "==========>" << buffer << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<,,\n";
     std::string raw_request(buffer);//, bytes_received);
     size_t pos = raw_request.find("\r\n\r\n");
     // std::cout << "BUFFER IIIIIIIIS: " << buffer << ":::::::::" << std::endl;
@@ -187,6 +190,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
         pos += 4;
         std::string initial_body = raw_request.substr(pos);
         r.get_body().append(initial_body);
+        std::cout << "appended is: ^^^^^^^" << r.get_body() << "^^^^^^^^^\n";
     }
   
     if (r.get_header()["Transfer-Encoding"] == "chunked")

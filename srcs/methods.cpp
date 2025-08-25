@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   methods.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/25 09:40:29 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/25 11:38:19 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -493,11 +493,11 @@ void dir_or_file(std::string &fullpath, int clientFd)
 
 void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
 {
-	if (r.get_path().find("..") != std::string::npos) //If you do not block paths containing .., an attacker might delete or access files outside the allowed web root directory, leading to security vulnerabilities.
-	{
-		send_response(clientFd, 400, "Bad Request", "<html><body><h1>400 Bad Request</h1><p>Invalid path.</p></body></html>");
-		return;
-	}
+	// if (r.get_path().find("..") != std::string::npos) //If you do not block paths containing .., an attacker might delete or access files outside the allowed web root directory, leading to security vulnerabilities.
+	// {
+	// 	send_response(clientFd, 400, "Bad Request", "<html><body><h1>400 Bad Request</h1><p>Invalid path.</p></body></html>");
+	// 	return;
+	// }
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
     int key = map.begin()->first;
@@ -552,6 +552,8 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
 	}
 	std::ostringstream filename;
 	std::cout << "^^^^^" << r.ContentType << std::endl;
+	int ext = r.ContentType.find('/');
+	r.ContentType = r.ContentType.substr(ext + 1);
 	filename << fullpath << "/" << rand() <<"."<<r.ContentType;
 	std::cout << "****" << filename.str() << std::endl;
 	std::ofstream out(filename.str().c_str(),std::ios::binary);
@@ -561,7 +563,7 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
 		send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
 		return;
 	}
-	std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body<<"\n\n";
+	std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body << "-----------" <<"\n\n";
 	//out << r.body;
 	std::cout << "the body is; " << r.body.c_str();
 	out .write(r.body.c_str(), r.body.size());
