@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/25 09:40:05 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/25 11:50:35 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -114,6 +114,8 @@ void Server::sendResponse( int clientFd, request &r)
             std::cerr << "❌ send failed: " << strerror(errno) << std::endl;    
 		return;
     }
+    /// send output
+    //return;
 }
 
 void Server::handleClient(int clientFd, EpollManager &epollManager)
