@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/24 15:44:41 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/25 09:40:05 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -77,8 +77,9 @@ int Server::creatServerSocket(const std::string &ip, int port)
     return server_fd ; 
 }
 
-void Server::sendResponse( int clientFd, request r)
+void Server::sendResponse( int clientFd, request &r)
 {
+
 	if (r.get_path() == "/favicon.ico")
 	{
 		std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
