@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   methods.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/24 17:02:41 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/25 09:40:29 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -527,6 +527,7 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
 {
 	std::map<int, std::string> map;
 	reponse repo;
+        std::cout<<"________________________"<<r.ContentType<<"\n\n";
 	
     map = getMatchingRootPath(r, _configs[conf_i]);
 		std::cout << "&&&&&&&&in return here \n\n";
@@ -564,6 +565,7 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
 	//out << r.body;
 	std::cout << "the body is; " << r.body.c_str();
 	out .write(r.body.c_str(), r.body.size());
+	out.flush();
 	out.close();
 	send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
 	// else

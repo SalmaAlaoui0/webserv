@@ -172,8 +172,10 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
     while (iterator != r.get_header().end())
     {
         if (iterator->first == "Content-Type")
+        {
             r.ContentType = iterator->second;
-        // std::cout << iterator->first << "-first and second-> "<< iterator->second << std::endl;
+            std::cout << iterator->first << "-------------------------first and second-> "<< iterator->second << std::endl;
+        }
         iterator++;
     }
     std::string raw_request(buffer);//, bytes_received);
