@@ -31,6 +31,7 @@ class request{
     request& operator=(const request& other);
     request(request const &ref);
     request();
+    ~request();
    int reponse_status;
   
    std::string body;

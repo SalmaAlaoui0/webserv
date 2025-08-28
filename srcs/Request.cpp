@@ -15,6 +15,7 @@
     //    
 
 #include "../includes/Request.hpp"
+request::~request() {}
 request& request::operator=(const request& other)
 {
      if (this != &other) {

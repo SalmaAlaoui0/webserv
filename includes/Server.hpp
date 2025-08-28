@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/25 09:39:09 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/26 11:10:40 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,7 +53,7 @@ class Server
         std::string readRequest(int clientFd, EpollManager &epollManager);
         void sendResponse(int clientFd, request &r);
         
-        void closeClient(int fd, EpollManager &epollManager);
+        void closeConnection(int fd, EpollManager &epollManager);
         class socketException : public std::exception 
         {
             private:

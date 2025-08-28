@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/25 11:50:35 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/26 11:16:38 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -208,12 +208,13 @@ void Server::run()
 	EpollManager epollManager;
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
-        epollManager.addSocket(serverSockets[i]);
+        epollManager.addSocket(serverSockets[i], EPOLLIN);
         std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
     }
 	while (true) 
 	{
-		std::vector<int> fds = epollManager.waitEvents(*this);
+		std::vector<epoll_event> events = epollManager.waitEvents();
+        for(size_t i = 0; i < events.size())
 		checkTimeout(clients, epollManager);
 		for (size_t i = 0; i < fds.size(); ++i) 
 		{
@@ -229,9 +230,9 @@ void Server::run()
     }
 }
 
-void Server::closeClient(int fd, EpollManager &epollManager)
+void Server::closeConnection(int fd, EpollManager &epollManager)
 {
-    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
+    epollManager.delSocket(fd);
     close(fd);
     clients.erase(fd);
     std::cout << "🚪 Closed client fd: " << fd << std::endl;
