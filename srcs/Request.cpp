@@ -49,7 +49,7 @@ bool request::error_set(std::map<int, Client>& clientobj, request &r, int client
         {
 			std::string a = ptr->second;
 			unsigned long b = std::atoi(a.c_str());
-			if(b < 0 )//|| (b != r.get_body().size())) // 
+			if(b < 0 || (b != r.get_body().size()))
             {
                 std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
                 send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
@@ -58,7 +58,6 @@ bool request::error_set(std::map<int, Client>& clientobj, request &r, int client
         }
         else
         {
-            std::cout << "22222222222222222----\n";
             send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
             std::cout << "helllllllo the world\n";
             return 0;
@@ -71,7 +70,6 @@ bool request::error_set(std::map<int, Client>& clientobj, request &r, int client
     }
 	if(headers.find("Host") == headers.end())	
     {
-        std::cout << "3333333333333333\n";
         send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
         return 0;
     }
@@ -142,7 +140,6 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
         {
-            // s.closeConnection(it->first, epollManager);
             s.closeConnection(clientFd, epollManager);
             throw requetetException("❌ recv failed: ");
         }
@@ -159,7 +156,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         // std::cout << "hello world\n";
         size_t HeaderEnd = clientobj[clientFd]._requestBuffer.find("\r\n\r\n");
         std::string headers = clientobj[clientFd]._requestBuffer.substr(0, HeaderEnd);
-        // std::cout << "hello world HEREEEERERE\n";
+        std::cout << "hello world HEREEEERERE\n" << headers;
         clientobj[clientFd]._requestBuffer = clientobj[clientFd]._requestBuffer.substr(HeaderEnd + 4);
         r.body = clientobj[clientFd]._requestBuffer;
         // std::cout << "%%%%%header is:" << RecievedHeader << "%%%%%\n\n";
@@ -213,15 +210,15 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         std::cout << "^^^^^" << r.ContentType << std::endl;
         int ext = r.ContentType.find('/');
         r.ContentType = r.ContentType.substr(ext + 1);
-        filename << "home/salaoui/Desktop/webserv/www/upload" << "/" << rand() <<"."<< r.ContentType;
+        filename << "home/wzahir/webserv/www/upload" << "/" << rand() <<"."<< r.ContentType;
         std::cout << "****" << filename.str() << std::endl;
         std::ofstream out(filename.str().c_str(),std::ios::binary);
-        if(!out)
-        {
-            std::cerr << "❌ Failed in parse to open file: " << filename.str() << std::endl;
-            send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
-            return r;
-        }
+        // if(!out)
+        // {
+        //     //std::cerr << "❌ Failed in parse to open file: " << filename.str() << std::endl;
+        //    // send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
+        //     //return r;
+        // }
         // std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.bo dy << "-----------" <<"\n\n";
         //out << r.body;
         // std::cout << "the body is; " << r.body.c_str();
@@ -232,7 +229,12 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             clientobj[clientFd].create_file = 1;
         }
         clientobj[clientFd].header_complete = 1;
+        if (!r.error_set(clientobj, r, clientFd))
+        {
+            throw requetetException("❌ error detected");
+        }
     }
+
     // else if ( bytes_received == 0)
     //     throw requetetException("❌ Client disconnected ");
     // else if(buffer[bytes_received] == '\0' && bytes_received == 1 )
@@ -254,6 +256,9 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
                 clientobj[clientFd].body_complete = 1;
                 out.flush();
                 out.close();
+                r.set_method(clientobj[clientFd].method);
+                r.set_path(clientobj[clientFd].path);
+                r.set_vergion(clientobj[clientFd].version);
                 // std::cout << "THe hoooole body has been recieved wanna see: =>";
                 // std::cout << "\n\n^^^" << clientobj[clientFd]._requestBuffer << "^^^\n\n";
             }

@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   methods.cpp                                        :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 16:14:25 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/29 21:32:52 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -352,7 +352,7 @@ void send_response(int clientFd, int status_code, const std::string &status_text
     {
 		std::cout << "Response sent to FD: " << clientFd << std::endl;
 	}
-	std::cout << "AND HEREEE TOOO\n";
+	//std::cout << "AND HEREEE TOOO\n";
 }
 
 void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type)
@@ -555,27 +555,27 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
 		send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
 		return ;
 	}
-	std::ostringstream filename;
-	std::cout << "^^^^^" << r.ContentType << std::endl;
-	int ext = r.ContentType.find('/');
-	r.ContentType = r.ContentType.substr(ext + 1);
-	filename << fullpath << "/" << rand() <<"."<<r.ContentType;
-	std::cout << "****" << filename.str() << std::endl;
-	std::ofstream out(filename.str().c_str(),std::ios::binary);
-	if(!out)
-	{
-		std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
-		send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
-		return;
-	}
-	// std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body << "-----------" <<"\n\n";
-	//out << r.body;
-	std::cout << "the body is; " << r.body.c_str();
+	// std::ostringstream filename;
+	// std::cout << "^^^^^" << r.ContentType << std::endl;
+	// int ext = r.ContentType.find('/');
+	// r.ContentType = r.ContentType.substr(ext + 1);
+	// filename << fullpath << "/" << rand() <<"."<<r.ContentType;
+	// std::cout << "****" << filename.str() << std::endl;
+	// std::ofstream out(filename.str().c_str(),std::ios::binary);
+	// if(!out)
+	// {
+	// 	std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+	// 	send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
+	// 	return;
+	// }
+	// // std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body << "-----------" <<"\n\n";
+	// //out << r.body;
+	// //std::cout << "the body is; " << r.body.c_str();
 
-	std::cout << "✅✅✅✅✅✅✅✅✅✅" << r.body << std::endl;
-	out .write(r.body.c_str(), r.body.size());
-	out.flush();
-	out.close();
+	// std::cout << "✅✅✅✅✅✅✅✅✅✅" << r.body << std::endl;
+	// out .write(r.body.c_str(), r.body.size());
+	// out.flush();
+	// out.close();
 	send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
 	// else
 	// {
