@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 16:07:11 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/29 21:44:06 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -267,14 +267,6 @@ void Server::run()
         for(size_t i = 0; i < events.size(); i++)
         {   
             int fd = events[i].data.fd;
-            // if (events[i].events & EPOLLIN) 
-            // {
-            //     std::cout << "Socket " << fd << " is ready to read\n";
-            // }
-            // if (events[i].events & EPOLLOUT) 
-            // {
-            //     std::cout << "Socket " << fd << " is ready to write\n";
-            // }
             if (isServerSocket(fd))
                 acceptNewClient(fd, epollManager);
             else
@@ -286,7 +278,7 @@ void Server::run()
                     // std::cout << "Socket ❌❌❌❌❌ " << fd << " is ready to read\n";
                     try
                     {
-                        a = a.parseRequest(this->clients, epollManager, a, fd);
+                       a = a.parseRequest(this->clients, epollManager, a, fd);
                         if (this->clients[fd].body_complete == 1)
                         {
                             //
@@ -300,7 +292,7 @@ void Server::run()
                     catch(std::exception &e)
                     {
                         std::cout << e.what() << std::endl;
-                        return ;
+                        // return ;
                     }
                     // std::cout << "fd = "<< fd << std::endl;
                     // std::cout << "helllllo ❌❌❌❌❌❌❌❌❌❌ method is: " << a.get_method() << "that's itttttttt\n";
@@ -310,16 +302,8 @@ void Server::run()
                     std::cout << "Socket ❌❌❌❌❌" << fd << " is ready to write\n";
                         if (a.error_set(this->clients, a, fd) == 1)
                         {
-                        sendResponse(fd, a);  
+                            sendResponse(fd, a);  
                         }
-                        // std::map<std::string, std::string> response = e.what();
-                        // send_response(fd, 400, "Bad Request", load_html_file("www/403.html"));
-                        // // ssize_t sent = send(fd, response.c_str(), response.size(), 0);
-                        // // if (sent < 0)
-                        // //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-                        // // else
-                        // //     std::cout << "Response sent to FD: " << fd << std::endl;
-                        // return ;
                         std::map<int, Client>::iterator it = clients.find(fd);
                         if (it != clients.end())
                             it->second.updateActivity();
