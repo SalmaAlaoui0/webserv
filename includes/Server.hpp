@@ -6,7 +6,7 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/26 11:10:40 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/28 17:03:33 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -48,7 +48,7 @@ class Server
         void run();
         bool isServerSocket(int fd) const;
         void acceptNewClient(int listenFd, EpollManager &epollManager);
-        void handleClient(int clientFd, EpollManager &epollManager);
+        void handleClient(int clientFd, EpollManager &epollManager, std::vector<epoll_event> &events);
         void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
         std::string readRequest(int clientFd, EpollManager &epollManager);
         void sendResponse(int clientFd, request &r);

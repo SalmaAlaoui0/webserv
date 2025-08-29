@@ -134,7 +134,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
         {
-            s.closeClient(it->first, epollManager);
+            s.closeConnection(it->first, epollManager);
             throw requetetException("❌ recv failed: ");
         }
     }
