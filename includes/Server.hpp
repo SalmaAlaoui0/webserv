@@ -6,9 +6,10 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/28 17:03:33 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/29 14:33:32 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 
 #pragma once
 
@@ -63,7 +64,7 @@ class Server
             virtual ~socketException() throw();    
             virtual const char* what() const throw();
         };
-    };
+};
 void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body);    
 void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
 void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
