@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 13:29:23 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/29 16:14:25 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -342,7 +342,7 @@ void send_response(int clientFd, int status_code, const std::string &status_text
     response << "Connection: close\r\n";
     response << "\r\n";
     response << body;
-	std::cout << "SALAM BEAUTIFULLLL WORLD HERE   " << std::endl;
+	// std::cout << "SALAM BEAUTIFULLLL WORLD HERE   " << std::endl;
 
     std::string resp_str = response.str();
     ssize_t sent = send(clientFd, resp_str.c_str(), resp_str.size(), 0);
@@ -542,6 +542,7 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
     }
 	if (_configs[conf_i].locations[map.begin()->first].upload_store.empty())
 	{
+		std::cout << "here internalllll\n";
 		send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
 		return ;
 	}
@@ -567,9 +568,11 @@ void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int cl
 		send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
 		return;
 	}
-	std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body << "-----------" <<"\n\n";
+	// std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body << "-----------" <<"\n\n";
 	//out << r.body;
 	std::cout << "the body is; " << r.body.c_str();
+
+	std::cout << "✅✅✅✅✅✅✅✅✅✅" << r.body << std::endl;
 	out .write(r.body.c_str(), r.body.size());
 	out.flush();
 	out.close();

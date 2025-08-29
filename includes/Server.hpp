@@ -34,6 +34,8 @@
 class request;
 struct ServerConfig;
 class EpollManager;
+class Client;
+
 class Server
 {
     private:
@@ -70,4 +72,5 @@ void send_response(int clientFd, int status_code, const std::string &status_text
 void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
 void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
 void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
+void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type);
 

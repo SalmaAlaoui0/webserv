@@ -3,6 +3,10 @@
 #include <iostream>
 #include <unistd.h>
 #include <ctime>
+#include "Request.hpp"
+
+
+// class request;
 
 class Client
 {
@@ -13,6 +17,8 @@ class Client
         public :
         bool body_complete ;
         bool header_complete ;
+        bool create_file;
+        // request r;
         std::string _requestBuffer;
         size_t contentLength;
         std::string contentType;
