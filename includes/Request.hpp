@@ -38,7 +38,8 @@ class request{
     std::string path;
     std::string body_chnked;
     std::string ContentType;
-    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r);
+    std::string ContentLength;
+    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r, int clientFd);
     int get_final_port(request &r);
     std::string version;
     std::map<std::string, std::string> map;
@@ -53,7 +54,7 @@ class request{
    std::map<std::string,std::string>& get_header();
    void set_body(std::string& b);
   std::string& get_body(void);
-  bool error_set(request &r, int clientfd);
+  bool error_set(std::map<int, Client>& clientobj, request &r, int clientfd);
  class requetetException : public std::exception 
   {
     private:

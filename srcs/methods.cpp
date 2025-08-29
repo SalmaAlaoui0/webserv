@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/25 11:38:19 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/29 12:46:35 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -342,13 +342,18 @@ void send_response(int clientFd, int status_code, const std::string &status_text
     response << "Connection: close\r\n";
     response << "\r\n";
     response << body;
+	std::cout << "SALAM BEAUTIFULLLL WORLD HERE   " << std::endl;
 
     std::string resp_str = response.str();
+	std::cout << "AND HEREEE TOOO\n";
     ssize_t sent = send(clientFd, resp_str.c_str(), resp_str.size(), 0);
+	std::cout << "AND HEREEE TOOO\n";
     if (sent < 0)
         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
     else
-        std::cout << "Response sent to FD: " << clientFd << std::endl;
+    {
+		std::cout << "Response sent to FD: " << clientFd << std::endl;
+	}
 }
 
 void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type)
