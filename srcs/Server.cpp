@@ -6,7 +6,7 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 15:22:20 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/29 16:07:11 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -214,6 +214,8 @@ void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
         // epollManager.addSocket(clientFd);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
         clients[clientFd].body_complete = 0;
+        clients[clientFd].create_file = 0;
+        clients[clientFd]._requestBuffer.clear();
         std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
     
 }
@@ -252,6 +254,7 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
 void Server::run()
 {
 	EpollManager epollManager;
+    request a;
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
         epollManager.addSocket(serverSockets[i], EPOLLIN);
@@ -277,10 +280,10 @@ void Server::run()
             else
             {
                 //handleClient(fd, epollManager, events);
-                request a;
+                // request a;
                 if (events[i].events & EPOLLIN) 
                 {
-                    std::cout << "Socket ❌❌❌❌❌ " << fd << " is ready to read\n";
+                    // std::cout << "Socket ❌❌❌❌❌ " << fd << " is ready to read\n";
                     try
                     {
                         a = a.parseRequest(this->clients, epollManager, a, fd);
@@ -299,16 +302,16 @@ void Server::run()
                         std::cout << e.what() << std::endl;
                         return ;
                     }
-                    std::cout << "fd = "<< fd << std::endl;
-                        // return;
+                    // std::cout << "fd = "<< fd << std::endl;
+                    // std::cout << "helllllo ❌❌❌❌❌❌❌❌❌❌ method is: " << a.get_method() << "that's itttttttt\n";
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
                     std::cout << "Socket ❌❌❌❌❌" << fd << " is ready to write\n";
-                     if (a.error_set(this->clients, a, fd) == 1)
-                     {
-                         sendResponse(fd, a);  
-                     }
+                        if (a.error_set(this->clients, a, fd) == 1)
+                        {
+                        sendResponse(fd, a);  
+                        }
                         // std::map<std::string, std::string> response = e.what();
                         // send_response(fd, 400, "Bad Request", load_html_file("www/403.html"));
                         // // ssize_t sent = send(fd, response.c_str(), response.size(), 0);
