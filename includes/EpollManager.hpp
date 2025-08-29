@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   EpollManager.hpp                                   :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:09:23 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/26 11:04:41 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/29 09:54:24 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -27,17 +27,13 @@ class EpollManager
 {
     private :
         int epollFd;
-        static const int MAX_EVENTS = 64;
     public :
         EpollManager();
         ~EpollManager();
 
-        void addSocket(int fd, uint32_t event);
-        void modSocket(int fd, uint32_t event);
-        void delSocket(int fd);
+        void addSocket(int fd);
         int getEpollFd() const;
-        //std::vector<int> waitEvents(Server &obj);
-         std::vector<epoll_event> waitEvents();
+        std::vector<int> waitEvents(Server &obj);
         class epollException : public std::exception 
         {
             private:

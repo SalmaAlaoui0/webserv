@@ -15,7 +15,6 @@
     //    
 
 #include "../includes/Request.hpp"
-request::~request() {}
 request& request::operator=(const request& other)
 {
      if (this != &other) {
@@ -32,9 +31,11 @@ request::request(request const &ref)
     *this = ref;
 }
 
-bool request::error_set(request &r, int clientfd)
+bool request::error_set(std::map<int, Client>& clientobj, request &r, int clientfd)
 {
     std::map<std::string , std::string>headers = r.get_header();
+    std::cout << "helllllo there method is: " << clientobj[clientfd].method << "that's itttttttt\n";
+    std::cout << "helllllo there method is: " << r.get_method() << "that's itttttttt\n";
     if(r.get_method() != "GET" && r.get_method() != "POST" && r.get_method() != "DELETE")
     {
         std::cout << "Method is: " << r.get_method() << std::endl; /// telnet 127.0.0.1 8080 there is a problem here the get method does not return the method but the path if we're using telnet as a client try it!
@@ -57,8 +58,9 @@ bool request::error_set(request &r, int clientfd)
         }
         else
         {
-            std::cout << "22222222222222222\n";
+            std::cout << "22222222222222222----\n";
             send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+            std::cout << "helllllllo the world\n";
             return 0;
         }
     }
@@ -121,128 +123,180 @@ void request::set_body(std::string& b){body = b;}
 
 std::string& request::get_body(void){return body ;}
 
-request& request::parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r)
+request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
     Server s;
     //std::vector<char> buffer;
     char buffer [1024] = {0};
-    std::map<int,Client>::iterator it = clientobj.begin();
-    ssize_t bytes_received = recv(it->first, buffer, sizeof(buffer)-1, 0);
-    buffer[bytes_received] = '\0';
-    std::cout << "==================" << buffer << "========================\n";
+    // Client &client = clientobj[clientFd];
+    // std::map<int,Client>::iterator it = clientobj.begin();
+    // std::string RecievedText;
+    // std::string RecievedHeader;
+    std::string RecievedBody;
+    std::cout << "Hello World!" << std::endl;
+    ssize_t bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
+    // buffer[bytes_received] = '\0';
+    std::cout << "==================ENTERED========================\n";
     if ( bytes_received == -1)
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
         {
-            s.closeClient(it->first, epollManager);
+            s.closeClient(clientFd, epollManager);
             throw requetetException("❌ recv failed: ");
         }
     }
-    else if ( bytes_received == 0)
-        throw requetetException("❌ Client disconnected ");
-    else if(buffer[bytes_received] == '\0' && bytes_received == 1 )
-        throw requetetException("Empty request or client closed");
-    // std::cout << "request :"<< buffer <<std::endl;
-    std::istringstream iss(buffer);
-    std::string methode , path ,version, line;
-    std::getline(iss , line ,  '\r');
-    iss.ignore();
-    std::istringstream line_stream(line);
-    line_stream >>  methode >> path >> version;
-    r.set_method(methode);
-    r.set_path(path);
-    r.set_vergion(version);
-    // std::cout << "ur method and path and version are: \n" << "method: " << r.get_method() << std::endl
-    // << "path: " << r.get_path() << std::endl << "version: " << r.get_version() << std::endl;
-    while(std::getline(iss, line, '\r') && !line.empty())
+    clientobj[clientFd]._requestBuffer.append(buffer, bytes_received);
+    std::cout << "***recieved is :" << clientobj[clientFd]._requestBuffer << "yes this is the recieved***\n";
+    if (clientobj[clientFd]._requestBuffer.find("\r\n\r\n") != std::string::npos)
     {
+        std::cout << "hello world\n";
+        size_t HeaderEnd = clientobj[clientFd]._requestBuffer.find("\r\n\r\n");
+        std::string headers = clientobj[clientFd]._requestBuffer.substr(0, HeaderEnd);
+        clientobj[clientFd]._requestBuffer = clientobj[clientFd]._requestBuffer.substr(HeaderEnd + 4);
+        // std::cout << "%%%%% text is:" << RecievedText << "%%%%%\n\n";
+        // std::cout << "%%%%%header is:" << RecievedHeader << "%%%%%\n\n";
+        std::istringstream iss(headers);
+        std::string methode , path ,version, line;
+        std::getline(iss , line ,  '\r');
         iss.ignore();
-        size_t pos = line.find(":");
-        if(pos != std::string::npos)
+        std::istringstream line_stream(line);
+        line_stream >>  methode >> path >> version;
+        clientobj[clientFd].method = methode;
+        clientobj[clientFd].path = path;
+        clientobj[clientFd].version = version;
+        while(std::getline(iss, line, '\r') && !line.empty())
         {
-        std::string key = line.substr(0,pos);
-        key = trim1(key);
-        //std::cout << key<<std::endl;
-        std::string value = line.substr(pos+1, line.size());
-        value = trim1(value);
-    // std::cout << value<<std::endl;
-        r.set_header(key,value);
+            iss.ignore();
+            size_t pos = line.find(":");
+            if(pos != std::string::npos)
+            {
+            std::string key = line.substr(0,pos);
+            key = trim1(key);
+            //std::cout << key<<std::endl;
+            std::string value = line.substr(pos+1, line.size());
+            value = trim1(value);
+        // std::cout << value<<std::endl;
+            r.set_header(key,value);
+            }
         }
-    }
-        std::cout << "we reached untill heereeeeee\n";
-    std::map<std::string, std::string>::iterator iterator;
-    iterator = r.get_header().begin();
-    while (iterator != r.get_header().end())
-    {
-        if (iterator->first == "Content-Type")
+        // std::cout << "we reached untill heereeeeee\n";
+        std::map<std::string, std::string>::iterator iterator;
+        iterator = r.get_header().begin();
+        while (iterator != r.get_header().end())
         {
-            r.ContentType = iterator->second;
-            std::cout << iterator->first << "-------------------------first and second-> "<< iterator->second << std::endl;
+            if (iterator->first == "Content-Length")
+            {
+                r.ContentLength = iterator->second;
+                clientobj[clientFd].contentLength = static_cast<size_t>(std::stoi(r.ContentLength));
+                std::cout << iterator->first << "-------------------------first and second-> "<< iterator->second << std::endl;
+            }
+            if (iterator->first == "Content-Type")
+            {
+                r.ContentType = iterator->second;
+                clientobj[clientFd].contentType = ContentType;
+                std::cout << iterator->first << "-------------------------first and second-> "<< iterator->second << std::endl;
+            }
+            iterator++;
         }
-        iterator++;
+        clientobj[clientFd].header_complete = 1;
     }
-    std::cout << "==========>" << buffer << "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<,,\n";
-    std::string raw_request(buffer);//, bytes_received);
-    size_t pos = raw_request.find("\r\n\r\n");
-    // std::cout << "BUFFER IIIIIIIIS: " << buffer << ":::::::::" << std::endl;
-    std::cout << "size of body is: " << r.get_body().size() << std::endl;
-    if (pos != std::string::npos)
+    // else if ( bytes_received == 0)
+    //     throw requetetException("❌ Client disconnected ");
+    // else if(buffer[bytes_received] == '\0' && bytes_received == 1 )
+    //     throw requetetException("Empty request or client closed");
+    std::cout << "\n\n\n-------------" << "---------------\n\n\n";
+    if (clientobj[clientFd].header_complete)
     {
-        pos += 4;
-        std::string initial_body = raw_request.substr(pos);
-        r.get_body().append(initial_body);
-        std::cout << "appended is: ^^^^^^^" << r.get_body() << "^^^^^^^^^\n";
+        std::cout << "HHHHHHHHH- SO HEADER IS COMPLETE AND YAP THAT'S IT-HHHHHHHHH\n\n";
+        std::cout << "salaaaaaaaaam the request content lenght is: " << clientobj[clientFd].contentLength << " so and the client content lenght is: " << clientobj[clientFd]._requestBuffer.size() << "and here they are both\n\n";
+        if (clientobj[clientFd].contentLength > clientobj[clientFd]._requestBuffer.size() && clientobj[clientFd].body_complete == 0)
+        {
+            std::cout << "\n\n\n11111111111111111" << "---------------\n\n\n";
+            std::cout << "!!!!!!Body is:" << clientobj[clientFd]._requestBuffer << "!!!!!!\n\n";
+            // r.body.append(RecievedText, sizeof(RecievedText));
+            std::cout << "\nOkey just to make it clear--content-length is: " << std::stoi(r.ContentLength) << 
+            "-- and length of body recieved is--" << clientobj[clientFd]._requestBuffer.size() << "--\n\n";
+            if (clientobj[clientFd].contentLength == clientobj[clientFd]._requestBuffer.size())
+            {
+                clientobj[clientFd].body_complete = 1;
+                std::cout << "THe hoooole body has been recieved wanna see: =>";
+                std::cout << "\n\n^^^" << clientobj[clientFd]._requestBuffer << "^^^\n\n";
+            }
+        }
+        else if (clientobj[clientFd].contentLength == clientobj[clientFd]._requestBuffer.size())
+        {
+            std::cout << "\n\n\n2222222222222222222" << "---------------\n\n\n";
+            clientobj[clientFd].body_complete = 1;
+            std::cout << "THe hoooole body has been recieved wanna see: =>";
+            std::cout << "\n\n^^^" << clientobj[clientFd]._requestBuffer << "^^^\n\n";
+            r.set_method(clientobj[clientFd].method);
+            r.set_path(clientobj[clientFd].path);
+            r.set_vergion(clientobj[clientFd].version);
+        }
+        std::cout << "\n\n\n-------------llll" << "---------------\n\n\n";
     }
+    std::cout << "\n\n\nHEREEEEEEEEEEEEEEEEEEEEEEEE"  << "---------------\n\n\n";
+    // std::string raw_request(buffer);//, bytes_received);
+    // size_t pos = raw_request.find("\r\n\r\n");
+    // // std::cout << "BUFFER IIIIIIIIS: " << buffer << ":::::::::" << std::endl;
+    // std::cout << "size of body is: " << r.get_body().size() << std::endl;
+    // if (pos != std::string::npos)
+    // {
+    //     pos += 4;
+    //     std::string initial_body = raw_request.substr(pos);
+    //     r.get_body().append(initial_body);
+    //     std::cout << "appended is: ^^^^^^^" << r.get_body() << "^^^^^^^^^\n";
+    // }
   
-    if (r.get_header()["Transfer-Encoding"] == "chunked")
-    {
-        std::cout << "chunkedddddddd\n";
-        std::string body = r.get_body();
-        char *buffer1;
-        int b = 0;
-        size_t pos2 = 0;
-        size_t pos1 = body.find("\r\n",pos2);
+//     if (r.get_header()["Transfer-Encoding"] == "chunked")
+//     {
+//         std::cout << "chunkedddddddd\n";
+//         std::string body = r.get_body();
+//         char *buffer1;
+//         int b = 0;
+//         size_t pos2 = 0;
+//         size_t pos1 = body.find("\r\n",pos2);
 
-        while( pos1 != std::string::npos)
-        {
-        std::string a = body.substr(pos2,pos1);
-        b = std::strtol(a.c_str(),NULL,16);
-        if(b <= 0)
-        {
-            it->second.body_complete = true;
-            break;
-        }
-        buffer1 = new char[1024];
-      //std::cout << "a ==>" << a<< std::endl;
-      //std::cout << "b ==>" << b<< std::endl;
-     int i =0;
-      pos1 += 2;
-      std::string c = body.substr(pos1,b);
+//         while( pos1 != std::string::npos)
+//         {
+//         std::string a = body.substr(pos2,pos1);
+//         b = std::strtol(a.c_str(),NULL,16);
+//         if(b <= 0)
+//         {
+//             it->second.body_complete = true;
+//             break;
+//         }
+//         buffer1 = new char[1024];
+//       //std::cout << "a ==>" << a<< std::endl;
+//       //std::cout << "b ==>" << b<< std::endl;
+//      int i =0;
+//       pos1 += 2;
+//       std::string c = body.substr(pos1,b);
 
-    pos2 = b +pos1 + 2;
+//     pos2 = b +pos1 + 2;
      
-      while(i < b)
-      {
-          buffer1[i] = c[i];
-          i++;
-        }
-       buffer1[b]= '\0';
-        Client client = it->second;
-        it->second._requestBuffer += buffer1;
-        delete[] buffer1;
-        pos1 = body.find("\r\n",pos2);
-      //  std::cout <<"pos 1--->"<< pos1<< "pos 2--->"<< pos2 << std::endl; 
-        std::cout <<   it->second._requestBuffer << std::endl;
-    }
-    std::cout << "b = "<< b<< std::endl;
-    if (it->second.body_complete == true) {
-        //std::cout << " ana hna salitttt\n";
-}
-else {
+//       while(i < b)
+//       {
+//           buffer1[i] = c[i];
+//           i++;
+//         }
+//        buffer1[b]= '\0';
+//         Client client = it->second;
+//         it->second._requestBuffer += buffer1;
+//         delete[] buffer1;
+//         pos1 = body.find("\r\n",pos2);
+//       //  std::cout <<"pos 1--->"<< pos1<< "pos 2--->"<< pos2 << std::endl; 
+//         std::cout <<   it->second._requestBuffer << std::endl;
+//     }
+//     std::cout << "b = "<< b<< std::endl;
+//     if (it->second.body_complete == true) {
+//         //std::cout << " ana hna salitttt\n";
+// }
+// else {
    
 
-}
-}
+// }
+// }
 
 
     // while (r.get_body().size() < content_length)
