@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/26 11:10:40 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/29 13:25:03 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -53,7 +53,7 @@ class Server
         std::string readRequest(int clientFd, EpollManager &epollManager);
         void sendResponse(int clientFd, request &r);
         
-        void closeConnection(int fd, EpollManager &epollManager);
+        void closeClient(int fd, EpollManager &epollManager);
         class socketException : public std::exception 
         {
             private:
@@ -63,7 +63,7 @@ class Server
             virtual ~socketException() throw();    
             virtual const char* what() const throw();
         };
-    };
+};
 void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body);    
 void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
 void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);

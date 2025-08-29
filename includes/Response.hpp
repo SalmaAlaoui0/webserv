@@ -16,8 +16,6 @@ class reponse{
     public : 
     int reponse_status;
     std::string response_body;
-    reponse();
-    ~reponse();
 
 };
 

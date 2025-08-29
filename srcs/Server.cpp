@@ -3,10 +3,10 @@
 /*                                                        :::      ::::::::   */
 /*   Server.cpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
+/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/26 11:16:38 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/29 13:25:17 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -123,7 +123,7 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
     request a;
     try
     {
-        a = a.parseRequest(this->clients, epollManager, a);
+        a = a.parseRequest(this->clients, epollManager, a, clientFd);
     }
     catch(std::exception &e)
     {
@@ -131,9 +131,10 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
         return ;
     }
     std::cout << "fd = "<< clientFd << std::endl;
-    if (a.error_set(a, clientFd) == 1)
+    if (a.error_set(this->clients, a, clientFd) == 1)
     {
-        sendResponse(clientFd, a);
+        if (clients[clientFd].body_complete == 1)
+            sendResponse(clientFd, a);
     }
     // std::map<std::string, std::string> response = e.what();
     // send_response(clientFd, 400, "Bad Request", load_html_file("www/403.html"));
@@ -143,9 +144,15 @@ void Server::handleClient(int clientFd, EpollManager &epollManager)
     // // else
     // //     std::cout << "Response sent to FD: " << clientFd << std::endl;
     // return ;
+    std::cout << "\n\n\nHEREEEEEEEEEEEEEEEEEEEEEEEE"  << "---------------\n\n\n";
 	std::map<int, Client>::iterator it = clients.find(clientFd);
 	if (it != clients.end())
 		it->second.updateActivity();
+    // if (clients[clientFd].body_complete == 1)
+    // {
+    //     close(clientFd);
+    //     std::cout << "client has been closed after sending response :))\n";
+    // }
 }
 
 void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
@@ -166,8 +173,10 @@ void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
                 return;
             throw socketException("❌ accept failed");
         }
+        std::cout << "error not here\n";
         epollManager.addSocket(clientFd);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
+        clients[clientFd].body_complete = 0;
         std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
     
 }
@@ -208,31 +217,32 @@ void Server::run()
 	EpollManager epollManager;
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
-        epollManager.addSocket(serverSockets[i], EPOLLIN);
+        epollManager.addSocket(serverSockets[i]);
         std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
     }
 	while (true) 
 	{
-		std::vector<epoll_event> events = epollManager.waitEvents();
-        for(size_t i = 0; i < events.size())
+        // std::cout << "\n****LOOPING IN WHILE(TRUE)  FUNCTION ^_^****\n";
+		std::vector<int> fds = epollManager.waitEvents(*this);
 		checkTimeout(clients, epollManager);
+        // std::cout << "size of fddddds isss---" << fds.size() << "---sizing\n";
 		for (size_t i = 0; i < fds.size(); ++i) 
 		{
+            // std::cout << "\n\n\n@@@@@@@@@@@@@@@@@@@@@" << i << "@@@@@@@@@@@@@@@@@@@@@\n\n\n\n";
 			if (isServerSocket(fds[i]))
                 acceptNewClient(fds[i], epollManager);
 			else
             {
+                // std::cout << "Entering the handle client function\n";
 				handleClient(fds[i], epollManager);
-                close(fds[i]);
-                std::cout << "client has been closed after sending response :))\n";
             }
         }
     }
 }
 
-void Server::closeConnection(int fd, EpollManager &epollManager)
+void Server::closeClient(int fd, EpollManager &epollManager)
 {
-    epollManager.delSocket(fd);
+    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
     close(fd);
     clients.erase(fd);
     std::cout << "🚪 Closed client fd: " << fd << std::endl;
