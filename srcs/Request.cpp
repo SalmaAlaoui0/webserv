@@ -141,7 +141,8 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
         {
-            s.closeClient(clientFd, epollManager);
+            // s.closeConnection(it->first, epollManager);
+            s.closeConnection(clientFd, epollManager);
             throw requetetException("❌ recv failed: ");
         }
     }
@@ -214,7 +215,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             std::cout << "\n\n\n11111111111111111" << "---------------\n\n\n";
             std::cout << "!!!!!!Body is:" << clientobj[clientFd]._requestBuffer << "!!!!!!\n\n";
             // r.body.append(RecievedText, sizeof(RecievedText));
-            std::cout << "\nOkey just to make it clear--content-length is: " << std::stoi(r.ContentLength) << 
+            std::cout << "\nOkey just to make it clear--content-length is: " << clientobj[clientFd].contentLength << 
             "-- and length of body recieved is--" << clientobj[clientFd]._requestBuffer.size() << "--\n\n";
             if (clientobj[clientFd].contentLength == clientobj[clientFd]._requestBuffer.size())
             {

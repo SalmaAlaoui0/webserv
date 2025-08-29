@@ -6,9 +6,11 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 13:25:03 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/29 14:40:04 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
+
 
 #pragma once
 
@@ -48,12 +50,12 @@ class Server
         void run();
         bool isServerSocket(int fd) const;
         void acceptNewClient(int listenFd, EpollManager &epollManager);
-        void handleClient(int clientFd, EpollManager &epollManager);
+        void handleClient(int clientFd, EpollManager &epollManager, std::vector<epoll_event> &events);
         void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
         std::string readRequest(int clientFd, EpollManager &epollManager);
         void sendResponse(int clientFd, request &r);
         
-        void closeClient(int fd, EpollManager &epollManager);
+        void closeConnection(int fd, EpollManager &epollManager);
         class socketException : public std::exception 
         {
             private:
