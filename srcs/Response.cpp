@@ -1,8 +1,6 @@
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
 
-reponse::reponse() {}
-reponse::~reponse() {}
 std::string send_video(int clientFd, std::string filePath, std::string resCode)
 {
 

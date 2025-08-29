@@ -6,9 +6,10 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/08 15:25:50 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 14:00:24 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/29 14:34:29 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 
 
 #include "../includes/Server.hpp"
@@ -123,7 +124,7 @@ void Server::sendResponse( int clientFd, request &r)
 //     request a;
 //     try
 //     {
-//         a = a.parseRequest(this->clients, epollManager, a);
+//         a = a.parseRequest(this->clients, epollManager, a, clientFd);
 //     }
 //     catch(std::exception &e)
 //     {
@@ -131,9 +132,10 @@ void Server::sendResponse( int clientFd, request &r)
 //         return ;
 //     }
 //     std::cout << "fd = "<< clientFd << std::endl;
-//     if (a.error_set(a, clientFd) == 1)
+//     if (a.error_set(this->clients, a, clientFd) == 1)
 //     {
-//         sendResponse(clientFd, a);
+//         if (clients[clientFd].body_complete == 1)
+//             sendResponse(clientFd, a);
 //     }
 //     // std::map<std::string, std::string> response = e.what();
 //     // send_response(clientFd, 400, "Bad Request", load_html_file("www/403.html"));
@@ -143,10 +145,17 @@ void Server::sendResponse( int clientFd, request &r)
 //     // // else
 //     // //     std::cout << "Response sent to FD: " << clientFd << std::endl;
 //     // return ;
+//     std::cout << "\n\n\nHEREEEEEEEEEEEEEEEEEEEEEEEE"  << "---------------\n\n\n";
 // 	std::map<int, Client>::iterator it = clients.find(clientFd);
 // 	if (it != clients.end())
 // 		it->second.updateActivity();
+//     // if (clients[clientFd].body_complete == 1)
+//     // {
+//     //     close(clientFd);
+//     //     std::cout << "client has been closed after sending response :))\n";
+//     // }
 // }
+// >>>>>>> 71c16ac229040537c0606ef107d6f7e8cf5d73b8
 
 void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
 {
@@ -167,7 +176,10 @@ void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
             throw socketException("❌ accept failed");
         }
         epollManager.addSocket(clientFd, EPOLLIN);
+        std::cout << "error not here\n";
+        // epollManager.addSocket(clientFd);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
+        clients[clientFd].body_complete = 0;
         std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
     
 }
@@ -208,7 +220,7 @@ void Server::run()
 	EpollManager epollManager;
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
-        epollManager.addSocket(serverSockets[i], EPOLLIN);
+        epollManager.addSocket(serverSockets[i]);
         std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
     }
 	while (true) 
@@ -271,7 +283,6 @@ void Server::run()
                 }
                 else
                     std::cout<<"maart ach kandir hna\n\n";
-            }
         }
     }
 }
