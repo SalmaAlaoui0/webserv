@@ -6,9 +6,10 @@
 /*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/13 17:09:23 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 09:54:24 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/29 14:38:33 by salaoui          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
+
 
 #pragma once
 
@@ -27,13 +28,17 @@ class EpollManager
 {
     private :
         int epollFd;
+        static const int MAX_EVENTS = 64;
     public :
         EpollManager();
         ~EpollManager();
 
-        void addSocket(int fd);
+        void addSocket(int fd, uint32_t event);
+        void modSocket(int fd, uint32_t event);
+        void delSocket(int fd);
         int getEpollFd() const;
-        std::vector<int> waitEvents(Server &obj);
+        //std::vector<int> waitEvents(Server &obj);
+         std::vector<epoll_event> waitEvents();
         class epollException : public std::exception 
         {
             private:
