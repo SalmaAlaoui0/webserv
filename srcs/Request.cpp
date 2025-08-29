@@ -35,6 +35,7 @@ bool request::error_set(std::map<int, Client>& clientobj, request &r, int client
 {
     std::map<std::string , std::string>headers = r.get_header();
     std::cout << "helllllo there method is: " << clientobj[clientfd].method << "that's itttttttt\n";
+    std::cout << "helllllo there method is: " << r.get_method() << "that's itttttttt\n";
     if(r.get_method() != "GET" && r.get_method() != "POST" && r.get_method() != "DELETE")
     {
         std::cout << "Method is: " << r.get_method() << std::endl; /// telnet 127.0.0.1 8080 there is a problem here the get method does not return the method but the path if we're using telnet as a client try it!
