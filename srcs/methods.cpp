@@ -298,11 +298,11 @@ std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector
 void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
 {
 	std::map<int, std::string> map;
-	std::map<std::string, std::string> my_map = r.get_header();
-	for (auto i : my_map)
-	{
-		std::cout << " the header is: " << i.first << ": " << i.second << std::endl;
-	}
+	// std::map<std::string, std::string> my_map = r.get_header();
+	// for (auto i : my_map)
+	// {
+	// 	std::cout << " the header is: " << i.first << ": " << i.second << std::endl;
+	// }
 	std::cout << "hello I am trying to know some data here:\n";
 	std::cout << " the body is: " << r.get_body() << std::endl;
 	std::cout << " and it's len is going to be: " << r.get_body().size() << std::endl;
