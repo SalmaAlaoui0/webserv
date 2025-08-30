@@ -5,7 +5,7 @@ std::string send_video(int clientFd, std::string filePath, std::string resCode)
 {
 
     // std::ifstream file(filePath, std::ios::binary);
-    std::ifstream file(filePath);
+    std::ifstream file(filePath.c_str());
     if (!file) {
         std::cerr << "❌ Failed to open file\n";
         return "Failed";

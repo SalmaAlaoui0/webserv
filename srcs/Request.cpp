@@ -192,7 +192,8 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             if (iterator->first == "Content-Length")
             {
                 r.ContentLength = iterator->second;
-                clientobj[clientFd].contentLength = static_cast<size_t>(std::stoi(r.ContentLength));
+                std::stringstream ss(r.ContentLength);
+                ss >> clientobj[clientFd].contentLength;
                 std::cout << iterator->first << "-------------------------first and second-> "<< iterator->second << std::endl;
             }
             if (iterator->first == "Content-Type")

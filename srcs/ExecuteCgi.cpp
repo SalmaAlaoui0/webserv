@@ -66,74 +66,80 @@ std::string execute_cgi(std::string &path, request r, std::string interpreter)
 
 std::string SendCGIResponse(int clientFd, const std::string &cgi_output, const std::string &default_status = "200 OK")
 {
+    (void)clientFd;
+    (void)cgi_output;
+    (void)default_status;
+
+
+
     // 1) split headers / body (support \r\n\r\n and \n\n)
-    size_t header_end = cgi_output.find("\r\n\r\n");
-    size_t header_len = 4;
-    if (header_end == std::string::npos) {
-        header_end = cgi_output.find("\n\n");
-        header_len = 2;
-    }
+    // size_t header_end = cgi_output.find("\r\n\r\n");
+    // size_t header_len = 4;
+    // if (header_end == std::string::npos) {
+    //     header_end = cgi_output.find("\n\n");
+    //     header_len = 2;
+    // }
 
-    std::string header_block;
-    std::string body;
-    if (header_end == std::string::npos) {
-        std::cout << std::endl << "just telling there is no hearder\n\n\n\n\n";
-        header_block = "";
-        body = cgi_output; // no headers from CGI, treat all as body
-    } else {
-        std::cout << std::endl << "Noooo there is hearder\n\n\n\n\n";
-        header_block = cgi_output.substr(0, header_end);
-        std::cout << "and it's >> " << header_block << std::endl;
-        body = cgi_output.substr(header_end + header_len);
-    }
+    // std::string header_block;
+    // std::string body;
+    // if (header_end == std::string::npos) {
+    //     std::cout << std::endl << "just telling there is no hearder\n\n\n\n\n";
+    //     header_block = "";
+    //     body = cgi_output; // no headers from CGI, treat all as body
+    // } else {
+    //     std::cout << std::endl << "Noooo there is hearder\n\n\n\n\n";
+    //     header_block = cgi_output.substr(0, header_end);
+    //     std::cout << "and it's >> " << header_block << std::endl;
+    //     body = cgi_output.substr(header_end + header_len);
+    // }
 
-    // 2) parse header lines into map
-    std::map<std::string, std::string> headers;
-    std::istringstream hs(header_block);
-    std::string line;
-    std::string status = default_status;
+    // // 2) parse header lines into map
+    // std::map<std::string, std::string> headers;
+    // std::istringstream hs(header_block);
+    // std::string line;
+    // std::string status = default_status;
 
-    while (std::getline(hs, line)) {
-        if (!line.empty() && line.back() == '\r')
-            line.pop_back();
-        if (line.empty()) continue;
-        size_t colon = line.find(':');
-        if (colon == std::string::npos) continue; // skip malformed line
-        std::string name = trim(line.substr(0, colon));
-        std::string value = trim(line.substr(colon + 1));
-        // "Status: 404 Not Found" is a special CGI header
-        if (strcasecmp(name.c_str(), "Status") == 0) {
-            status = value;
-        } else {
-            headers[name] = value;
-        }
-    }
+    // while (std::getline(hs, line)) {
+    //     if (!line.empty() && line.back() == '\r')
+    //         line.pop_back();
+    //     if (line.empty()) continue;
+    //     size_t colon = line.find(':');
+    //     if (colon == std::string::npos) continue; // skip malformed line
+    //     std::string name = trim(line.substr(0, colon));
+    //     std::string value = trim(line.substr(colon + 1));
+    //     // "Status: 404 Not Found" is a special CGI header
+    //     if (strcasecmp(name.c_str(), "Status") == 0) {
+    //         status = value;
+    //     } else {
+    //         headers[name] = value;
+    //     }
+    // }
 
-    // 3) ensure basic headers
-    if (headers.find("Content-Type") == headers.end())
-        headers["Content-Type"] = "text/html";
+    // // 3) ensure basic headers
+    // if (headers.find("Content-Type") == headers.end())
+    //     headers["Content-Type"] = "text/html";
 
-    headers["Content-Length"] = to_string(body.size());
+    // headers["Content-Length"] = to_string(body.size());
 
-    // 4) build HTTP response
-    std::ostringstream response;
-    response << "HTTP/1.1 " << status << "\r\n";
-    for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it)
-        response << it->first << ": " << it->second << "\r\n";
-    response << "\r\n";
+    // // 4) build HTTP response
+    // std::ostringstream response;
+    // response << "HTTP/1.1 " << status << "\r\n";
+    // for (std::map<std::string, std::string>::iterator it = headers.begin(); it != headers.end(); ++it)
+    //     response << it->first << ": " << it->second << "\r\n";
+    // response << "\r\n";
 
-    std::string header_str = response.str();
-    // send header + body
-    ssize_t to_send = (ssize_t)header_str.size() + (ssize_t)body.size();
-	(void)to_send;
-    std::string out = header_str + body;
+    // std::string header_str = response.str();
+    // // send header + body
+    // ssize_t to_send = (ssize_t)header_str.size() + (ssize_t)body.size();
+	// (void)to_send;
+    // std::string out = header_str + body;
 
-    ssize_t sent = send(clientFd, out.c_str(), out.size(), 0);
-    if (sent < 0) {
-        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-        return "SomeThing went wrong";
-    }
-    std::cout << "✅ CGI response sent to FD: " << clientFd << std::endl;
+    // ssize_t sent = send(clientFd, out.c_str(), out.size(), 0);
+    // if (sent < 0) {
+    //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+    //     return "SomeThing went wrong";
+    // }
+    // std::cout << "✅ CGI response sent to FD: " << clientFd << std::endl;
     return "Done ✅";
 }
 
