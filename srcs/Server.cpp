@@ -84,7 +84,6 @@ int Server::creatServerSocket(const std::string &ip, int port)
 
 void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &clientobj)
 {
-
 	size_t conf_i = _configs.size();
     for (size_t i = 0; i < _configs.size(); ++i) 
     {
@@ -97,23 +96,26 @@ void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &cli
     std::cout<<"404 path------> " <<_configs[conf_i].ErrorPages[404] <<std::endl;
     if (conf_i == _configs.size()) 
     {
+        std::cout << " yes1111\n";
         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error (no matching server)",_configs[conf_i].ErrorPages[500], clientFd, clients);
         //send_response(clientFd, 500, "Internal Server Error (no matching server)", load_html_file("www/500.html"));
         return;
     }
     if (r.get_path() == "/favicon.ico")
     {
+        std::cout << " yes222\n";
+
         clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",_configs[conf_i].ErrorPages[404], clientFd, clients);
         // std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
         // if (send(clientFd, notFound.c_str(), notFound.size(), 0) < 0)
         //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl; 
         return;
     }
-	if (r.get_method() == "GET")
+	if (clientobj[clientFd].method == "GET")
 		handle_get_methode(r, this->_configs, clientFd, conf_i, clientobj);
-    else if(r.get_method()== "POST")
+    else if(clientobj[clientFd].method== "POST")
         handle_post_methode(r, this->_configs, clientFd, conf_i, clientobj);
-    else if (r.get_method() == "DELETE")
+    else if (clientobj[clientFd].method == "DELETE")
 		handle_delete_methode(r, this->_configs, clientFd, conf_i, clientobj);
     else
     {
@@ -291,6 +293,7 @@ void Server::run()
                        a = a.parseRequest(this->clients, epollManager, a, fd);
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
+                            std::cout << "hiii1 \n";
                             events[i].events = EPOLLOUT;
                             events[i].data.fd = fd;
                             if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
@@ -307,7 +310,10 @@ void Server::run()
                             }
                         }
                         if (!a.error_set(clients, a, fd, s.getConfig()[conf_i]))
+                        {
+                            std::cout << "hiii2 \n";
                             throw socketException("❌ error detected ");
+                        }
                         else
                             handleRequest(fd, a, clients);
                         std::cout<< "body "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code:  "<< clients[fd].response.statusCode << " msg :" << clients[fd].response.statusMsg << "\n\n";
@@ -325,8 +331,9 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
+                            std::cout << "hiii3 \n";
                        // std::cout << "Socket ❌❌❌❌❌" << fd << " is ready to write\n";
-                        std::cout<< "bodyyyyy: "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code: "<< clients[fd].response.statusCode << "msg : " << clients[fd].response.statusMsg << "\n\n";
+                       // std::cout<< "bodyyyyy: "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code: "<< clients[fd].response.statusCode << "msg : " << clients[fd].response.statusMsg << "\n\n";
                         clients[fd].response.RequestResponse(fd, clients[fd].response);
                         close(fd);
                         std::cout << "client has been closed after sending response :))\n";

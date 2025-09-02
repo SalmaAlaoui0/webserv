@@ -458,6 +458,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 
 void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj)
 {
+
 	std::map<int, std::string> map;
         std::cout<<"________________________"<<r.ContentType<<"\n\n";
 	
@@ -483,7 +484,6 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	
 	if ((long)r.body.size() > _configs[conf_i].client_max_body_size)
 	{
-		std::cout << "here internalllll\n";
 		//send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
 		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 413, "Payload Too Large",_configs[conf_i].ErrorPages[413], clientFd, clientobj);
 		return ;
@@ -510,6 +510,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	// out.flush();
 	// out.close();
 	//send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
+std::cout << "hiiiiiiii4" << _configs[conf_i].ErrorPages[201] <<std::endl;
 	clients[clientFd].response= clients[clientFd].response.buildResponse(r, 201, "Created",_configs[conf_i].ErrorPages[201], clientFd, clientobj);
      std::cout<< "❌❌❌❌❌❌❌❌❌❌body "<<clients[clientFd].response.body   << " content type :    "  << clients[clientFd].response.contentType << "  code:  "<< clients[clientFd].response.statusCode << " msg :" << clients[clientFd].response.statusMsg << "\n\n";
 	// else
