@@ -6,11 +6,9 @@
 /*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/28 15:57:20 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 21:32:52 by wzahir           ###   ########.fr       */
+/*   Updated: 2025/08/31 21:26:43 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
-
 
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
@@ -34,16 +32,6 @@ std::vector<std::string> pathchunks(std::string path)
 	}
 	return chunks;
 }
-
-// std::cout << "----" << locPath << "----" << std::endl;
-// exit (00);
-
-// std::cout << "req is: -" << requestedPath << "--" << std::endl;
-// std::cout << "loc is: -" << locPath << "--" << std::endl;
-
-
-// std::cout << "The request path is: " << requestedPath << "\nAnd the corr.loc path is: " << locPath << std::endl;
-// std::cout << "--- and plus the rootifound is: " << matchedRoot << std::endl;
 
 
 std::string getFileExtension(std::string& path) 
@@ -97,24 +85,20 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 	size_t i = 0;
 	std::string extension;
 	size_t coorLoc = 0;
-	//std::cout << "************" << requestedPath << std::endl;
 
 	std::map<int, std::string> result;
 
 	if (!getFileExtension(requestedPath).empty())
 	{
 		extension = getFileExtension(requestedPath);
-		// std::cout << "The request extension is: *_*" << extension << "*_*" << std::endl;
 		while (i < config.locations.size())
 		{
 			locPath = config.locations[i].path;
 			Pchunks = pathchunks(locPath);
 			if (Pchunks.size() == 2 && Pchunks[0] == "~")
 			{
-				// std::cout << "your server location file extensions are: -" << Pchunks[1].substr(2) << "--" << std::endl;
 				if (Pchunks[1].substr(2) == extension)
 				{
-					// std::cout << "\n -->" << requestedPath << std::endl << std::endl;
 					matchedRoot = config.locations[i].root + requestedPath;
 					result[i] = matchedRoot;
 					return result;
@@ -122,11 +106,6 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 			}
 			i++;
 		}
-		// now search for the ~ in locations 
-		// and extract the extension 
-		// then see if there is some one that matches 
-		// if found make str matchedRoot
-		// That's itttt Let's Gooooo.
 	}
 	i = 0;
 	while (i < config.locations.size())
@@ -134,14 +113,9 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 		locPath = config.locations[i].path;
 		Pchunks = pathchunks(locPath);
 		if (Pchunks.size() == 1)
-		{
 			locPath = Pchunks[0];
-		//	std::cout << "And the locpath is: " << locPath << "----- and it's len is: " << locPath.length() << std::endl;
-		}
 		else
-		{
 			locPath = Pchunks[1];
-		}
 		if (locPath[1] == '\0' && requestedPath.empty())
 		{
 			result[i] = config.locations[i].root;
@@ -153,22 +127,18 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 			{
 				matchedRoot = join_path(config.locations[i].root, requestedPath.substr(locPath.length()));
 				result[i] = matchedRoot;
-				// std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
 				return result;
 			}
 		}
 		else if (requestedPath.find(locPath) == 0 && locPath.length() > maxMatchLength)
 		{
-			//std::cout << "CODE GOT TILL HERE hh but dono what to do\n" << std::endl;
 			maxMatchLength = locPath.length();
 			matchedRoot = join_path(config.locations[i].root, requestedPath.substr(locPath.length()));
 			coorLoc = i;
-			// std::cout << "root is: -" << config.locations[i].root << "- and req root is: -" << requestedPath.substr(locPath.length()) << "--\n";
 		}
 		i++;
 	}
-	// matchedRoot += "/"; ///////////to handle this because without it get methode works with it delete works
-	// std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
+	std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
 	result[coorLoc] = matchedRoot;
 	return result;
 }
@@ -223,7 +193,6 @@ std::string send_dir_list(int clientFd, std::string requested_path)
 		body << "</ul></body></html>";
 	}
 	// body << "<html><body><h1>Hello Atoindex Is On !</h1></body></html>";
-
 	std::ostringstream response;
 	response << "HTTP/1.1 200 OK\r\n";
 	response << "Content-Length:" << body.str().size() << "\r\n";
@@ -231,7 +200,6 @@ std::string send_dir_list(int clientFd, std::string requested_path)
 	response << "Connection: close\r\n";
 	response << "\r\n";
 	response << body.str();
-
 	ssize_t sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
 	if (sent < 0)
 		std::cerr << "Something went wrong send < 0" << std::endl;
@@ -244,141 +212,105 @@ std::string send_dir_list(int clientFd, std::string requested_path)
 }
 
 
-std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, std::map<int, Client> &clientobj)
+std::string Server:: CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> clientobj)
 {
 	struct stat statbuf;
-	// std::cout << "\n\n Your fileis :" << requested_path << "\n\n";
     if (stat(requested_path.c_str(), &statbuf) == 0)
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
 		{
-			// std::cout << "successfuly found the path \n\n";
-			return RequestResponse(clientobj, clientFd, requested_path, "200 OK");
+			std::cout << "$$$$$$$$$$$$$$the path is: " << requested_path << std::endl;
+			 clients[clientFd].response  = clients[clientFd].response.buildResponse(r, 200, "OK", requested_path, clientFd, clientobj);
         }
 		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
 		{
 			std::string index_file;
 			index_file = join_path(requested_path, config[i].locations[key].index);
 
-			// std::cout << "the index is: " << index_file << "\n\n";
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
-			{
-				// std::cout << "successfuly found the path \n\n";
-                return RequestResponse(clientobj, clientFd, index_file, "200 OK");
-            // if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) {
-			// 	// std::cout << "the index is: " << index_file << "\n\n";
-            }
+			 	clients[clientFd].response= clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
 			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
 			{
-				// return serve_autoindex_listing(clientFd, requested_path, uri);
-				// return RequestResponse(clientobj, clientFd, "/home/salaoui/Desktop/webserv/www/autoindex.html");
-				// std::cout << "handling autoindex en cours...\n";
 				return send_dir_list(clientFd, requested_path);// using requested path only !
+				// change return value to void and make buildresponse instead of send
             }
 			else
-			{
-				std::cout << "Forbidden (index off and no index file) the error is: " << 403 << std::endl;
-				return RequestResponse(clientobj, clientFd, config[i].ErrorPages[403], "403 Forbidden");
-            }
+				clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden",config[i].ErrorPages[403], clientFd, clientobj);
         }
 		else // If we did attach the file but still it's not found
-		{
-			return RequestResponse(clientobj, clientFd, config[i].ErrorPages[403], "403 Forbidden");
-			std::cout << "Not a regular file or dir the error is: " << 403 << std::endl;
-        }
+			clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden",config[i].ErrorPages[403], clientFd, clientobj);
     }
 	else
-	{
-		// return RequestResponse(clientobj, clientFd, "/home/salaoui/Desktop/webserv/www/404.html");
-		std::cout << "Not found the error is: " << 404 << std::endl;
-		return RequestResponse(clientobj, clientFd, config[i].ErrorPages[404], "404 Not Found");
-        // return send_error(404); // ❌ Not found
-    }
+		clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",config[i].ErrorPages[404], clientFd, clientobj);
 	return NULL;
 }
 
-void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj)
+void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj)
 {
 	std::map<int, std::string> map;
-	// std::map<std::string, std::string> my_map = r.get_header();
-	// for (auto i : my_map)
-	// {
-	// 	std::cout << " the header is: " << i.first << ": " << i.second << std::endl;
-	// }
-	// std::cout << "hello I am trying to know some data here:\n";
-	// std::cout << " the body is: " << r.get_body() << std::endl;
-	// std::cout << " and it's len is going to be: " << r.get_body().size() << std::endl;
     map = getMatchingRootPath(r, _configs[conf_i]);
     int key = map.begin()->first;
     std::string value = map.begin()->second;
-    // std::cout << "the path in appropriate location in app. server->" << _configs[conf_i].locations[key].path << std::endl;
-    // if (isKey(_configs[i].locations[key].path, "/cgi-bin") && CheckMethodeIsAllowed("GET", _configs, i, key))
-    // {
-    // 	std::cout << "salam it's a cgi hereee\n";
-    // 	std::string ret = CheckDirOrFileCGI(value, clientFd, _configs, i, key, r);
-    // 	std::cout << ret << std::endl;
-    // 	return ;
-    // }
     if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
     {
-        std::cout << "This means method not allowed \n\n" << std::endl;
-        RequestResponse(clientobj, clientFd, _configs[conf_i].ErrorPages[405], "405 Method Not Allowed");
+        //RequestResponse(clientFd, _configs[conf_i].ErrorPages[405], "405 Method Not Allowed");
+        clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
-    // std::cout << "Yaaay method found this means method allowed\n\n" << std::endl;
-    std::string ret = CheckDirOrFile(value, clientFd, _configs, conf_i, key, clientobj);
+    std::cout << "\nFull path is:" << value << std::endl;
+    std::string ret = CheckDirOrFile(value, clientFd, _configs, conf_i, key, r, clientobj);
     std::cout << ret << std::endl;
 }
 
 
-void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body)
-{
-    std::ostringstream response;
-    response << "HTTP/1.1 " << status_code << " " << status_text << "\r\n";
-    if (!body.empty())
-    {
-        response << "Content-Type: text/html\r\n";
-        response << "Content-Length: " << body.size() << "\r\n";
-    }
-    response << "Connection: close\r\n";
-    response << "\r\n";
-    response << body;
-	// std::cout << "SALAM BEAUTIFULLLL WORLD HERE   " << std::endl;
+// void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body)
+// {
+//     std::ostringstream response;
+//     response << "HTTP/1.1 " << status_code << " " << status_text << "\r\n";
+//     if (!body.empty())
+//     {
+//         response << "Content-Type: text/html\r\n";
+//         response << "Content-Length: " << body.size() << "\r\n";
+//     }
+//     response << "Connection: close\r\n";
+//     response << "\r\n";
+//     response << body;
+// 	// std::cout << "SALAM BEAUTIFULLLL WORLD HERE   " << std::endl;
 
-    std::string resp_str = response.str();
-    ssize_t sent = send(clientFd, resp_str.c_str(), resp_str.size(), 0);
-    if (sent < 0)
-        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-    else
-    {
-		std::cout << "Response sent to FD: " << clientFd << std::endl;
-	}
-	//std::cout << "AND HEREEE TOOO\n";
-}
+//     std::string resp_str = response.str();
+//     ssize_t sent = send(clientFd, resp_str.c_str(), resp_str.size(), 0);
+//     if (sent < 0)
+//         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+//     else
+//     {
+// 		std::cout << "Response sent to FD: " << clientFd << std::endl;
+// 	}
+// 	//std::cout << "AND HEREEE TOOO\n";
+// }
 
-void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type)
-{
-    std::ostringstream response;
-    response << "HTTP/1.1 " << status_code << " " << status_text << "\r\n";
-    if (!body.empty())
-    {
-        response << "Content-Type: " << type << "\r\n";
-        response << "Content-Length: " << body.size() << "\r\n";
-    }
-    response << "Connection: close\r\n";
-    response << "\r\n";
-    response << body;
+// void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type)
+// {
+//     std::ostringstream response;
+//     response << "HTTP/1.1 " << status_code << " " << status_text << "\r\n";
+//     if (!body.empty())
+//     {
+//         response << "Content-Type: " << type << "\r\n";
+//         response << "Content-Length: " << body.size() << "\r\n";
+//     }
+//     response << "Connection: close\r\n";
+//     response << "\r\n";
+//     response << body;
 
-    std::string resp_str = response.str();
-    ssize_t sent = send(clientFd, resp_str.c_str(), resp_str.size(), 0);
-    if (sent < 0)
-        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-    else
-        std::cout << "Response sent to FD: " << clientFd << std::endl;
-}
+//     std::string resp_str = response.str();
+//     ssize_t sent = send(clientFd, resp_str.c_str(), resp_str.size(), 0);
+//     if (sent < 0)
+//         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+//     else
+//         std::cout << "Response sent to FD: " << clientFd << std::endl;
+// }
 
 
-bool delete_dir_recursive(std::string &path, int clientFd)
+bool Server::delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj)
 {
 	DIR *dir = opendir(path.c_str());
 	if (!dir)
@@ -394,12 +326,13 @@ bool delete_dir_recursive(std::string &path, int clientFd)
 		if(stat(fullpath.c_str(), &st) == 0)
 		{
 			if (S_ISDIR(st.st_mode))
-				delete_dir_recursive(fullpath, clientFd);
+				delete_dir_recursive(fullpath, clientFd,config, r, clientobj);
 			else
 				remove(fullpath.c_str());
 		}
 		else
-			send_response(clientFd, 404, "Not Found", load_html_file("www/404.html"));
+			clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",config.ErrorPages[404], clientFd, clientobj);
+		//send_response(clientFd, 404, "Not Found", load_html_file("www/404.html"));
 	}
 	closedir(dir);
 	return remove(path.c_str()) == 0;
@@ -428,42 +361,39 @@ bool is_directory_empty(const std::string& path)
     return true;
 }
 
-void dir_or_file(std::string &fullpath, int clientFd)
+void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj)
 {
 	struct stat st;
 	if(stat(fullpath.c_str() , &st) != 0)
 	{
-		send_response(clientFd, 404, "Not Found", load_html_file("www/404.html"));
+        clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",config.ErrorPages[404], clientFd, clientobj);
 		return ;
 	}
 	if(S_ISDIR(st.st_mode))
 	{
 		if (fullpath[fullpath.size() - 1] != '/')
 		{
-			send_response(clientFd, 409, "conflict", load_html_file("www/409.html"));
+        	clients[clientFd].response = Response::buildResponse(r, 409, "conflict",config.ErrorPages[409], clientFd, clientobj);
 			return ;
 		}
 		if(!is_directory_empty(fullpath))
 		{
-			if (!delete_dir_recursive(fullpath, clientFd))
+			if (!delete_dir_recursive(fullpath, clientFd, config, r, clientobj))
 			{
-				send_response(clientFd, 500, "Internal Server Error", "<html><body><h1>500 Internal Server Error</h1><p>Could not recursively delete directory.</p></body></html>");
+				clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj);
 				return;
 			}
-			send_response(clientFd, 204, "No Content", load_html_file("www/204.html"));
+			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 204, "No Content",config.ErrorPages[204], clientFd, clientobj);
 			return ;
 		}
 		if(remove(fullpath.c_str()) == 0) //dir empty remove it 
 		{
-			send_response(clientFd, 204, "No Content", load_html_file("www/204.html"));
+			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 204, "No Content",config.ErrorPages[204], clientFd, clientobj);
 			return ;
 		}
 		else  // Failed to remove directory
 		{
-			std::ostringstream oss;
-			oss << "<html><body><h1>500 Internal Server Error</h1>"
-				<< "<p>Failed to delete directory: " << strerror(errno) << "</p></body></html>";
-			send_response(clientFd, 500, "Internal Server Error", oss.str());
+			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj);
 			return ;
 		}
 	}
@@ -471,32 +401,29 @@ void dir_or_file(std::string &fullpath, int clientFd)
 	{
 		if(access(fullpath.c_str(), W_OK) != 0)  // doesn't have permission for delete
 		{
-			send_response(clientFd, 403, "Forbidden", load_html_file("www/403.html"));
+			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 403, "Forbidden",config.ErrorPages[403], clientFd, clientobj);
 			return;
 		}
 		if (std::remove(fullpath.c_str()) == 0)
 		{
-			send_response(clientFd, 204, "No Content", load_html_file("www/204.html"));
+			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 204, "No Content",config.ErrorPages[204], clientFd, clientobj);
 			std::cout << "✅ File deleted: " << fullpath << std::endl;
 			return;
 		}
 		else
 		{
-			std::ostringstream oss;
-			oss << "<html><body><h1>500 Internal Server Error</h1>"
-				<< "<p>Failed to delete directory: " << strerror(errno) << "</p></body></html>";
-			send_response(clientFd, 500, "Internal Server Error", oss.str());
+			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj);
 			return;
 		}
 	}
 	else //Unsupported file type (e.g., socket, symlink)
 	{
-		send_response(clientFd, 403, "Forbidden", load_html_file("www/403.html"));
+		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 403, "Forbidden",config.ErrorPages[403], clientFd, clientobj);
 		return;
 	}
 }
 
-void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
+void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj)
 {
 	// if (r.get_path().find("..") != std::string::npos) //If you do not block paths containing .., an attacker might delete or access files outside the allowed web root directory, leading to security vulnerabilities.
 	// {
@@ -508,78 +435,83 @@ void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int cl
     int key = map.begin()->first;
     if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
     {
-        send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+        //send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 405, "Method Not Allowed", _configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
     std::string fullpath = map.begin()->second;
     std::cout << "\nFull path is:" << fullpath << std::endl;
-    dir_or_file(fullpath, clientFd);
+    dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj);
 }
 
 
-void send_repons_post(int clientFd, const reponse& repo)
-{
-	std::ostringstream response;
-	response << "HTTP/1.1 " << repo.reponse_status << " OK\r\n";
-	response << "Content-Length: " << repo.response_body.size() << "\r\n";
-	response << "Content-Type: text/plain\r\n";
-	response << "\r\n";
-	response << repo.response_body;
-	send(clientFd, response.str().c_str(), response.str().size(), 0);
-}
+// void send_repons_post(int clientFd, const Response& repo)
+// {
+// 	std::ostringstream response;
+// 	response << "HTTP/1.1 " << repo.reponse_status << " OK\r\n";
+// 	response << "Content-Length: " << repo.response_body.size() << "\r\n";
+// 	response << "Content-Type: text/plain\r\n";
+// 	response << "\r\n";
+// 	response << repo.response_body;
+// 	send(clientFd, response.str().c_str(), response.str().size(), 0);
+// }
 
-void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i)
+void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj)
 {
 	std::map<int, std::string> map;
-	reponse repo;
         std::cout<<"________________________"<<r.ContentType<<"\n\n";
 	
     map = getMatchingRootPath(r, _configs[conf_i]);
 		std::cout << "&&&&&&&&in return here \n\n";
     if (!CheckMethodeIsAllowed("POST", _configs, conf_i, map.begin()->first))
     {
-        send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+		//std::cout << "here internalllll\n";
+        //send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
 	if (_configs[conf_i].locations[map.begin()->first].upload_store.empty())
 	{
-		std::cout << "here internalllll\n";
-		send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
+		//std::cout << "here internalllll\n";
+		//send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
+		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 500, "Internal Server Error",_configs[conf_i].ErrorPages[500], clientFd, clientobj);
 		return ;
 	}
     std::string fullpath = map.begin()->second;
-	r.fullUploadpath = join_path(fullpath, _configs[conf_i].locations[map.begin()->first].upload_store);
-    std::cout << "\nFull path is:" << r.fullUploadpath << std::endl;
+	fullpath = join_path(fullpath, _configs[conf_i].locations[map.begin()->first].upload_store);
+    std::cout << "\nFull path is:" << fullpath << std::endl;
 	
 	if ((long)r.body.size() > _configs[conf_i].client_max_body_size)
 	{
-		std::cout << "the body size is; " << (long)r.body.size() << "-and the cof file require: "  << _configs[conf_i].client_max_body_size << std::endl;
-		send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+		std::cout << "here internalllll\n";
+		//send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 413, "Payload Too Large",_configs[conf_i].ErrorPages[413], clientFd, clientobj);
 		return ;
 	}
-	std::ostringstream filename;
-	std::cout << "^^^^^" << r.ContentType << std::endl;
-	int ext = r.ContentType.find('/');
-	r.ContentType = r.ContentType.substr(ext + 1);
-	filename << r.fullUploadpath << "/" << rand() <<"."<<r.ContentType;
-	std::cout << "****" << filename.str() << std::endl;
-	std::ofstream out(filename.str().c_str(),std::ios::binary);
-	if(!out)
-	{
-		std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
-		send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
-		return;
-	}
-	// std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body << "-----------" <<"\n\n";
-	//out << r.body;
-	//std::cout << "the body is; " << r.body.c_str();
+	// std::ostringstream filename;
+	// std::cout << "^^^^^" << r.ContentType << std::endl;
+	// int ext = r.ContentType.find('/');
+	// r.ContentType = r.ContentType.substr(ext + 1);
+	// filename << fullpath << "/" << rand() <<"."<<r.ContentType;
+	// std::cout << "****" << filename.str() << std::endl;
+	// std::ofstream out(filename.str().c_str(),std::ios::binary);
+	// if(!out)
+	// {
+	// 	std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
+	// 	send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
+	// 	return;
+	// }
+	// // std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.body << "-----------" <<"\n\n";
+	// //out << r.body;
+	// //std::cout << "the body is; " << r.body.c_str();
 
-	out .write(r.body.c_str(), r.body.size());
-	out.flush();
-	out.close();
-
-	send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
-	
+	// std::cout << "✅✅✅✅✅✅✅✅✅✅" << r.body << std::endl;
+	// out .write(r.body.c_str(), r.body.size());
+	// out.flush();
+	// out.close();
+	//send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
+	clients[clientFd].response= clients[clientFd].response.buildResponse(r, 201, "Created",_configs[conf_i].ErrorPages[201], clientFd, clientobj);
+     std::cout<< "❌❌❌❌❌❌❌❌❌❌body "<<clients[clientFd].response.body   << " content type :    "  << clients[clientFd].response.contentType << "  code:  "<< clients[clientFd].response.statusCode << " msg :" << clients[clientFd].response.statusMsg << "\n\n";
 	// else
 	// {
     // 	 send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));

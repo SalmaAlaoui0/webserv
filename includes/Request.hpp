@@ -40,7 +40,7 @@ class request{
     std::string fullUploadpath;
     std::string ContentType;
     size_t ContentLength;
-    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r, int clientFd, size_t i);
+    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r, int clientFd);
     int get_final_port(request &r);
     std::string version;
     std::map<std::string, std::string> map;
@@ -55,7 +55,7 @@ class request{
    std::map<std::string,std::string>& get_header();
    void set_body(std::string& b);
   std::string& get_body(void);
-  bool error_set(std::map<int, Client>& clientobj, request &r, int clientfd);
+  bool error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig &config);
  class requetetException : public std::exception 
   {
     private:

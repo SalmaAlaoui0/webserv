@@ -3,14 +3,12 @@
 /*                                                        :::      ::::::::   */
 /*   Server.hpp                                         :+:      :+:    :+:   */
 /*                                                    +:+ +:+         +:+     */
-/*   By: salaoui <salaoui@student.42.fr>            +#+  +:+       +#+        */
+/*   By: wzahir <wzahir@student.42.fr>              +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/07/09 16:30:18 by wzahir            #+#    #+#             */
-/*   Updated: 2025/08/29 14:40:04 by salaoui          ###   ########.fr       */
+/*   Updated: 2025/08/31 21:24:56 by wzahir           ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
-
-
 
 #pragma once
 
@@ -27,11 +25,13 @@
 #include <fcntl.h>
 #include "ServerConfig.hpp"
 #include "EpollManager.hpp"
+#include "Response.hpp"
 #include "Request.hpp"
 #include "Client.hpp"
-#include "Utils.hpp"
+//#include "Utils.hpp"
 
 class request;
+class Response;
 struct ServerConfig;
 class EpollManager;
 class Client;
@@ -46,16 +46,16 @@ class Server
         Server();
         Server(const std::vector<ServerConfig>& configs);
        ~Server();
-        
+        std::vector<ServerConfig> getConfig() const;
         void setupSockets();
         int creatServerSocket(const std::string &ip, int port);
         void run();
         bool isServerSocket(int fd) const;
         void acceptNewClient(request & r, int listenFd, EpollManager &epollManager);
-        void handleClient(int clientFd, EpollManager &epollManager, std::vector<epoll_event> &events);
+       // void handleClient(int clientFd, EpollManager &epollManager, std::vector<epoll_event> &events);
         void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
-        std::string readRequest(int clientFd, EpollManager &epollManager);
-        void sendResponse(int clientFd, request &r, std::map<int, Client> &clientobj);
+        //std::string readRequest(int clientFd, EpollManager &epollManager);
+        void handleRequest(int clientFd, request &r, std::map<int, Client> &clientob);
         
         void closeConnection(int fd, EpollManager &epollManager);
         class socketException : public std::exception 
@@ -67,10 +67,15 @@ class Server
             virtual ~socketException() throw();    
             virtual const char* what() const throw();
         };
-};
-void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body);    
-void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj);
-void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
-void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
-void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type);
+        void handle_get_methode(request &r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj);
+        void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_ir, std::map<int, Client> clientobj);
+        void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj);
+        void dir_or_file(std::string &fullpath, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj);
+        bool delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj);
+        std::string CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> clientobj);
+    };
+    // void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body);    
+    // void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type);
 
+
+    
