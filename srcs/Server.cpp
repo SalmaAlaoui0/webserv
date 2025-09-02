@@ -85,39 +85,39 @@ int Server::creatServerSocket(const std::string &ip, int port)
 void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &clientobj)
 {
 
-	size_t conf_i = _configs.size();
-    for (size_t i = 0; i < _configs.size(); ++i) 
+	// size_t conf_i = _configs.size();
+    // for (size_t i = 0; i < _configs.size(); ++i) 
+    // {
+    //     if (_configs[i].port == r.get_final_port(r))
+    //     { 
+    //         conf_i = i; 
+    //         break;
+    //     }
+    // }
+    std::cout<<"404 path------> " <<_configs[this->clients[clientFd]. conf_i].ErrorPages[404] <<std::endl;
+    if (this->clients[clientFd]. conf_i == _configs.size()) 
     {
-        if (_configs[i].port == r.get_final_port(r))
-        { 
-            conf_i = i; 
-            break;
-        }
-    }
-    std::cout<<"404 path------> " <<_configs[conf_i].ErrorPages[404] <<std::endl;
-    if (conf_i == _configs.size()) 
-    {
-        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error (no matching server)",_configs[conf_i].ErrorPages[500], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error (no matching server)",_configs[this->clients[clientFd]. conf_i].ErrorPages[500], clientFd, clients);
         //send_response(clientFd, 500, "Internal Server Error (no matching server)", load_html_file("www/500.html"));
         return;
     }
     if (r.get_path() == "/favicon.ico")
     {
-        clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",_configs[conf_i].ErrorPages[404], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients);
         // std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
         // if (send(clientFd, notFound.c_str(), notFound.size(), 0) < 0)
         //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl; 
         return;
     }
 	if (r.get_method() == "GET")
-		handle_get_methode(r, this->_configs, clientFd, conf_i, clientobj);
+		handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else if(r.get_method()== "POST")
-        handle_post_methode(r, this->_configs, clientFd, conf_i, clientobj);
+        handle_post_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else if (r.get_method() == "DELETE")
-		handle_delete_methode(r, this->_configs, clientFd, conf_i, clientobj);
+		handle_delete_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else
     {
-        clients[clientFd].response = Response::buildResponse(r, 404, "invalid method",_configs[conf_i].ErrorPages[404], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(r, 404, "invalid method",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients);
         // std::string invalidMethod = "HTTP/1.1 404 invalid method\r\nContent-Length: 0\r\n\r\n";
 		// if (send(clientFd, invalidMethod.c_str(), invalidMethod.size(), 0) < 0)
         //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;    
@@ -297,16 +297,16 @@ void Server::run()
                                 perror("epoll_ctl: mod");
                             }
                         }
-                          size_t conf_i = s.getConfig().size();
-                        for (size_t i = 0; i < s.getConfig().size(); ++i) 
+                        this->clients[fd].conf_i = s.getConfig().size();
+                        for (size_t i = 0; i < s.getConfig().size(); ++i)
                         {
                             if (s.getConfig()[i].port == a.get_final_port(a))
                             { 
-                                conf_i = i; 
+                                this->clients[fd].conf_i = i; 
                                 break;
                             }
                         }
-                        if (!a.error_set(clients, a, fd, s.getConfig()[conf_i]))
+                        if (!a.error_set(this->clients, a, fd, s.getConfig()[this->clients[fd].conf_i]))
                             throw socketException("❌ error detected ");
                         else
                             handleRequest(fd, a, clients);

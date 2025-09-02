@@ -22,6 +22,7 @@ class Client
         // int fd;
         size_t filesize;
         size_t size_send;
+        size_t conf_i ;
         // size_t filesize;
         bool header_complete ;
         bool create_file;

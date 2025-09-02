@@ -467,25 +467,25 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
     {
 		//std::cout << "here internalllll\n";
         //send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
-		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);
+		clients[clientFd].response= Response::buildResponse(r, 405, "Method Not Allowed",_configs[clients[clientFd].conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
-	if (_configs[conf_i].locations[map.begin()->first].upload_store.empty())
+	if (_configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store.empty())
 	{
 		//std::cout << "here internalllll\n";
 		//send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
-		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 500, "Internal Server Error",_configs[conf_i].ErrorPages[500], clientFd, clientobj);
+		clients[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clients[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
 		return ;
 	}
     std::string fullpath = map.begin()->second;
-	fullpath = join_path(fullpath, _configs[conf_i].locations[map.begin()->first].upload_store);
+	fullpath = join_path(fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
     std::cout << "\nFull path is:" << fullpath << std::endl;
 	
-	if ((long)r.body.size() > _configs[conf_i].client_max_body_size)
+	if ((long)r.body.size() > _configs[clients[clientFd].conf_i].client_max_body_size)
 	{
 		std::cout << "here internalllll\n";
 		//send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
-		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 413, "Payload Too Large",_configs[conf_i].ErrorPages[413], clientFd, clientobj);
+		clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clientobj);
 		return ;
 	}
 	// std::ostringstream filename;
@@ -510,8 +510,8 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	// out.flush();
 	// out.close();
 	//send_response(clientFd, 201, "Created", load_html_file("www/201.html"));
-	clients[clientFd].response= clients[clientFd].response.buildResponse(r, 201, "Created",_configs[conf_i].ErrorPages[201], clientFd, clientobj);
-     std::cout<< "❌❌❌❌❌❌❌❌❌❌body "<<clients[clientFd].response.body   << " content type :    "  << clients[clientFd].response.contentType << "  code:  "<< clients[clientFd].response.statusCode << " msg :" << clients[clientFd].response.statusMsg << "\n\n";
+	clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);
+     std::cout<< "❌❌❌❌❌❌❌❌❌❌body "<<_configs[clients[clientFd].conf_i].ErrorPages[201]  <<  "  conf_i = "<<clients[clientFd].conf_i<< "\n\n";
 	// else
 	// {
     // 	 send_response(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"));
