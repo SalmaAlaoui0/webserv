@@ -27,6 +27,11 @@ Server::~Server()
         close(serverSockets[i]);
 }
 
+std::vector<ServerConfig> Server::getConfig() const
+{
+    return this->_configs;
+}
+
 void Server:: setupSockets()
 {
     for(size_t i = 0; i < _configs.size(); i++)
@@ -77,46 +82,47 @@ int Server::creatServerSocket(const std::string &ip, int port)
     return server_fd ; 
 }
 
-void Server::sendResponse( int clientFd, request &r, std::map<int, Client> &clientobj)
+void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &clientobj)
 {
 
-	if (r.get_path() == "/favicon.ico")
-	{
-		std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
-		if (send(clientFd, notFound.c_str(), notFound.size(), 0) < 0)
-            std::cerr << "❌ send failed: " << strerror(errno) << std::endl; 
-		return;
-	}
-    size_t conf_i = _configs.size();
+	size_t conf_i = _configs.size();
     for (size_t i = 0; i < _configs.size(); ++i) 
     {
-        // std::cout << "size of configs is: " << _configs[i].port << std::endl;
         if (_configs[i].port == r.get_final_port(r))
         { 
             conf_i = i; 
             break;
         }
     }
+    std::cout<<"404 path------> " <<_configs[conf_i].ErrorPages[404] <<std::endl;
     if (conf_i == _configs.size()) 
     {
-		send_response(clientFd, 500, "Internal Server Error (no matching server)", load_html_file("www/500.html"));
+        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error (no matching server)",_configs[conf_i].ErrorPages[500], clientFd, clients);
+        //send_response(clientFd, 500, "Internal Server Error (no matching server)", load_html_file("www/500.html"));
+        return;
+    }
+    if (r.get_path() == "/favicon.ico")
+    {
+        clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",_configs[conf_i].ErrorPages[404], clientFd, clients);
+        // std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+        // if (send(clientFd, notFound.c_str(), notFound.size(), 0) < 0)
+        //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl; 
         return;
     }
 	if (r.get_method() == "GET")
-        handle_get_methode(r, this->_configs, clientFd, conf_i, clientobj);
+		handle_get_methode(r, this->_configs, clientFd, conf_i, clientobj);
     else if(r.get_method()== "POST")
-        return (handle_post_methode(r, this->_configs, clientFd, conf_i));
+        handle_post_methode(r, this->_configs, clientFd, conf_i, clientobj);
     else if (r.get_method() == "DELETE")
-		handle_delete_methode(r, this->_configs, clientFd, conf_i);
+		handle_delete_methode(r, this->_configs, clientFd, conf_i, clientobj);
     else
     {
-        std::string invalidMethod = "HTTP/1.1 404 invalid method\r\nContent-Length: 0\r\n\r\n";
-		if (send(clientFd, invalidMethod.c_str(), invalidMethod.size(), 0) < 0)
-            std::cerr << "❌ send failed: " << strerror(errno) << std::endl;    
+        clients[clientFd].response = Response::buildResponse(r, 404, "invalid method",_configs[conf_i].ErrorPages[404], clientFd, clients);
+        // std::string invalidMethod = "HTTP/1.1 404 invalid method\r\nContent-Length: 0\r\n\r\n";
+		// if (send(clientFd, invalidMethod.c_str(), invalidMethod.size(), 0) < 0)
+        //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;    
 		return;
     }
-    /// send output
-    //return;
 }
 
 // void Server::handleClient(int clientFd, EpollManager &epollManager)
@@ -260,6 +266,7 @@ void Server::run()
 {
 	EpollManager epollManager;
     request a;
+    Server s;
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
         epollManager.addSocket(serverSockets[i], EPOLLIN);
@@ -281,35 +288,32 @@ void Server::run()
                     // std::cout << "Socket ❌❌❌❌❌ " << fd << " is ready to read\n";
                     try
                     {
-                       a = a.parseRequest(this->clients, epollManager, a, fd, i);
-                        // if (this->clients[fd].body_complete == 1 && this->clients[fd].send_complete == 1)
-                        // {
-                            //
-                        //     std::cout << "Hello beauuuuuuuuuuuuutiful world\n\n";
-                        //     events[i].events = EPOLLOUT;
-                        //     events[i].data.fd = fd;
-                        //     if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
-                        //         perror("epoll_ctl: mod");
-                        //     }
-                        // // }
-                        // if (a.method == "GET")
-                        // {
-                        //     std::cout << "Hello beauuuuuuuuuuuuutiful world\n\n";
-                        //     if (a.error_set(this->clients, a, fd) == 1)
-                        //     {
-                        //         sendResponse(fd, a, this->clients);  
-                        //     }
-                        //     if (this->clients[fd].send_complete == 1)
-                        //     {
-                        //         std::map<int, Client>::iterator it = clients.find(fd);
-                        //         if (it != clients.end())
-                        //             it->second.updateActivity();
-                        //         close(fd);
-                        //         std::cout << "client has been closed after sending response :))\n";
-                        //     }
-                        // }
-                        // std::cout << "the data are: " << a.method << std::endl;
-                        // exit (9);
+                       a = a.parseRequest(this->clients, epollManager, a, fd);
+                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
+                        {
+                            events[i].events = EPOLLOUT;
+                            events[i].data.fd = fd;
+                            if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
+                                perror("epoll_ctl: mod");
+                            }
+                        }
+                          size_t conf_i = s.getConfig().size();
+                        for (size_t i = 0; i < s.getConfig().size(); ++i) 
+                        {
+                            if (s.getConfig()[i].port == a.get_final_port(a))
+                            { 
+                                conf_i = i; 
+                                break;
+                            }
+                        }
+                        if (!a.error_set(clients, a, fd, s.getConfig()[conf_i]))
+                            throw socketException("❌ error detected ");
+                        else
+                            handleRequest(fd, a, clients);
+                        std::cout<< "body "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code:  "<< clients[fd].response.statusCode << " msg :" << clients[fd].response.statusMsg << "\n\n";
+                        std::map<int, Client>::iterator it = clients.find(fd);
+                        if (it != clients.end())
+                            it->second.updateActivity();
                     }
                     catch(std::exception &e)
                     {
@@ -321,19 +325,11 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
-                    std::cout << "Socket ❌❌❌❌❌" << fd << " is ready to write\n";
-                        if (a.error_set(this->clients, a, fd) == 1)
-                        {
-                            sendResponse(fd, a, this->clients);
-                        }
-                        if (this->clients[fd].send_complete == 1)
-                        {
-                            std::map<int, Client>::iterator it = clients.find(fd);
-                            if (it != clients.end())
-                                it->second.updateActivity();
-                            close(fd);
-                            std::cout << "client has been closed after sending response :))\n";
-                        }
+                       // std::cout << "Socket ❌❌❌❌❌" << fd << " is ready to write\n";
+                        std::cout<< "bodyyyyy: "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code: "<< clients[fd].response.statusCode << "msg : " << clients[fd].response.statusMsg << "\n\n";
+                        clients[fd].response.RequestResponse(fd, clients[fd].response);
+                        close(fd);
+                        std::cout << "client has been closed after sending response :))\n";
                 }
                 else
                     std::cout<<"maart ach kandir hna\n\n";

@@ -31,16 +31,24 @@ request::request(request const &ref)
     *this = ref;
 }
 
-bool request::error_set(std::map<int, Client>& clientobj, request &r, int clientfd)
+bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig &config)
 {
+    //std::cout<<"500 path------> " <<config.ErrorPages[500] <<std::endl;
+
     std::map<std::string , std::string>headers = r.get_header();
-    // std::cout << "helllllo there method is: " << clientobj[clientfd].method << "that's itttttttt\n";
-    // std::cout << "helllllo there method is: " << r.get_method() << "that's itttttttt\n";
-    if(clientobj[clientfd].method != "GET" && clientobj[clientfd].method != "POST" && clientobj[clientfd].method != "DELETE")
+    std::cout << "helllllo there method is: " << clients[clientFd].method << "that's itttttttt\n";
+    std::cout << "helllllo there method is: " << r.get_method() << "that's itttttttt\n";
+    std::map<int, Client> :: iterator it = clients.find(clientFd);
+    if(it == clients.end())
     {
-        // 405, "Method Not Allowed"
+        std::cerr << "❌ clientFd " << clientFd << " not found\n";
+        return 0;
+    }
+    if(clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
+    {
         std::cout << "Method is: " << r.get_method() << std::endl; /// telnet 127.0.0.1 8080 there is a problem here the get method does not return the method but the path if we're using telnet as a client try it!
-        send_response(clientfd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+        //send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
+        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
         return 0;
     }
     if(r.get_method() == "POST")
@@ -53,39 +61,46 @@ bool request::error_set(std::map<int, Client>& clientobj, request &r, int client
 			if(b < 0 || (b != r.get_body().size()))
             {
                 std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
-                send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+                clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+                //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
                 return 0;
             }
         }
         else
         {
-            send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+            //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+            clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
             std::cout << "helllllllo the world\n";
             return 0;
         }
     }
-	if(clientobj[clientfd].version != "HTTP/1.1")
+	if(clients[clientFd].version != "HTTP/1.1")
     {
-        send_response(clientfd, 505, "HTTP Version Not Supported", load_html_file("www/505.html"));
+        std::cout << "here internalllll in version\n";
+        //send_response(clientFd, 505, "HTTP Version Not Supported", load_html_file("www/505.html"));
+        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
         return 0;
     }
 	if(headers.find("Host") == headers.end())	
     {
-        send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+        //send_response(clientFd, 400, "Bad Request", load_html_file("www/400.html"));
+        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
         return 0;
     }
     if(r.get_method().empty() || r.get_path().empty())
     {
-        std::cout << "the method and path are: " << r.get_method() << "---" << r.get_path() << std::endl;;
-        send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+        //std::cout << "the method and path are: " << r.get_method() << "---" << r.get_path() << std::endl;
+        //send_response(clientFd, 400, "Bad Request", load_html_file("www/400.html"));
+        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
         return 0;
     }
-    // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
-    // if (r.get_body().size() > max_body_size)
-    // {
-    //     send_response(clientfd, 413, "Payload Too Large", load_html_file("www/413.html"));
-    //     return 0;
-    // }
+    const unsigned long max_body_size = 1024 * 1024; // 1 Mo
+    if (r.get_body().size() > max_body_size)
+    {
+        //send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+        return 0;
+    }
     return 1;
 }
 
@@ -122,7 +137,7 @@ void request::set_body(std::string& b){body = b;}
 
 std::string& request::get_body(void){return body ;}
 
-request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd, size_t i)
+request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
     Server s;
     char buffer [8000] = {0};
@@ -153,15 +168,6 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         clientobj[clientFd].method = methode;
         clientobj[clientFd].path = path;
         clientobj[clientFd].version = version;
-        if (methode == "GET")
-        {
-		    std::vector<epoll_event> events = epollManager.waitEvents();
-            events[i].events = EPOLLOUT;
-            events[i].data.fd = clientFd;
-            if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, clientFd, &events[i]) == -1) {
-                perror("epoll_ctl: mod");
-            }
-        }
         while(std::getline(iss, line, '\r') && !line.empty())
         {
             iss.ignore();

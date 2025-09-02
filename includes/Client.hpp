@@ -3,10 +3,9 @@
 #include <iostream>
 #include <unistd.h>
 #include <ctime>
-#include "Request.hpp"
-
-
-// class request;
+//#include"Server.hpp"
+//#include "Request.hpp"
+#include "Response.hpp"
 
 class Client
 {
@@ -30,6 +29,7 @@ class Client
         std::string method;
         std::string path;
         std::string version;
+        Response response;
 
         Client();
         Client(int fd);
