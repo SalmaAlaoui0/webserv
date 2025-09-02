@@ -77,7 +77,7 @@ int Server::creatServerSocket(const std::string &ip, int port)
     return server_fd ; 
 }
 
-void Server::sendResponse( int clientFd, request &r)
+void Server::sendResponse( int clientFd, request &r, std::map<int, Client> &clientobj)
 {
 
 	if (r.get_path() == "/favicon.ico")
@@ -90,6 +90,7 @@ void Server::sendResponse( int clientFd, request &r)
     size_t conf_i = _configs.size();
     for (size_t i = 0; i < _configs.size(); ++i) 
     {
+        // std::cout << "size of configs is: " << _configs[i].port << std::endl;
         if (_configs[i].port == r.get_final_port(r))
         { 
             conf_i = i; 
@@ -102,9 +103,9 @@ void Server::sendResponse( int clientFd, request &r)
         return;
     }
 	if (r.get_method() == "GET")
-		handle_get_methode(r, this->_configs, clientFd, conf_i);
+        handle_get_methode(r, this->_configs, clientFd, conf_i, clientobj);
     else if(r.get_method()== "POST")
-        handle_post_methode(r, this->_configs, clientFd, conf_i);
+        return (handle_post_methode(r, this->_configs, clientFd, conf_i));
     else if (r.get_method() == "DELETE")
 		handle_delete_methode(r, this->_configs, clientFd, conf_i);
     else
@@ -191,9 +192,10 @@ void Server::sendResponse( int clientFd, request &r)
 //     // }
 // }
 
-void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
+void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollManager)
 {
         struct sockaddr clientAddr;
+        req.body.clear();
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
                 std::cout << "client fd" << clientFd << std::endl;
@@ -210,12 +212,15 @@ void Server::acceptNewClient(int serverFd, EpollManager &epollManager)
             throw socketException("❌ accept failed");
         }
         epollManager.addSocket(clientFd, EPOLLIN);
-        std::cout << "error not here\n";
         // epollManager.addSocket(clientFd);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
         clients[clientFd].body_complete = 0;
+        clients[clientFd].send_complete = 0;
+        clients[clientFd].start_sending = 0;
         clients[clientFd].create_file = 0;
-        clients[clientFd]._requestBuffer.clear();
+        clients[clientFd].Sending = 0;
+        // clients[clientFd].file_opened = 0;
+        // clients[clientFd]._requestBuffer.clear();
         std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
     
 }
@@ -268,26 +273,43 @@ void Server::run()
         {   
             int fd = events[i].data.fd;
             if (isServerSocket(fd))
-                acceptNewClient(fd, epollManager);
+                acceptNewClient(a, fd, epollManager);
             else
             {
-                //handleClient(fd, epollManager, events);
-                // request a;
-                if (events[i].events & EPOLLIN) 
+                if (events[i].events & EPOLLIN && (this->clients[fd].body_complete == 0 || this->clients[fd].send_complete == 0)) 
                 {
                     // std::cout << "Socket ❌❌❌❌❌ " << fd << " is ready to read\n";
                     try
                     {
-                       a = a.parseRequest(this->clients, epollManager, a, fd);
-                        if (this->clients[fd].body_complete == 1)
-                        {
+                       a = a.parseRequest(this->clients, epollManager, a, fd, i);
+                        // if (this->clients[fd].body_complete == 1 && this->clients[fd].send_complete == 1)
+                        // {
                             //
-                            events[i].events = EPOLLOUT;
-                            events[i].data.fd = fd;
-                            if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
-                                perror("epoll_ctl: mod");
-                            }
-                        }
+                        //     std::cout << "Hello beauuuuuuuuuuuuutiful world\n\n";
+                        //     events[i].events = EPOLLOUT;
+                        //     events[i].data.fd = fd;
+                        //     if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
+                        //         perror("epoll_ctl: mod");
+                        //     }
+                        // // }
+                        // if (a.method == "GET")
+                        // {
+                        //     std::cout << "Hello beauuuuuuuuuuuuutiful world\n\n";
+                        //     if (a.error_set(this->clients, a, fd) == 1)
+                        //     {
+                        //         sendResponse(fd, a, this->clients);  
+                        //     }
+                        //     if (this->clients[fd].send_complete == 1)
+                        //     {
+                        //         std::map<int, Client>::iterator it = clients.find(fd);
+                        //         if (it != clients.end())
+                        //             it->second.updateActivity();
+                        //         close(fd);
+                        //         std::cout << "client has been closed after sending response :))\n";
+                        //     }
+                        // }
+                        // std::cout << "the data are: " << a.method << std::endl;
+                        // exit (9);
                     }
                     catch(std::exception &e)
                     {
@@ -302,13 +324,16 @@ void Server::run()
                     std::cout << "Socket ❌❌❌❌❌" << fd << " is ready to write\n";
                         if (a.error_set(this->clients, a, fd) == 1)
                         {
-                            sendResponse(fd, a);  
+                            sendResponse(fd, a, this->clients);
                         }
-                        std::map<int, Client>::iterator it = clients.find(fd);
-                        if (it != clients.end())
-                            it->second.updateActivity();
-                        close(fd);
-                        std::cout << "client has been closed after sending response :))\n";
+                        if (this->clients[fd].send_complete == 1)
+                        {
+                            std::map<int, Client>::iterator it = clients.find(fd);
+                            if (it != clients.end())
+                                it->second.updateActivity();
+                            close(fd);
+                            std::cout << "client has been closed after sending response :))\n";
+                        }
                 }
                 else
                     std::cout<<"maart ach kandir hna\n\n";

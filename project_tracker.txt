@@ -1,0 +1,72 @@
+==============================
+PROJECT TRACKER
+==============================
+
+-{Do Not Forget To Del This File}-
+
+Date: Started On -2025/07/09-
+Team Members: Wafaa && Mouna && Salma
+
+------------------------------
+1. Tests to Do
+------------------------------
+- [ ] Test 1: test unprinted caracters in the upload file
+      Details: _____________________________
+      Assigned to: _________________________
+      Deadline: ___________________________
+
+- [ ] Test 2: _______________________________
+      Details: _____________________________
+      Assigned to: _________________________
+      Deadline: ___________________________
+
+- [ ] Test 3: _______________________________
+      Details: _____________________________
+      Assigned to: _________________________
+      Deadline: ___________________________
+
+(Continue as needed)
+
+------------------------------
+2. Missing Things to Add
+------------------------------
+- [ ] Feature/Component 1: add in parsing when conf file is completely empty -> Salma
+      Reason/Notes: it's not handled and it causes leaks
+      Priority: High/Medium/Low
+
+- [ ] Feature/Component 2: __________________
+      Reason/Notes: ________________________
+      Priority: High/Medium/Low
+
+- [ ] Feature/Component 3: __________________
+      Reason/Notes: ________________________
+      Priority: High/Medium/Low
+
+- [ ] Feature/Component 4: __________________
+      Reason/Notes: ________________________
+      Priority: High/Medium/Low
+
+(Continue as needed)
+
+------------------------------
+3. Additional Things to Consider
+------------------------------
+- Idea/Suggestion 1: ________________________
+  Notes: ___________________________________
+
+- Idea/Suggestion 2: ________________________
+  Notes: ___________________________________
+
+- Idea/Suggestion 3: ________________________
+  Notes: ___________________________________
+
+(Continue as needed)
+
+------------------------------
+4. General Notes
+------------------------------
+- _____Keep going — we’ve got this!^^_____
+- __________________________________________
+- __________________________________________
+
+

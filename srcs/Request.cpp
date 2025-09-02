@@ -34,10 +34,11 @@ request::request(request const &ref)
 bool request::error_set(std::map<int, Client>& clientobj, request &r, int clientfd)
 {
     std::map<std::string , std::string>headers = r.get_header();
-    std::cout << "helllllo there method is: " << clientobj[clientfd].method << "that's itttttttt\n";
-    std::cout << "helllllo there method is: " << r.get_method() << "that's itttttttt\n";
+    // std::cout << "helllllo there method is: " << clientobj[clientfd].method << "that's itttttttt\n";
+    // std::cout << "helllllo there method is: " << r.get_method() << "that's itttttttt\n";
     if(clientobj[clientfd].method != "GET" && clientobj[clientfd].method != "POST" && clientobj[clientfd].method != "DELETE")
     {
+        // 405, "Method Not Allowed"
         std::cout << "Method is: " << r.get_method() << std::endl; /// telnet 127.0.0.1 8080 there is a problem here the get method does not return the method but the path if we're using telnet as a client try it!
         send_response(clientfd, 405, "Method Not Allowed", load_html_file("www/405.html"));
         return 0;
@@ -79,12 +80,12 @@ bool request::error_set(std::map<int, Client>& clientobj, request &r, int client
         send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
         return 0;
     }
-    const unsigned long max_body_size = 1024 * 1024; // 1 Mo
-    if (r.get_body().size() > max_body_size)
-    {
-        send_response(clientfd, 413, "Payload Too Large", load_html_file("www/413.html"));
-        return 0;
-    }
+    // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
+    // if (r.get_body().size() > max_body_size)
+    // {
+    //     send_response(clientfd, 413, "Payload Too Large", load_html_file("www/413.html"));
+    //     return 0;
+    // }
     return 1;
 }
 
@@ -121,21 +122,11 @@ void request::set_body(std::string& b){body = b;}
 
 std::string& request::get_body(void){return body ;}
 
-request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
+request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd, size_t i)
 {
     Server s;
-    //std::vector<char> buffer;
-    char buffer [1024] = {0};
-    // Client &client = clientobj[clientFd];
-    // std::map<int,Client>::iterator it = clientobj.begin();
-    // std::string RecievedText;
-    // std::string RecievedHeader;
-    std::ofstream out;
-    std::string RecievedBody;
-    // std::cout << "Hello World!" << std::endl;
+    char buffer [8000] = {0};
     ssize_t bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
-    // buffer[bytes_received] = '\0';
-    // std::cout << "==================ENTERED========================\n";
     if ( bytes_received == -1)
     {
         if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -144,139 +135,95 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             throw requetetException("❌ recv failed: ");
         }
     }
-    clientobj[clientFd]._requestBuffer.append(buffer, bytes_received);
     r.body.append(buffer, bytes_received);
-    if (clientobj[clientFd].create_file == 1)
+    std::cout << "in this socket file number: " << clientFd << "=> size in header: " << r.ContentLength << " and size in body is: " << r.body.size() << std::endl;
+    // std::cout << "the size in header is: " << r.ContentLength << "and the body is: " << r.get_body().size() << std::endl;
+    if (r.body.find("\r\n\r\n") != std::string::npos)
     {
-        out .write(buffer, 1024);
-    }
-    // std::cout << "***recieved is :" << clientobj[clientFd]._requestBuffer << "yes this is the recieved***\n";
-    if (clientobj[clientFd]._requestBuffer.find("\r\n\r\n") != std::string::npos)
-    {
-        // std::cout << "hello world\n";
-        size_t HeaderEnd = clientobj[clientFd]._requestBuffer.find("\r\n\r\n");
-        std::string headers = clientobj[clientFd]._requestBuffer.substr(0, HeaderEnd);
-        std::cout << "hello world HEREEEERERE\n" << headers;
-        clientobj[clientFd]._requestBuffer = clientobj[clientFd]._requestBuffer.substr(HeaderEnd + 4);
-        r.body = clientobj[clientFd]._requestBuffer;
-        // std::cout << "%%%%%header is:" << RecievedHeader << "%%%%%\n\n";
+        size_t HeaderEnd = r.body.find("\r\n\r\n");
+        std::string headers = r.body.substr(0, HeaderEnd);
+        r.body = r.body.substr(HeaderEnd + 4);
+        // std::cout << "\n\n" << headers << "\n\n";///
         std::istringstream iss(headers);
         std::string methode , path ,version, line;
-        std::getline(iss , line ,  '\r');
+        std::getline(iss, line,  '\r');
         iss.ignore();
         std::istringstream line_stream(line);
         line_stream >>  methode >> path >> version;
         clientobj[clientFd].method = methode;
         clientobj[clientFd].path = path;
         clientobj[clientFd].version = version;
+        if (methode == "GET")
+        {
+		    std::vector<epoll_event> events = epollManager.waitEvents();
+            events[i].events = EPOLLOUT;
+            events[i].data.fd = clientFd;
+            if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, clientFd, &events[i]) == -1) {
+                perror("epoll_ctl: mod");
+            }
+        }
         while(std::getline(iss, line, '\r') && !line.empty())
         {
             iss.ignore();
             size_t pos = line.find(":");
             if(pos != std::string::npos)
             {
-            std::string key = line.substr(0,pos);
-            key = trim1(key);
-            //std::cout << key<<std::endl;
-            std::string value = line.substr(pos+1, line.size());
-            value = trim1(value);
-        // std::cout << value<<std::endl;
-            r.set_header(key,value);
+                std::string key = line.substr(0,pos);
+                key = trim1(key);
+                std::string value = line.substr(pos+1, line.size());
+                value = trim1(value);
+                r.set_header(key,value);
             }
         }
-        // std::cout << "we reached untill heereeeeee\n";
         std::map<std::string, std::string>::iterator iterator;
         iterator = r.get_header().begin();
         while (iterator != r.get_header().end())
         {
             if (iterator->first == "Content-Length")
             {
-                r.ContentLength = iterator->second;
-                std::stringstream ss(r.ContentLength);
-                ss >> clientobj[clientFd].contentLength;
-                std::cout << iterator->first << "-------------------------first and second-> "<< iterator->second << std::endl;
+                std::stringstream ss(iterator->second);
+                ss >> r.ContentLength;
+                // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
+                // if (r.ContentLength > max_body_size)
+                // {
+                //     send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+                //     return r;
+                // }
             }
             if (iterator->first == "Content-Type")
             {
                 r.ContentType = iterator->second;
-                clientobj[clientFd].contentType = ContentType;
-                std::cout << iterator->first << "-------------------------first and second-> "<< iterator->second << std::endl;
             }
             iterator++;
         }
-        if (!clientobj[clientFd].create_file)
-        {
-            // 
-            std::ostringstream filename;
-        std::cout << "^^^^^" << r.ContentType << std::endl;
-        int ext = r.ContentType.find('/');
-        r.ContentType = r.ContentType.substr(ext + 1);
-        filename << "home/wzahir/webserv/www/upload" << "/" << rand() <<"."<< r.ContentType;
-        std::cout << "****" << filename.str() << std::endl;
-        std::ofstream out(filename.str().c_str(),std::ios::binary);
-        // if(!out)
-        // {
-        //     //std::cerr << "❌ Failed in parse to open file: " << filename.str() << std::endl;
-        //    // send_newresponse(clientFd, 500, "Internal Server Error", load_html_file("www/500.html"), r.ContentType);
-        //     //return r;
-        // }
-        // std::cout << "❌❌❌❌❌❌❌❌❌❌body--------" << r.bo dy << "-----------" <<"\n\n";
-        //out << r.body;
-        // std::cout << "the body is; " << r.body.c_str();
-
-        // std::cout << "✅✅✅✅✅✅✅✅✅✅" << r.body << std::endl;
-        out .write(r.body.c_str(), r.body.size());
-
-            clientobj[clientFd].create_file = 1;
-        }
         clientobj[clientFd].header_complete = 1;
-        if (!r.error_set(clientobj, r, clientFd))
-        {
-            throw requetetException("❌ error detected");
-        }
     }
-
-    // else if ( bytes_received == 0)
-    //     throw requetetException("❌ Client disconnected ");
-    // else if(buffer[bytes_received] == '\0' && bytes_received == 1 )
-    //     throw requetetException("Empty request or client closed");
-    // std::cout << "\n\n\n-------------" << "---------------\n\n\n";
     if (clientobj[clientFd].header_complete)
     {
-        // std::cout << "HHHHHHHHH- SO HEADER IS COMPLETE AND YAP THAT'S IT-HHHHHHHHH\n\n";
-        // std::cout << "salaaaaaaaaam the request content lenght is: " << clientobj[clientFd].contentLength << " so and the client content lenght is: " << clientobj[clientFd]._requestBuffer.size() << "and here they are both\n\n";
-        if (clientobj[clientFd].contentLength > clientobj[clientFd]._requestBuffer.size() && clientobj[clientFd].body_complete == 0)
+        if (r.ContentLength > r.body.size() && clientobj[clientFd].body_complete == 0)
         {
-            std::cout << "\n\n\n11111111111111111" << "---------------\n\n\n";
-            // std::cout << "!!!!!!Body is:" << clientobj[clientFd]._requestBuffer << "!!!!!!\n\n";
-            // r.body.append(RecievedText, sizeof(RecievedText));
-            // std::cout << "\nOkey just to make it clear--content-length is: " << clientobj[clientFd].contentLength << 
-            // "-- and length of body recieved is--" << clientobj[clientFd]._requestBuffer.size() << "--\n\n";
-            if (clientobj[clientFd].contentLength == clientobj[clientFd]._requestBuffer.size())
+            if (r.ContentLength == r.body.size() || clientobj[clientFd].method == "GET")
             {
                 clientobj[clientFd].body_complete = 1;
-                out.flush();
-                out.close();
+                if (clientobj[clientFd].method == "POST")
+                    clientobj[clientFd].send_complete = 1;
                 r.set_method(clientobj[clientFd].method);
                 r.set_path(clientobj[clientFd].path);
                 r.set_vergion(clientobj[clientFd].version);
-                // std::cout << "THe hoooole body has been recieved wanna see: =>";
-                // std::cout << "\n\n^^^" << clientobj[clientFd]._requestBuffer << "^^^\n\n";
+                // std::cout << "1THe body has been recieved";
             }
         }
-        else if (clientobj[clientFd].contentLength == clientobj[clientFd]._requestBuffer.size())
+        else if (r.ContentLength == r.body.size() || clientobj[clientFd].method == "GET")
         {
-            std::cout << "\n\n\n2222222222222222222" << "---------------\n\n\n";
             clientobj[clientFd].body_complete = 1;
-            out.flush();
-            out.close();
-            // std::cout << "THe hoooole body has been recieved wanna see: =>";
-            // std::cout << "\n\n^^^" << clientobj[clientFd]._requestBuffer << "^^^\n\n";
+            if (clientobj[clientFd].method == "POST")
+                clientobj[clientFd].send_complete = 1;
             r.set_method(clientobj[clientFd].method);
             r.set_path(clientobj[clientFd].path);
             r.set_vergion(clientobj[clientFd].version);
+            // std::cout << "THe body has been recieved";
+
         }
-        // std::cout << "\n\n\n-------------llll" << "---------------\n\n\n";
     }
     // std::cout << "\n\n\nHEREEEEEEEEEEEEEEEEEEEEEEEE"  << "---------------\n\n\n";
     // std::string raw_request(buffer);//, bytes_received);

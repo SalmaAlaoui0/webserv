@@ -37,9 +37,10 @@ class request{
     std::string method;
     std::string path;
     std::string body_chnked;
+    std::string fullUploadpath;
     std::string ContentType;
-    std::string ContentLength;
-    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r, int clientFd);
+    size_t ContentLength;
+    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r, int clientFd, size_t i);
     int get_final_port(request &r);
     std::string version;
     std::map<std::string, std::string> map;
