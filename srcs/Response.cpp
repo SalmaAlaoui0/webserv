@@ -1,92 +1,92 @@
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
+#include <iostream>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
-std::string send_video(int clientFd, std::string filePath, std::string resCode)
+size_t get_fileSize(int fd)
 {
-
-    // std::ifstream file(filePath, std::ios::binary);
-    std::ifstream file(filePath.c_str());
-    if (!file) {
-        std::cerr << "❌ Failed to open file\n";
-        return "Failed";
-    }
-
-    file.seekg(0, std::ios::end);
-    size_t filesize = file.tellg();
-    file.seekg(0, std::ios::beg);
-
-    std::cout << "\n\n----Hello world----\n\n";
-    std::string contentType = "video/png";
-    std::ostringstream headers;
-    headers << "HTTP/1.1 " << resCode << "\r\n"
-            << "Content-Type: " << contentType << "\r\n"
-            << "Content-Length: " << filesize << "\r\n"
-            << "Connection: close\r\n\r\n";
-
-    std::cout << "\n\n----Hello world---lastly-\n\n";
-
-    std::string headerStr = headers.str();
-    send(clientFd, headerStr.c_str(), headerStr.size(), 0);
-
-    const size_t bufsize = 1024;
-    char buffer[bufsize];
-    int i = 0;
-    while (file.read(buffer, bufsize) || file.gcount() > 0) 
+    struct stat file;
+    if (fstat(fd, &file) == -1 )
     {
-        std::cout << "\n\n----Hello world  " << i << "----\n\n";
-        if (send(clientFd, buffer, file.gcount(), 0) == -1)
-        {
-            perror("send failed");
-            std::cout << "send failed here" << i << "------\n\n";
-            break; // Or handle error properly
-        }      
-        i++;
+        return -1;
     }
+    return file.st_size;
+    
+}
 
-//     const size_t bufsize = 8192;
-//     char buffer[bufsize];
-//     int i = 0;
-
-//     while (file.read(buffer, bufsize) || file.gcount() > 0) {
-//         size_t toSend = file.gcount();
-//         size_t sent = 0;
-
-//         while (sent < toSend) {
-//             ssize_t n = send(clientFd, buffer + sent, toSend - sent, 0);
-//             if (n == -1) {
-//                 if (errno == EINTR) {
-//                     // Interrupted by signal, retry
-//                     continue;
-//                 } else if (errno == EAGAIN || errno == EWOULDBLOCK) {
-//                     // Socket buffer full → wait until writable
-//                     fd_set wfds;
-//                     FD_ZERO(&wfds);
-//                     FD_SET(clientFd, &wfds);
-
-//                     // wait (blocking) until socket is ready
-//                     if (select(clientFd + 1, NULL, &wfds, NULL, NULL) > 0) {
-//                         continue; // try again
-//                     } else {
-//                         perror("select failed");
-//                         return "Failed";
-//                     }
-//                 } else {
-//                     perror("send failed");
-//                     return "Failed";
-//                 }
-//             }
-//             sent += n; // advance pointer by the number of bytes actually sent
-//         }
-
-//         std::cout << "✅ Sent chunk " << i << " (" << toSend << " bytes)\n";
-//         i++;
+// void sigpipe_handler(int signum) {
+//     if (signum)
+//     {}
 // }
 
-    std::cout << "✅ File sent\n";
+std::string send_video(std::map<int, Client> &clientobj, int clientFd, std::string filePath, std::string resCode)
+{
+    if (clientobj[clientFd].Sending == 0)
+    {
+        clientobj[clientFd]._fd = open(filePath.c_str(), O_RDONLY);
+        if (clientobj[clientFd]._fd < 0)
+        {
+            std::cerr << "❌ Failed to open file\n"; // or make it perror("open file")
+            return "Failed";
+        }
+        struct stat filesz;
+        if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
+        {
+            perror("fstat");
+            return "Failed";
+        }
+        clientobj[clientFd].filesize = filesz.st_size;
+        clientobj[clientFd].size_send = 0;
+        
+
+        std::ostringstream headers;
+        headers << "HTTP/1.1 " << resCode << "\r\n"
+                << "Content-Type: " << "video/mp4" << "\r\n"
+                << "Content-Length: " << clientobj[clientFd].filesize << "\r\n"
+                << "Connection: : keep-alive\r\n\r\n";
+
+        std::string headerStr = headers.str();
+        send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
+        clientobj[clientFd].Sending = 1;
+    }
+
+    size_t Readbyte;
+    char buffer[8000];
+    Readbyte = read(clientobj[clientFd]._fd, buffer, sizeof(buffer));
+
+    if (Readbyte > 0)
+    {
+        ssize_t sendbytes = send(clientFd, buffer, Readbyte, MSG_NOSIGNAL);
+        if (sendbytes == -1)
+        {
+            if (errno == EPIPE){ // do nothing or debugging msg because the connection is closed:) 
+                }            
+            else
+                perror("send failed");
+        }
+        else
+        {
+            clientobj[clientFd].size_send += sendbytes;
+            std::cout << "byte sended are : " << clientobj[clientFd].size_send << "and file size is: " << clientobj[clientFd].filesize << std::endl;
+        }
+    }
+    else if (Readbyte == 0)
+    {
+        std::cout << "✅ Reading has been finished" << std::endl;
+        clientobj[clientFd].send_complete = 1;
+        close(clientobj[clientFd]._fd);
+    }
+    else
+    {
+        perror("read failed");
+        return "Failed";
+    }
     return "Done";
 }
 
-std::string RequestResponse(int clientFd, std::string filePath, std::string resCode)
+std::string RequestResponse(std::map<int, Client> &clientobj, int clientFd, std::string filePath, std::string resCode)
 {
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);// we open file in binary read mode to support text && binary files
     if (!file)
@@ -100,6 +100,8 @@ std::string RequestResponse(int clientFd, std::string filePath, std::string resC
     std::string body = ss.str(); //Then put in in body and it will be in response str
 
     std::string contentType = "text/plain"; // set a default content type;// then here we specify (it's optional btw)
+    // std::cout << "the last get path is: " << filePath << std::endl;
+    //hereeeee
     if (filePath.find(".html") != std::string::npos)
         contentType = "text/html";
     else if (filePath.find(".css") != std::string::npos)
@@ -111,7 +113,10 @@ std::string RequestResponse(int clientFd, std::string filePath, std::string resC
     else if (filePath.find(".png") != std::string::npos)
         contentType = "image/png";
     else if (filePath.find(".mp4") != std::string::npos)
-        return send_video(clientFd, filePath, "200 OK");
+    {
+        // std::cout << "here \n\n";
+        return send_video(clientobj, clientFd, filePath, "200 OK");
+    }
 
     std::ostringstream response;// last but not least ofc building proper HTTP response!
     response << "HTTP/1.1 " << resCode << "\r\n"

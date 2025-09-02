@@ -51,11 +51,11 @@ class Server
         int creatServerSocket(const std::string &ip, int port);
         void run();
         bool isServerSocket(int fd) const;
-        void acceptNewClient(int listenFd, EpollManager &epollManager);
+        void acceptNewClient(request & r, int listenFd, EpollManager &epollManager);
         void handleClient(int clientFd, EpollManager &epollManager, std::vector<epoll_event> &events);
         void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
         std::string readRequest(int clientFd, EpollManager &epollManager);
-        void sendResponse(int clientFd, request &r);
+        void sendResponse(int clientFd, request &r, std::map<int, Client> &clientobj);
         
         void closeConnection(int fd, EpollManager &epollManager);
         class socketException : public std::exception 
@@ -69,7 +69,7 @@ class Server
         };
 };
 void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body);    
-void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
+void handle_get_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj);
 void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
 void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i);
 void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type);

@@ -11,17 +11,21 @@
 class Client
 {
     private:
-        int _fd;
-        // std::string _responseBuffer;
         std::time_t lastActivity;
-        public :
-        bool body_complete ;
+    public :
+        int _fd;
+        bool body_complete;
+        bool start_sending;
+        bool send_complete;
+        bool Sending;
+        bool file_opened;
+        // std::ifstream file;
+        // int fd;
+        size_t filesize;
+        size_t size_send;
+        // size_t filesize;
         bool header_complete ;
         bool create_file;
-        // request r;
-        std::string _requestBuffer;
-        size_t contentLength;
-        std::string contentType;
         std::string header;
         std::string method;
         std::string path;
