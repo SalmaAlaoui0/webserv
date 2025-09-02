@@ -36,12 +36,13 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
     //std::cout<<"500 path------> " <<config.ErrorPages[500] <<std::endl;
 
     std::map<std::string , std::string>headers = r.get_header();
-    std::cout << "helllllo there method is: " << clients[clientFd].method << "that's itttttttt\n";
-    std::cout << "helllllo there method is: " << r.get_method() << "that's itttttttt\n";
+    //std::cout << "helllllo there method is: " << clients[clientFd].method << "that's itttttttt\n";
+    std::cout << "helllllo there method is$$$$$$$$$: " << r.get_method() << "that's itttttttt\n";
     std::map<int, Client> :: iterator it = clients.find(clientFd);
     if(it == clients.end())
     {
         std::cerr << "❌ clientFd " << clientFd << " not found\n";
+
         return 0;
     }
     if(clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
@@ -49,56 +50,65 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
         std::cout << "Method is: " << r.get_method() << std::endl; /// telnet 127.0.0.1 8080 there is a problem here the get method does not return the method but the path if we're using telnet as a client try it!
         //send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+
         return 0;
     }
-    if(r.get_method() == "POST")
+    if(clients[clientFd].method == "POST")/// 5ass n3awd les error dyl post 
     {
-        std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
-        if(ptr != headers.end())
-        {
-			std::string a = ptr->second;
-			unsigned long b = std::atoi(a.c_str());
-			if(b < 0 || (b != r.get_body().size()))
-            {
-                std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
-                clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
-                //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
-                return 0;
-            }
-        }
-        else
-        {
-            //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
-            clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
-            std::cout << "helllllllo the world\n";
-            return 0;
-        }
+        // std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
+        // if(ptr != headers.end())
+        // {
+		// 	std::string a = ptr->second;
+		// 	unsigned long b = std::atoi(a.c_str());
+		// 	if(b < 0 || (b != r.get_body().size()))
+        //     {
+        //         std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
+        //         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+        //         //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+
+        //         return 0;
+        //     }
+        // }
+        // else
+        // {
+        //     //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+        //     std::cout << " khrjattttttt4\n";
+        //     clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+
+        //     return 0;
+        // }
     }
 	if(clients[clientFd].version != "HTTP/1.1")
     {
         std::cout << "here internalllll in version\n";
         //send_response(clientFd, 505, "HTTP Version Not Supported", load_html_file("www/505.html"));
         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+
         return 0;
     }
 	if(headers.find("Host") == headers.end())	
     {
         //send_response(clientFd, 400, "Bad Request", load_html_file("www/400.html"));
         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+
         return 0;
     }
-    if(r.get_method().empty() || r.get_path().empty())
+    if(clients[clientFd].method.empty() || clients[clientFd].path.empty())
     {
         //std::cout << "the method and path are: " << r.get_method() << "---" << r.get_path() << std::endl;
         //send_response(clientFd, 400, "Bad Request", load_html_file("www/400.html"));
+        std::cout << " khrjattttttt6\n";
         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+
         return 0;
     }
     const unsigned long max_body_size = 1024 * 1024; // 1 Mo
     if (r.get_body().size() > max_body_size)
     {
         //send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+        std::cout << " khrjattttttt7\n";
         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+
         return 0;
     }
     return 1;
@@ -139,8 +149,9 @@ std::string& request::get_body(void){return body ;}
 
 request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
+    std::cout << "hiiiiiiiii******************************\n";
     Server s;
-    char buffer [8000] = {0};
+    char buffer [1024] = {0};
     ssize_t bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
     if ( bytes_received == -1)
     {
