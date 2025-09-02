@@ -111,7 +111,7 @@ void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &cli
     }
 	if (r.get_method() == "GET")
 		handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
-    else if(r.get_method()== "POST")
+    else if(clientobj[clientFd].method== "POST")
         handle_post_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else if (r.get_method() == "DELETE")
 		handle_delete_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
@@ -291,6 +291,7 @@ void Server::run()
                        a = a.parseRequest(this->clients, epollManager, a, fd);
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
+                            std::cout << "hiii1 \n";
                             events[i].events = EPOLLOUT;
                             events[i].data.fd = fd;
                             if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
@@ -325,8 +326,9 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
+                            std::cout << "hiii3 \n";
                        // std::cout << "Socket ❌❌❌❌❌" << fd << " is ready to write\n";
-                        std::cout<< "bodyyyyy: "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code: "<< clients[fd].response.statusCode << "msg : " << clients[fd].response.statusMsg << "\n\n";
+                       // std::cout<< "bodyyyyy: "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code: "<< clients[fd].response.statusCode << "msg : " << clients[fd].response.statusMsg << "\n\n";
                         clients[fd].response.RequestResponse(fd, clients[fd].response);
                         close(fd);
                         std::cout << "client has been closed after sending response :))\n";

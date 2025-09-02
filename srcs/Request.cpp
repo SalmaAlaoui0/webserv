@@ -34,12 +34,13 @@ request::request(request const &ref)
 bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig &config)
 {
     std::map<std::string , std::string>headers = r.get_header();
-    std::cout << "helllllo there method is: " << clients[clientFd].method << "that's itttttttt\n";
-    std::cout << "helllllo there method is: " << r.get_method() << "that's itttttttt\n";
+    //std::cout << "helllllo there method is: " << clients[clientFd].method << "that's itttttttt\n";
+    std::cout << "helllllo there method is$$$$$$$$$: " << r.get_method() << "that's itttttttt\n";
     std::map<int, Client> :: iterator it = clients.find(clientFd);
     if(it == clients.end())
     {
         std::cerr << "❌ clientFd " << clientFd << " not found\n";
+
         return 0;
     }
     if(clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
@@ -48,25 +49,30 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
         clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed", config.ErrorPages[405], clientFd, clients);
         return 0;
     }
-    if(r.get_method() == "POST")
+    if(clients[clientFd].method == "POST")/// 5ass n3awd les error dyl post 
     {
-        std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
-        if(ptr != headers.end())
-        {
-			std::string a = ptr->second;
-			unsigned long b = std::atoi(a.c_str());
-			if(b < 0 || (b != r.get_body().size()))
-            {
-                std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
-                clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
-                return 0;
-            }
-        }
-        else
-        {
-            clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
-            return 0;
-        }
+        // std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
+        // if(ptr != headers.end())
+        // {
+		// 	std::string a = ptr->second;
+		// 	unsigned long b = std::atoi(a.c_str());
+		// 	if(b < 0 || (b != r.get_body().size()))
+        //     {
+        //         std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
+        //         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+        //         //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+
+        //         return 0;
+        //     }
+        // }
+        // else
+        // {
+        //     //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
+        //     std::cout << " khrjattttttt4\n";
+        //     clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
+
+        //     return 0;
+        // }
     }
 	if(clients[clientFd].version != "HTTP/1.1")
     {
@@ -79,9 +85,8 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
         clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
         return 0;
     }
-    if(r.get_method().empty() || r.get_path().empty())
+    if(clients[clientFd].method.empty() || clients[clientFd].path.empty())
     {
-        //std::cout << "the method and path are: " << r.get_method() << "---" << r.get_path() << std::endl;
         clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
         return 0;
     }
@@ -129,8 +134,9 @@ std::string& request::get_body(void){return body ;}
 
 request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
+    std::cout << "hiiiiiiiii******************************\n";
     Server s;
-    char buffer [8000] = {0};
+    char buffer [1024] = {0};
     ssize_t bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
     if ( bytes_received == -1)
     {
@@ -155,6 +161,9 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         iss.ignore();
         std::istringstream line_stream(line);
         line_stream >>  methode >> path >> version;
+        r.set_method(method);
+        r.set_path(path);
+        r.set_vergion(version);
         clientobj[clientFd].method = methode;
         clientobj[clientFd].path = path;
         clientobj[clientFd].version = version;
