@@ -84,29 +84,14 @@ int Server::creatServerSocket(const std::string &ip, int port)
 
 void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &clientobj)
 {
-
-	// size_t conf_i = _configs.size();
-    // for (size_t i = 0; i < _configs.size(); ++i) 
-    // {
-    //     if (_configs[i].port == r.get_final_port(r))
-    //     { 
-    //         conf_i = i; 
-    //         break;
-    //     }
-    // }
-    std::cout<<"404 path------> " <<_configs[this->clients[clientFd]. conf_i].ErrorPages[404] <<std::endl;
     if (this->clients[clientFd]. conf_i == _configs.size()) 
     {
         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error (no matching server)",_configs[this->clients[clientFd]. conf_i].ErrorPages[500], clientFd, clients);
-        //send_response(clientFd, 500, "Internal Server Error (no matching server)", load_html_file("www/500.html"));
         return;
     }
     if (r.get_path() == "/favicon.ico")
     {
         clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients);
-        // std::string notFound = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
-        // if (send(clientFd, notFound.c_str(), notFound.size(), 0) < 0)
-        //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl; 
         return;
     }
 	if (r.get_method() == "GET")
@@ -118,9 +103,6 @@ void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &cli
     else
     {
         clients[clientFd].response = Response::buildResponse(r, 404, "invalid method",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients);
-        // std::string invalidMethod = "HTTP/1.1 404 invalid method\r\nContent-Length: 0\r\n\r\n";
-		// if (send(clientFd, invalidMethod.c_str(), invalidMethod.size(), 0) < 0)
-        //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;    
 		return;
     }
 }
@@ -204,7 +186,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         req.body.clear();
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
-                std::cout << "client fd" << clientFd << std::endl;
+                // std::cout << "client fd" << clientFd << std::endl;
 
         if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1)
         {
@@ -218,16 +200,15 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
             throw socketException("❌ accept failed");
         }
         epollManager.addSocket(clientFd, EPOLLIN);
-        // epollManager.addSocket(clientFd);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
+        req.ContentLength = 0;
         clients[clientFd].body_complete = 0;
         clients[clientFd].send_complete = 0;
         clients[clientFd].start_sending = 0;
         clients[clientFd].create_file = 0;
         clients[clientFd].Sending = 0;
-        // clients[clientFd].file_opened = 0;
-        // clients[clientFd]._requestBuffer.clear();
-        std::cout << "✅ New client connected on fd : " << clientFd << std::endl;
+        clients[clientFd].ErrorFound = 0;
+        std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
     
 }
 
@@ -283,7 +264,8 @@ void Server::run()
                 acceptNewClient(a, fd, epollManager);
             else
             {
-                if (events[i].events & EPOLLIN && (this->clients[fd].body_complete == 0 || this->clients[fd].send_complete == 0)) 
+                clients[fd].no_data = 0;
+                if (events[i].events & EPOLLIN) 
                 {
                     // std::cout << "Socket ❌❌❌❌❌ " << fd << " is ready to read\n";
                     try
@@ -291,7 +273,7 @@ void Server::run()
                        a = a.parseRequest(this->clients, epollManager, a, fd);
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
-                            std::cout << "hiii1 \n";
+                            std::cout << "\nMaking the event EPOLLOUT \n";
                             events[i].events = EPOLLOUT;
                             events[i].data.fd = fd;
                             if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
@@ -307,11 +289,13 @@ void Server::run()
                                 break;
                             }
                         }
-                        if (!a.error_set(this->clients, a, fd, s.getConfig()[this->clients[fd].conf_i]))
-                            throw socketException("❌ error detected ");
-                        else
-                            handleRequest(fd, a, clients);
-                        std::cout<< "body "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code:  "<< clients[fd].response.statusCode << " msg :" << clients[fd].response.statusMsg << "\n\n";
+                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
+                        {
+                            if (!a.error_set(this->clients, a, fd, s.getConfig()[this->clients[fd].conf_i]))
+                                throw socketException("❌ error detected ");
+                            else
+                                handleRequest(fd, a, clients);
+                        }
                         std::map<int, Client>::iterator it = clients.find(fd);
                         if (it != clients.end())
                             it->second.updateActivity();
@@ -319,19 +303,21 @@ void Server::run()
                     catch(std::exception &e)
                     {
                         std::cout << e.what() << std::endl;
-                        // return ;
                     }
-                    // std::cout << "fd = "<< fd << std::endl;
-                    // std::cout << "helllllo ❌❌❌❌❌❌❌❌❌❌ method is: " << a.get_method() << "that's itttttttt\n";
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
-                            std::cout << "hiii3 \n";
-                       // std::cout << "Socket ❌❌❌❌❌" << fd << " is ready to write\n";
-                       // std::cout<< "bodyyyyy: "<<clients[fd].response.body   << " content type :    "  << clients[fd].response.contentType << "  code: "<< clients[fd].response.statusCode << "msg : " << clients[fd].response.statusMsg << "\n\n";
-                        clients[fd].response.RequestResponse(fd, clients[fd].response);
+                    if (clients[fd].method == "GET" && !clients[fd].ErrorFound)
+                        handleRequest(fd, a, clients);
+                    if (!clients[fd].no_data)
+                    {
+                        clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
+                    }
+                    if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET" || (clients[fd].method == "GET" && clients[fd].ErrorFound == 1))
+                    {
                         close(fd);
-                        std::cout << "client has been closed after sending response :))\n";
+                        std::cout << "✅ client: " << fd << " is disconnected\n";
+                    }
                 }
                 else
                     std::cout<<"maart ach kandir hna\n\n";

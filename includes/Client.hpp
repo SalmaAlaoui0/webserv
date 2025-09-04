@@ -18,6 +18,8 @@ class Client
         bool send_complete;
         bool Sending;
         bool file_opened;
+        bool no_data;
+        bool ErrorFound;
         // std::ifstream file;
         // int fd;
         size_t filesize;

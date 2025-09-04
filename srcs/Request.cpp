@@ -35,8 +35,9 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
 {
     std::map<std::string , std::string>headers = r.get_header();
     //std::cout << "helllllo there method is: " << clients[clientFd].method << "that's itttttttt\n";
-    std::cout << "helllllo there method is$$$$$$$$$: " << r.get_method() << "that's itttttttt\n";
+    // std::cout << "helllllo there method is$$$$$$$$$: " << r.get_method() << "that's itttttttt\n";
     std::map<int, Client> :: iterator it = clients.find(clientFd);
+    // std::cout << "begining of error_set function\n";
     if(it == clients.end())
     {
         std::cerr << "❌ clientFd " << clientFd << " not found\n";
@@ -51,6 +52,7 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
     }
     if(clients[clientFd].method == "POST")/// 5ass n3awd les error dyl post 
     {
+        std::cout << "inside if statement of post\n";
         // std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
         // if(ptr != headers.end())
         // {
@@ -90,12 +92,13 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
         clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
         return 0;
     }
-    const unsigned long max_body_size = 1024 * 1024; // 1 Mo
-    if (r.get_body().size() > max_body_size)
-    {
-        clients[clientFd].response = Response::buildResponse(r, 413, "Payload Too Large", config.ErrorPages[413], clientFd, clients);
-        return 0;
-    }
+    // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
+    // if (r.get_body().size() > max_body_size)
+    // {
+    //     std::cout << "In some conditions waiting for the faith and the error page is:" << config.ErrorPages[413] << " and the clientFd is: " << clientFd << " \n";
+    //     clients[clientFd].response = Response::buildResponse(r, 413, "Payload Too Large", config.ErrorPages[413], clientFd, clients);
+    //     return 0;
+    // }
     return 1;
 }
 
@@ -134,9 +137,8 @@ std::string& request::get_body(void){return body ;}
 
 request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
-    std::cout << "hiiiiiiiii******************************\n";
     Server s;
-    char buffer [1024] = {0};
+    char buffer [8000] = {0};
     ssize_t bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
     if ( bytes_received == -1)
     {
@@ -191,7 +193,9 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
                 // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
                 // if (r.ContentLength > max_body_size)
                 // {
-                //     send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+                //     std::cout << "Problem here \n";
+                //     clientobj[clientFd].response = Response::buildResponse(r, 413, "Payload Too Large", "www/413.html", clientFd, clientobj);
+                //     // send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
                 //     return r;
                 // }
             }
@@ -211,7 +215,10 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             {
                 clientobj[clientFd].body_complete = 1;
                 if (clientobj[clientFd].method == "POST")
+                {
+                    std::cout << "\nReading Post body is Done ✅\n";
                     clientobj[clientFd].send_complete = 1;
+                }
                 r.set_method(clientobj[clientFd].method);
                 r.set_path(clientobj[clientFd].path);
                 r.set_vergion(clientobj[clientFd].version);
@@ -222,7 +229,10 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         {
             clientobj[clientFd].body_complete = 1;
             if (clientobj[clientFd].method == "POST")
+            {
+                std::cout << "\nReading Post body is Done ✅\n";
                 clientobj[clientFd].send_complete = 1;
+            }
             r.set_method(clientobj[clientFd].method);
             r.set_path(clientobj[clientFd].path);
             r.set_vergion(clientobj[clientFd].version);
