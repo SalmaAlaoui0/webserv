@@ -179,27 +179,22 @@
 // 			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
 // 			{
 // 				// return serve_autoindex_listing(clientFd, requested_path, uri);
-// 				// return RequestResponse(clientFd, "/home/salaoui/Desktop/webserv/www/autoindex.html");
 // 				// std::cout << "handling autoindex en cours...\n";
 // 				return send_dir_list(clientFd, requested_path);// using requested path only !
 //             }
 // 			else
 // 			{
 // 				std::cout << "1 Forbidden (index off and no index file) the error is: " << 403 << std::endl;
-// 				return RequestResponse(clientFd, config[i].ErrorPages[403], "403 Forbidden");
 //             }
 //         }
 // 		else // If we did attach the file but still it's not found
 // 		{
-// 			return RequestResponse(clientFd, config[i].ErrorPages[403], "403 Forbidden");
 // 			std::cout << "2 Not a regular file or dir the error is: " << 403 << std::endl;
 //         }
 //     }
 // 	else
 // 	{
-// 		// return RequestResponse(clientFd, "/home/salaoui/Desktop/webserv/www/404.html");
 // 		std::cout << "3 Not found the error is: " << 404 << std::endl;
-// 		return RequestResponse(clientFd, config[i].ErrorPages[404], "404 Not Found");
 //         // return send_error(404); // ❌ Not found
 //     }
 // 	return NULL;
