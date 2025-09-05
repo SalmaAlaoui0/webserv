@@ -148,14 +148,13 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             throw requetetException("❌ recv failed: ");
         }
     }
-    r.body.append(buffer, bytes_received);
-    std::cout << "in this socket file number: " << clientFd << "=> size in header: " << r.ContentLength << " and size in body is: " << r.body.size() << std::endl;
-    // std::cout << "the size in header is: " << r.ContentLength << "and the body is: " << r.get_body().size() << std::endl;
-    if (r.body.find("\r\n\r\n") != std::string::npos)
+    clientobj[clientFd].PostBody.append(buffer, bytes_received);
+    std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
+    if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos)
     {
-        size_t HeaderEnd = r.body.find("\r\n\r\n");
-        std::string headers = r.body.substr(0, HeaderEnd);
-        r.body = r.body.substr(HeaderEnd + 4);
+        size_t HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
+        std::string headers = clientobj[clientFd].PostBody.substr(0, HeaderEnd);
+        clientobj[clientFd].PostBody = clientobj[clientFd].PostBody.substr(HeaderEnd + 4);
         // std::cout << "\n\n" << headers << "\n\n";///
         std::istringstream iss(headers);
         std::string methode , path ,version, line;
@@ -163,12 +162,12 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         iss.ignore();
         std::istringstream line_stream(line);
         line_stream >>  methode >> path >> version;
-        r.set_method(method);
-        r.set_path(path);
-        r.set_vergion(version);
         clientobj[clientFd].method = methode;
         clientobj[clientFd].path = path;
         clientobj[clientFd].version = version;
+        // r.set_method(method);
+        // r.set_path(path);
+        // r.set_vergion(version);
         while(std::getline(iss, line, '\r') && !line.empty())
         {
             iss.ignore();
@@ -179,17 +178,18 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
                 key = trim1(key);
                 std::string value = line.substr(pos+1, line.size());
                 value = trim1(value);
+                clientobj[clientFd].set_header(key,value);
                 r.set_header(key,value);
             }
         }
         std::map<std::string, std::string>::iterator iterator;
-        iterator = r.get_header().begin();
-        while (iterator != r.get_header().end())
+        iterator = clientobj[clientFd].get_header().begin();
+        while (iterator != clientobj[clientFd].get_header().end())
         {
             if (iterator->first == "Content-Length")
             {
                 std::stringstream ss(iterator->second);
-                ss >> r.ContentLength;
+                ss >> clientobj[clientFd].ContentLength;
                 // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
                 // if (r.ContentLength > max_body_size)
                 // {
@@ -201,7 +201,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             }
             if (iterator->first == "Content-Type")
             {
-                r.ContentType = iterator->second;
+                clientobj[clientFd].ContentType = iterator->second;
             }
             iterator++;
         }
@@ -209,23 +209,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
     }
     if (clientobj[clientFd].header_complete)
     {
-        if (r.ContentLength > r.body.size() && clientobj[clientFd].body_complete == 0)
-        {
-            if (r.ContentLength == r.body.size() || clientobj[clientFd].method == "GET")
-            {
-                clientobj[clientFd].body_complete = 1;
-                if (clientobj[clientFd].method == "POST")
-                {
-                    std::cout << "\nReading Post body is Done ✅\n";
-                    clientobj[clientFd].send_complete = 1;
-                }
-                r.set_method(clientobj[clientFd].method);
-                r.set_path(clientobj[clientFd].path);
-                r.set_vergion(clientobj[clientFd].version);
-                // std::cout << "1THe body has been recieved";
-            }
-        }
-        else if (r.ContentLength == r.body.size() || clientobj[clientFd].method == "GET")
+        if (clientobj[clientFd].ContentLength == clientobj[clientFd].PostBody.size() || clientobj[clientFd].method == "GET")
         {
             clientobj[clientFd].body_complete = 1;
             if (clientobj[clientFd].method == "POST")
@@ -237,7 +221,6 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             r.set_path(clientobj[clientFd].path);
             r.set_vergion(clientobj[clientFd].version);
             // std::cout << "THe body has been recieved";
-
         }
     }
     // std::cout << "\n\n\nHEREEEEEEEEEEEEEEEEEEEEEEEE"  << "---------------\n\n\n";
@@ -344,3 +327,97 @@ int request::get_final_port(request &r)
 	}
     return 0;
 }
+
+
+
+//// Save this function if anything unexpected happend or expected 
+
+
+// request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
+// {
+//     Server s;
+//     char buffer [8000] = {0};
+//     ssize_t bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
+//     if ( bytes_received == -1)
+//     {
+//         if (errno != EAGAIN && errno != EWOULDBLOCK)
+//         {
+//             s.closeConnection(clientFd, epollManager);
+//             throw requetetException("❌ recv failed: ");
+//         }
+//     }
+//     r.body.append(buffer, bytes_received);
+//     std::cout << "in this socket file number: " << clientFd << "=> size in header: " << r.ContentLength << " and size in body is: " << r.body.size() << std::endl;
+//     // std::cout << "the size in header is: " << r.ContentLength << "and the body is: " << r.get_body().size() << std::endl;
+//     if (r.body.find("\r\n\r\n") != std::string::npos)
+//     {
+//         size_t HeaderEnd = r.body.find("\r\n\r\n");
+//         std::string headers = r.body.substr(0, HeaderEnd);
+//         r.body = r.body.substr(HeaderEnd + 4);
+//         // std::cout << "\n\n" << headers << "\n\n";///
+//         std::istringstream iss(headers);
+//         std::string methode , path ,version, line;
+//         std::getline(iss, line,  '\r');
+//         iss.ignore();
+//         std::istringstream line_stream(line);
+//         line_stream >>  methode >> path >> version;
+//         r.set_method(method);
+//         r.set_path(path);
+//         r.set_vergion(version);
+//         clientobj[clientFd].method = methode;
+//         clientobj[clientFd].path = path;
+//         clientobj[clientFd].version = version;
+//         while(std::getline(iss, line, '\r') && !line.empty())
+//         {
+//             iss.ignore();
+//             size_t pos = line.find(":");
+//             if(pos != std::string::npos)
+//             {
+//                 std::string key = line.substr(0,pos);
+//                 key = trim1(key);
+//                 std::string value = line.substr(pos+1, line.size());
+//                 value = trim1(value);
+//                 r.set_header(key,value);
+//             }
+//         }
+//         std::map<std::string, std::string>::iterator iterator;
+//         iterator = r.get_header().begin();
+//         while (iterator != r.get_header().end())
+//         {
+//             if (iterator->first == "Content-Length")
+//             {
+//                 std::stringstream ss(iterator->second);
+//                 ss >> r.ContentLength;
+//                 // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
+//                 // if (r.ContentLength > max_body_size)
+//                 // {
+//                 //     std::cout << "Problem here \n";
+//                 //     clientobj[clientFd].response = Response::buildResponse(r, 413, "Payload Too Large", "www/413.html", clientFd, clientobj);
+//                 //     // send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+//                 //     return r;
+//                 // }
+//             }
+//             if (iterator->first == "Content-Type")
+//             {
+//                 r.ContentType = iterator->second;
+//             }
+//             iterator++;
+//         }
+//         clientobj[clientFd].header_complete = 1;
+//     }
+//     if (clientobj[clientFd].header_complete)
+//     {
+//         if (r.ContentLength == r.body.size() || clientobj[clientFd].method == "GET")
+//         {
+//             clientobj[clientFd].body_complete = 1;
+//             if (clientobj[clientFd].method == "POST")
+//             {
+//                 std::cout << "\nReading Post body is Done ✅\n";
+//                 clientobj[clientFd].send_complete = 1;
+//             }
+//             r.set_method(clientobj[clientFd].method);
+//             r.set_path(clientobj[clientFd].path);
+//             r.set_vergion(clientobj[clientFd].version);
+//             // std::cout << "THe body has been recieved";
+//         }
+//     }

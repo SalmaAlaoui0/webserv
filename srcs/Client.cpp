@@ -11,6 +11,13 @@ Client::Client(int fd) : _fd(fd)
     updateActivity();
 }
 
+void Client::set_header(std::string key, std::string value){
+    map[key] = value;}
+
+std::map<std::string,std::string>& Client::get_header()   {
+return map;
+}
+
 // void Client::set_header(std::string key, std::string value){
 //     map[key] = value;}
 

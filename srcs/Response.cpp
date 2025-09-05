@@ -11,77 +11,10 @@ Response::Response() : statusCode(0), statusMsg(""), body(""), contentType("text
 
 Response::~Response() {}
 
-// std::string send_video(std::map<int, Client> &clientobj, int clientFd, std::string filePath, std::string resCode)
-// {
-//     if (clientobj[clientFd].Sending == 0)
-//     {
-//         clientobj[clientFd]._fd = open(filePath.c_str(), O_RDONLY);
-//         if (clientobj[clientFd]._fd < 0)
-//         {
-//             std::cerr << "❌ Failed to open file\n"; // or make it perror("open file")
-//             return "Failed";
-//         }
-//         struct stat filesz;
-//         if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
-//         {
-//             perror("fstat");
-//             return "Failed";
-//         }
-//         clientobj[clientFd].filesize = filesz.st_size;
-//         clientobj[clientFd].size_send = 0;
-        
-
-//         std::ostringstream headers;
-//         headers << "HTTP/1.1 " << resCode << "\r\n"
-//                 << "Content-Type: " << "video/mp4" << "\r\n"
-//                 << "Content-Length: " << clientobj[clientFd].filesize << "\r\n"
-//                 << "Connection: : keep-alive\r\n\r\n";
-
-//         std::string headerStr = headers.str();
-//         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
-//         clientobj[clientFd].Sending = 1;
-//     }
-
-//     size_t Readbyte;
-//     char buffer[8000];
-//     Readbyte = read(clientobj[clientFd]._fd, buffer, sizeof(buffer));
-
-//     if (Readbyte > 0)
-//     {
-//         ssize_t sendbytes = send(clientFd, buffer, Readbyte, MSG_NOSIGNAL);
-//         if (sendbytes == -1)
-//         {
-//             if (errno == EPIPE){ // do nothing or debugging msg because the connection is closed:) 
-//                 }            
-//             else
-//                 perror("send failed");
-//         }
-//         else
-//         {
-//             clientobj[clientFd].size_send += sendbytes;
-//             std::cout << "byte sended are : " << clientobj[clientFd].size_send << "and file size is: " << clientobj[clientFd].filesize << std::endl;
-//         }
-//     }
-//     else if (Readbyte == 0)
-//     {
-//         std::cout << "✅ Reading has been finished" << std::endl;
-//         clientobj[clientFd].send_complete = 1;
-//         close(clientobj[clientFd]._fd);
-//     }
-//     else
-//     {
-//         perror("read failed");
-//         return "Failed";
-//     }
-//     return "Done";
-// }
-
 Response send_video(std::map<int, Client> &clientobj, int clientFd, std::string filePath, Response &rep)
 {
-    std::cout << "Sending var is : " << clientobj[clientFd].Sending << "\n\n";
     if (clientobj[clientFd].Sending == 0)
     {
-        std::cout << "u should not seee this msg twice \n\n";
         clientobj[clientFd]._fd = open(filePath.c_str(), O_RDONLY);
         if (clientobj[clientFd]._fd < 0)
         {
@@ -120,7 +53,10 @@ Response send_video(std::map<int, Client> &clientobj, int clientFd, std::string 
             {
                 clientobj[clientFd].no_data = 1;
                 return rep;
-            } else {
+            }
+            else
+            {
+                clientobj[clientFd].send_complete = 1;
                 perror("read failed");
             }
         }
@@ -135,7 +71,7 @@ Response send_video(std::map<int, Client> &clientobj, int clientFd, std::string 
             rep.Readbyte = Readbyte;
             std::cout << "✅ Reading has been finished" << std::endl;
             clientobj[clientFd].send_complete = 1;
-            close(clientobj[clientFd]._fd);// make sure to close also when the connection is closed !!!
+            close(clientobj[clientFd]._fd);
         }
         else
         {
@@ -150,9 +86,8 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     ssize_t sent = 0;
     std::cout << clientobj[clientFd].method << "<==== this is the method\n\n";
     if (clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
-        && !clientobj[clientFd].ErrorFound)
+        && !clientobj[clientFd].ResponseChunked)
     {
-        std::cout << "Got until here clientobj[clientFd].method == GET && clientobj[clientFd].Sending == 0\n\n";
         std::ostringstream headers;
         headers << "HTTP/1.1 " << res.statusCode << "\r\n"
             << "Content-Type: " << res.contentType << "\r\n"
@@ -160,13 +95,15 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             << "Connection: : keep-alive\r\n\r\n";
 
         std::string headerStr = headers.str();
+        std::cout << "here1\n";// keep those u'll need them 
         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
-        && !clientobj[clientFd].ErrorFound)
+        && !clientobj[clientFd].ResponseChunked)
     {
         // std::cout << "ur buffer size is: " << res.body.size() << " and readbyte are: " << Readbyte << "<----\n\n";
+        std::cout << "here2\n";// keep those u'll need them 
         ssize_t sendbytes = send(clientFd, res.body.c_str(), Readbyte, MSG_NOSIGNAL);
         if (sendbytes != -1)
         {
@@ -179,12 +116,12 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     // 3-if method is "GET" and not first time than send only a body coming in res.body
     else
     {
-        std::cout << "U should see me hereeeee\n\n\n";
-        response << "HTTP/1.0 " << res.statusCode << "\r\n"
-                << "Content-Type: " << res.contentType << "\r\n"
-                << "Content-Length: " << res.body.size() << "\r\n\r\n"
+        response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
+                << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n"
+                << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
                 << res.body;
 
+        std::cout << "here3\n";// keep those u'll need them 
         sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
     }
     if (sent < 0)
@@ -212,9 +149,17 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
     std::cerr << "\n@@@@@@@Trying to open: [" << filePath << "]\n";
 
     Response rep;
+    if (clientobj[clientFd].autoindex)
+    {
+        rep.contentType = "text/html";
+        rep.statusCode = 200;
+        rep.statusMsg = "OK";
+        rep.body = clientobj[clientFd].autoIndexBody;
+        return rep;
+    }
     rep.statusCode = code;
     rep.statusMsg = msg;
-    std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);// we open file in binary read mode to support text && binary files
+    std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
     if (!file)
     {
         std::cerr << "❌ Failed to open file: " << filePath << std::endl;
@@ -224,15 +169,9 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
         rep.contentType = "text/html";
         return (rep);
     }
-    if ((r.get_method() == "GET" && clientobj[clientFd].ErrorFound == 1) || r.get_method() != "GET")
-    {
-        std::ostringstream ss; // to put file content in it ;)
-        ss << file.rdbuf();
-        rep.body = ss.str();
-        rep.contentType = "text/html";
-    }
     else
     {
+        clientobj[clientFd].ResponseChunked = 1;
         rep.contentType = "text/plain";
         if (filePath.find(".html") != std::string::npos)
             rep.contentType = "text/html";
@@ -245,7 +184,20 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
         else if (filePath.find(".png") != std::string::npos)
             rep.contentType = "image/png";
         else if (filePath.find(".mp4") != std::string::npos)
+        {
+            clientobj[clientFd].ResponseChunked = 0;
             send_video(clientobj, clientFd, filePath, rep);
+        }
+        std::cout << "data are==>: the file path is: " << filePath << " and the type is: " << rep.contentType << "\n ";
+        exit(43);
+    }
+    if ((r.get_method() == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
+    {
+        // std::cout << "helllllllllllllo\n";
+        std::ostringstream ss; // to put file content in it ;)
+        ss << file.rdbuf();
+        rep.body = ss.str();
+        // std::cout << "THE BODY OF UR FILE IS: " << rep.body << std::endl;
     }
     return rep;
 }

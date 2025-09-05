@@ -160,15 +160,17 @@ bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _config
 }
 
 
-void send_dir_list(int clientFd, std::string requested_path)
+void send_dir_list(int clientFd, std::string requested_path, std::map<int, Client> &clientobj)
 {
 	std::stringstream body;
 	DIR* directory = opendir(requested_path.c_str());
 	struct dirent *entry;
+
+	clientobj[clientFd].autoindex = 1;
+    clientobj[clientFd].ResponseChunked = 1;
 	if (!directory)
 	{
 		body << "<html><body><h1>Unable to open director" << requested_path << "</h1></body></html>";
-		// return "Couldn't open dir!";
 	}
 	else
 	{
@@ -186,23 +188,7 @@ void send_dir_list(int clientFd, std::string requested_path)
 		closedir(directory);
 		body << "</ul></body></html>";
 	}
-	// body << "<html><body><h1>Hello Atoindex Is On !</h1></body></html>";
-	std::ostringstream response;
-	response << "HTTP/1.1 200 OK\r\n";
-	response << "Content-Length:" << body.str().size() << "\r\n";
-	response << "Content-Type: text/html\r\n";
-	response << "Connection: close\r\n";
-	response << "\r\n";
-	response << body.str();
-	ssize_t sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
-	if (sent < 0)
-		std::cerr << "Something went wrong send < 0" << std::endl;
-	else
-	{
-		std::cout << "✅ Response being send to FD: " << clientFd << std::endl;
-		// return "autoindex:Dooone ✅";
-	}
-    // return ("SomeThing went wrong");
+	clientobj[clientFd].autoIndexBody = body.str();
 }
 
 
@@ -212,43 +198,41 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
     if (stat(requested_path.c_str(), &statbuf) == 0)
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
-		{
 			clients[clientFd].response  = clients[clientFd].response.buildResponse(r, 200, "OK", requested_path, clientFd, clientobj);
-        }
 		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
 		{
 			std::string index_file;
 			index_file = join_path(requested_path, config[i].locations[key].index);
 
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
-			 	clients[clientFd].response= clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
+			 	clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
 			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
 			{
-				send_dir_list(clientFd, requested_path);// using requested path only !
+				send_dir_list(clientFd, requested_path, clientobj);// using requested path only !
+			 	clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
 				// change return value to void and make buildresponse instead of send
             }
 			else
 			{
-				clientobj[clientFd].ErrorFound = 1;
+				clientobj[clientFd].ResponseChunked = 1;
 				clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden",config[i].ErrorPages[403], clientFd, clientobj);
 			}
         }
 		else // If we did attach the file but still it's not found
 		{
-			clientobj[clientFd].ErrorFound = 1;
+			clientobj[clientFd].ResponseChunked = 1;
 			clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden",config[i].ErrorPages[403], clientFd, clientobj);
 		}
     }
 	else
 	{
-		clientobj[clientFd].ErrorFound = 1;
+		clientobj[clientFd].ResponseChunked = 1;
 		clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",config[i].ErrorPages[404], clientFd, clientobj);
 	}
 }
 
 void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj)
 {
-	std::cout << "in handle get methode it's a safe zone\n\n";
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
     int key = map.begin()->first;
@@ -258,7 +242,6 @@ void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, 
         clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
-    std::cout << "\nFull path is:" << value << std::endl;
     CheckDirOrFile(value, clientFd, _configs, conf_i, key, r, clientobj);
 }
 
@@ -389,7 +372,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
     dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj);
 }
 
-void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj)
+void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj)
 {
 	std::map<int, std::string> map;
 	
@@ -420,10 +403,10 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	}
 	
 	std::ostringstream filename;
-	std::cout << "\nContent Type is: " << r.ContentType << std::endl;
-	int ext = r.ContentType.find('/');
-	r.ContentType = r.ContentType.substr(ext + 1);
-	filename << fullpath << "/" << rand() <<"."<<r.ContentType;
+	std::cout << "\nContent Type is: " << clientobj[clientFd].ContentType << std::endl;
+	int ext = clientobj[clientFd].ContentType.find('/');
+	clientobj[clientFd].ContentType = clientobj[clientFd].ContentType.substr(ext + 1);
+	filename << fullpath << "/" << rand() << "." << clientobj[clientFd].ContentType;
 	std::cout << "\nfile is uploaded in: " << filename.str() << std::endl;
 	std::ofstream out(filename.str().c_str(),std::ios::binary);
 	if(!out)
@@ -435,7 +418,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	// //out << r.body;
 	
 	// std::cout << "✅✅✅✅✅✅✅✅✅✅" << std::endl;
-	out .write(r.body.c_str(), r.body.size());
+	out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
 	out.flush();
 	out.close();
 	clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);

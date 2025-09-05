@@ -19,12 +19,19 @@ class Client
         bool Sending;
         bool file_opened;
         bool no_data;
-        bool ErrorFound;
+        bool ResponseChunked;
+        bool autoindex;
         // std::ifstream file;
         // int fd;
+        std::string autoIndexBody;
+        std::string PostBody;
         size_t filesize;
         size_t size_send;
         size_t conf_i ;
+
+        std::map<std::string, std::string> map;
+        std::string ContentType;
+        size_t ContentLength;
         // size_t filesize;
         bool header_complete ;
         bool create_file;
@@ -37,6 +44,8 @@ class Client
         Client();
         Client(int fd);
         ~Client();
+        void set_header(std::string key, std::string value);
+        std::map<std::string,std::string>& get_header();
         int getFd() const;
         int getLastActivity() const;
         void updateActivity();
