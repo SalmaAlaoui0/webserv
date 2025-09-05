@@ -15,7 +15,7 @@ Team Members: Wafaa && Mouna && Salma
       Assigned to: _________________________
       Deadline: ___________________________
 
-- [ ] Test 2: _______________________________
+- [ ] Test 2: Question if the request method was GET and the there where body there
       Details: _____________________________
       Assigned to: _________________________
       Deadline: ___________________________

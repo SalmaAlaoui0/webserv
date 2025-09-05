@@ -107,79 +107,6 @@ void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &cli
     }
 }
 
-// void Server::handleClient(int clientFd, EpollManager &epollManager)
-// {
-//     request a;
-//     try
-//     {
-//         a = a.parseRequest(this->clients, epollManager, a, clientFd);
-//     }
-//     catch(std::exception &e)
-//     {
-//         std::cout << e.what() << std::endl;
-//         return ;
-//     }
-//     std::cout << "fd = "<< clientFd << std::endl;
-//     if (a.error_set(this->clients, a, clientFd) == 1)
-//     {
-//         if (clients[clientFd].body_complete == 1)
-//             sendResponse(clientFd, a);
-//     }
-//     // std::map<std::string, std::string> response = e.what();
-//     // send_response(clientFd, 400, "Bad Request", load_html_file("www/403.html"));
-//     // // ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
-//     // // if (sent < 0)
-//     // //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-//     // // else
-//     // //     std::cout << "Response sent to FD: " << clientFd << std::endl;
-//     // return ;
-//     std::cout << "\n\n\nHEREEEEEEEEEEEEEEEEEEEEEEEE"  << "---------------\n\n\n";
-// 	std::map<int, Client>::iterator it = clients.find(clientFd);
-// 	if (it != clients.end())
-// 		it->second.updateActivity();
-//     // if (clients[clientFd].body_complete == 1)
-//     // {
-//     //     close(clientFd);
-//     //     std::cout << "client has been closed after sending response :))\n";
-//     // }
-// }
-// void Server::handleClient(int clientFd, EpollManager &epollManager)
-// {
-//     request a;
-//     try
-//     {
-//         a = a.parseRequest(this->clients, epollManager, a, clientFd);
-//     }
-//     catch(std::exception &e)
-//     {
-//         std::cout << e.what() << std::endl;
-//         return ;
-//     }
-//     std::cout << "fd = "<< clientFd << std::endl;
-//     if (a.error_set(this->clients, a, clientFd) == 1)
-//     {
-//         if (clients[clientFd].body_complete == 1)
-//             sendResponse(clientFd, a);
-//     }
-//     // std::map<std::string, std::string> response = e.what();
-//     // send_response(clientFd, 400, "Bad Request", load_html_file("www/403.html"));
-//     // // ssize_t sent = send(clientFd, response.c_str(), response.size(), 0);
-//     // // if (sent < 0)
-//     // //     std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-//     // // else
-//     // //     std::cout << "Response sent to FD: " << clientFd << std::endl;
-//     // return ;
-//     std::cout << "\n\n\nHEREEEEEEEEEEEEEEEEEEEEEEEE"  << "---------------\n\n\n";
-// 	std::map<int, Client>::iterator it = clients.find(clientFd);
-// 	if (it != clients.end())
-// 		it->second.updateActivity();
-//     // if (clients[clientFd].body_complete == 1)
-//     // {
-//     //     close(clientFd);
-//     //     std::cout << "client has been closed after sending response :))\n";
-//     // }
-// }
-
 void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollManager)
 {
         struct sockaddr clientAddr;
@@ -207,7 +134,9 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].start_sending = 0;
         clients[clientFd].create_file = 0;
         clients[clientFd].Sending = 0;
-        clients[clientFd].ErrorFound = 0;
+        clients[clientFd].autoindex = 0;
+        clients[clientFd].ResponseChunked = 0;
+        clients[clientFd].PostBody.clear();
         std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
     
 }
@@ -307,13 +236,14 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
-                    if (clients[fd].method == "GET" && !clients[fd].ErrorFound)
+                    if (clients[fd].method == "GET" && !clients[fd].ResponseChunked)
                         handleRequest(fd, a, clients);
                     if (!clients[fd].no_data)
                     {
                         clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                     }
-                    if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET" || (clients[fd].method == "GET" && clients[fd].ErrorFound == 1))
+                    if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
+                     || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
                     {
                         close(fd);
                         std::cout << "✅ client: " << fd << " is disconnected\n";
