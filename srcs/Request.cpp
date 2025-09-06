@@ -135,6 +135,26 @@ void request::set_body(std::string& b){body = b;}
 
 std::string& request::get_body(void){return body ;}
 
+std::map<std::string, std::string> parseCookies(const std::string &cookieHeader) 
+{
+    std::map<std::string, std::string> cookies;
+    std::istringstream ss(cookieHeader);
+    std::string token;
+    while (std::getline(ss, token, ';')) 
+    {
+        size_t pos = token.find('=');
+        if (pos != std::string::npos) 
+        {
+            std::string key = token.substr(0, pos);
+            std::string value = token.substr(pos + 1);
+            // remove spaces
+            key.erase(0, key.find_first_not_of(" "));
+            cookies[key] = value;
+        }
+    }
+    return cookies;
+}
+
 request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
     Server s;
@@ -149,7 +169,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         }
     }
     clientobj[clientFd].PostBody.append(buffer, bytes_received);
-    std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
+    //std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos)
     {
         size_t HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
@@ -202,6 +222,13 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             if (iterator->first == "Content-Type")
             {
                 clientobj[clientFd].ContentType = iterator->second;
+            }
+            if (iterator->first == "Cookie")  //zadt cookies 
+            {
+                cookies = parseCookies(get_header()["Cookie"]);
+                if (cookies.find("session_id") != cookies.end())
+                    std::cout << "Session ID: " << cookies["session_id"] << std::endl;
+                clientobj[clientFd].has_cookie = 1;
             }
             iterator++;
         }

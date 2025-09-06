@@ -85,13 +85,19 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     std::ostringstream response;
     ssize_t sent = 0;
     std::cout << clientobj[clientFd].method << "<==== this is the method\n\n";
+   
     if (clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked)
     {
         std::ostringstream headers;
         headers << "HTTP/1.1 " << res.statusCode << "\r\n"
-            << "Content-Type: " << res.contentType << "\r\n"
-            << "Content-Length: " << res.filesize << "\r\n"
+            << "Content-Type: " << res.contentType << "\r\n";
+        if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+        {
+            headers<< "Set-Cookie: " <<res.cookieName << "=" << res.cookieId << "; Path=" << res.cookiePath << (res.extraFlags.empty() ? "" : "; " + res.extraFlags) << "\r\n";
+            clientobj[clientFd].has_cookie = 1;
+        }
+            headers<< "Content-Length: " << res.filesize << "\r\n"
             << "Connection: : keep-alive\r\n\r\n";
 
         std::string headerStr = headers.str();
@@ -117,8 +123,13 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else
     {
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
-                << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n"
-                << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
+                << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
+                if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+                {
+                    response << "Set-Cookie: " <<clientobj[clientFd].response.cookieName << "=" << clientobj[clientFd].response.cookieId << "; Path=" << clientobj[clientFd].response.cookiePath << (res.extraFlags.empty() ? "" : "; " + res.extraFlags) << "\r\n";
+                    clientobj[clientFd].has_cookie = 1;
+                }
+                response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
                 << res.body;
 
         std::cout << "here3\n";// keep those u'll need them 
@@ -144,11 +155,30 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     return;
 }
 
+std::string generateId(size_t length = 16) 
+{
+    const char set[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::string result;
+    result.reserve(length);
+
+    for (size_t i = 0; i < length; i++)
+        result += set[rand() % (sizeof(set) - 1)];
+    return result;
+}
+
 Response Response::buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &clientobj)
 {
     std::cerr << "\n@@@@@@@Trying to open: [" << filePath << "]\n";
 
     Response rep;
+    if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+    {
+        std::cout<<"dkhalt lcookies\n\n";
+        srand(time(NULL));
+        rep.cookieName = "session_id";
+        rep.cookieId = generateId(16);
+        rep.cookiePath = "/";
+    }
     if (clientobj[clientFd].autoindex)
     {
         rep.contentType = "text/html";

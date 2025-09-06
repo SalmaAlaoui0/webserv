@@ -31,6 +31,10 @@ class Response
         size_t filesize;
         ssize_t Readbyte;
         std::string contentType;
+        std::string cookieName;
+        std::string cookieId;
+        std::string cookiePath;
+        std::string extraFlags;
         void RequestResponse(int clientFd, Response &response, std::map<int, Client> &clientobj);
         static Response buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &objclient);    
 };
