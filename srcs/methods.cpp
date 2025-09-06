@@ -420,7 +420,12 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	// //out << r.body;
 	
 	// std::cout << "✅✅✅✅✅✅✅✅✅✅" << std::endl;
-	out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
+	if(clientobj[clientFd].chnked ==1 && clientobj[clientFd].body_complete == 1)
+	{
+		out.write(clientobj[clientFd].body_chunked.c_str(), clientobj[clientFd].body_chunked.size());
+	}
+	else 
+		out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
 	out.flush();
 	out.close();
 	std::cout << "&&&&&&&&&&&&&&&&&77"<< _configs[clients[clientFd].conf_i].ErrorPages[201]<< std::endl;
