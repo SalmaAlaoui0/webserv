@@ -165,9 +165,9 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         clientobj[clientFd].method = methode;
         clientobj[clientFd].path = path;
         clientobj[clientFd].version = version;
-        // r.set_method(method);
-        // r.set_path(path);
-        // r.set_vergion(version);
+        r.set_method(method);
+        r.set_path(path);
+        r.set_vergion(version);
         while(std::getline(iss, line, '\r') && !line.empty())
         {
             iss.ignore();
@@ -186,8 +186,19 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         iterator = clientobj[clientFd].get_header().begin();
         while (iterator != clientobj[clientFd].get_header().end())
         {
-            if (iterator->first == "Content-Length")
+            if(iterator->first == "Transfer-Encoding")
             {
+                clientobj[clientFd].chnked = 1;
+
+            }
+            if (iterator->first == "Content-Type")
+               {
+                   clientobj[clientFd].ContentType = iterator->second;
+               }
+           else  if (iterator->first == "Content-Length")
+            {
+             //   std::cout << "welommmmmmmmmmm\n";
+
                 std::stringstream ss(iterator->second);
                 ss >> clientobj[clientFd].ContentLength;
                 // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
@@ -199,16 +210,35 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
                 //     return r;
                 // }
             }
-            if (iterator->first == "Content-Type")
-            {
-                clientobj[clientFd].ContentType = iterator->second;
-            }
             iterator++;
         }
         clientobj[clientFd].header_complete = 1;
     }
     if (clientobj[clientFd].header_complete)
     {
+        if(clientobj[clientFd].chnked == 1)
+        {
+            while(clientobj[clientFd].PostBody.size() > 0)
+            {
+                size_t pos1 =0;
+                size_t pos2 = clientobj[clientFd].PostBody.find("\r\n", pos1);
+                std::string a = clientobj[clientFd].PostBody.substr(pos1,pos2);
+               size_t chunek_size = std::strtol(a.c_str(),NULL,16);
+               if(chunek_size <= 0)
+               {
+                clientobj[clientFd].body_complete = 1;
+                    break;
+               }
+               if(clientobj[clientFd].PostBody.size() < chunek_size + 2)
+               {
+                    break;
+               }
+            clientobj[clientFd].body_chunked = clientobj[clientFd].PostBody.substr(pos2 + 2, chunek_size);
+               //std::cout << "body chneked "<< clientobj[clientFd].body_chunked<< std::endl;
+             clientobj[clientFd].PostBody =   clientobj[clientFd].PostBody.substr(chunek_size + 2);
+              //  std::cout << "body reel ===="<<clientobj[clientFd].PostBody<< std::endl;
+            }
+        }
         if (clientobj[clientFd].ContentLength == clientobj[clientFd].PostBody.size() || clientobj[clientFd].method == "GET")
         {
             clientobj[clientFd].body_complete = 1;
@@ -223,81 +253,6 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             // std::cout << "THe body has been recieved";
         }
     }
-    // std::cout << "\n\n\nHEREEEEEEEEEEEEEEEEEEEEEEEE"  << "---------------\n\n\n";
-    // std::string raw_request(buffer);//, bytes_received);
-    // size_t pos = raw_request.find("\r\n\r\n");
-    // // std::cout << "BUFFER IIIIIIIIS: " << buffer << ":::::::::" << std::endl;
-    // std::cout << "size of body is: " << r.get_body().size() << std::endl;
-    // if (pos != std::string::npos)
-    // {
-    //     pos += 4;
-    //     std::string initial_body = raw_request.substr(pos);
-    //     r.get_body().append(initial_body);
-    //     std::cout << "appended is: ^^^^^^^" << r.get_body() << "^^^^^^^^^\n";
-    // }
-  
-//     if (r.get_header()["Transfer-Encoding"] == "chunked")
-//     {
-//         std::cout << "chunkedddddddd\n";
-//         std::string body = r.get_body();
-//         char *buffer1;
-//         int b = 0;
-//         size_t pos2 = 0;
-//         size_t pos1 = body.find("\r\n",pos2);
-
-//         while( pos1 != std::string::npos)
-//         {
-//         std::string a = body.substr(pos2,pos1);
-//         b = std::strtol(a.c_str(),NULL,16);
-//         if(b <= 0)
-//         {
-//             it->second.body_complete = true;
-//             break;
-//         }
-//         buffer1 = new char[1024];
-//       //std::cout << "a ==>" << a<< std::endl;
-//       //std::cout << "b ==>" << b<< std::endl;
-//      int i =0;
-//       pos1 += 2;
-//       std::string c = body.substr(pos1,b);
-
-//     pos2 = b +pos1 + 2;
-     
-//       while(i < b)
-//       {
-//           buffer1[i] = c[i];
-//           i++;
-//         }
-//        buffer1[b]= '\0';
-//         Client client = it->second;
-//         it->second._requestBuffer += buffer1;
-//         delete[] buffer1;
-//         pos1 = body.find("\r\n",pos2);
-//       //  std::cout <<"pos 1--->"<< pos1<< "pos 2--->"<< pos2 << std::endl; 
-//         std::cout <<   it->second._requestBuffer << std::endl;
-//     }
-//     std::cout << "b = "<< b<< std::endl;
-//     if (it->second.body_complete == true) {
-//         //std::cout << " ana hna salitttt\n";
-// }
-// else {
-   
-
-// }
-// }
-
-
-    // while (r.get_body().size() < content_length)
-    // {
-    //     ssize_t bytes_received = recv(client_fd, buffer, sizeof(buffer), 0);
-    //     if (bytes_received <= 0)
-    //         break;
-    //     //buffer[bytes_received] = '\0';
-    //     r.get_body().append(buffer, bytes_received);
-    //  //   std::cout << "body size: " << r.get_body().size() << " / " << content_length << std::endl;
-    // }
-    // std::cout << "Final body size: " << r.get_body() << std::endl;
-    // std::cout << "Expected: " << content_length << std::endl;
 return r;
 }
 
