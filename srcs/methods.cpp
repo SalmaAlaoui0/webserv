@@ -411,6 +411,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	std::ofstream out(filename.str().c_str(),std::ios::binary);
 	if(!out)
 	{
+		std::cout << "yesssss\n0";
 		std::cerr << "❌ Failed to open file: " << filename.str() << std::endl;
 		clients[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clients[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
 		return;
@@ -421,5 +422,6 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
 	out.flush();
 	out.close();
+	std::cout << "&&&&&&&&&&&&&&&&&77"<< _configs[clients[clientFd].conf_i].ErrorPages[201]<< std::endl;
 	clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);
 }
