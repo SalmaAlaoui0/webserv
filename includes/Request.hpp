@@ -40,6 +40,7 @@ class request{
     std::string fullUploadpath;
     std::string ContentType;
     size_t ContentLength;
+    std::map<std::string, std::string> cookies;
     request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r, int clientFd);
     int get_final_port(request &r);
     std::string version;

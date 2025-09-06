@@ -406,6 +406,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	std::cout << "\nContent Type is: " << clientobj[clientFd].ContentType << std::endl;
 	int ext = clientobj[clientFd].ContentType.find('/');
 	clientobj[clientFd].ContentType = clientobj[clientFd].ContentType.substr(ext + 1);
+	srand(time(NULL));
 	filename << fullpath << "/" << rand() << "." << clientobj[clientFd].ContentType;
 	std::cout << "\nfile is uploaded in: " << filename.str() << std::endl;
 	std::ofstream out(filename.str().c_str(),std::ios::binary);
