@@ -14,6 +14,9 @@ class Client
     public :
         int _fd;
         bool body_complete;
+        size_t ContentLength_chnked;
+        bool chnked;
+        std::string body_chunked;
         bool start_sending;
         bool send_complete;
         bool Sending;
