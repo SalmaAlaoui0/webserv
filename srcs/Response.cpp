@@ -189,7 +189,7 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
             send_video(clientobj, clientFd, filePath, rep);
         }
         std::cout << "data are==>: the file path is: " << filePath << " and the type is: " << rep.contentType << "\n ";
-        exit(43);
+      //  exit(43);
     }
     if ((r.get_method() == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
     {
