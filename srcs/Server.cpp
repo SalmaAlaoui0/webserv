@@ -137,6 +137,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].autoindex = 0;
         clients[clientFd].ResponseChunked = 0;
         clients[clientFd].PostBody.clear();
+        clients[clientFd].has_cookie = 0;
         std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
     
 }
