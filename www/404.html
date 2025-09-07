@@ -1,3 +1,55 @@
+<!-- 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>404 - Not Found</title>
+  <style>
+    body {
+      background: #f0f8ff; /* soft blue background */
+      color: #333;
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    h1 {
+      font-size: 6em;
+      margin: 0;
+      color: #bd1010; /* bright red for error */
+    }
+    p {
+      font-size: 1.5em;
+      margin: 10px 0;
+    }
+    a {
+      padding: 10px 20px;
+      background: #007bff;
+      color: white;
+      text-decoration: none;
+      border-radius: 20px;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    a:hover {
+      background: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>404</h1>
+  <p>Oops! The page you’re looking for doesn’t exist!</p>
+  <a href="/">Go Home</a>
+</body>
+</html> -->
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -5,33 +57,52 @@
   <title>404 - Page Not Found</title>
   <style>
     body {
-      background-color: #f8f9fa;
-      color: #333;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #ffe6f0; /* soft pink */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Verdana', sans-serif;
+    }
+    .card {
+      background: white;
+      padding: 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
       text-align: center;
-      padding-top: 10%;
     }
     h1 {
-      font-size: 4em;
-      color: #ff6f61;
+      font-size: 5em;
+      margin: 0;
+      color: #ff3366;
     }
     p {
-      font-size: 1.2em;
-      margin-top: 10px;
+      font-size: 1.3em;
+      margin: 20px 0;
+      color: #555;
     }
     a {
-      color: #007bff;
+      display: inline-block;
+      padding: 12px 25px;
+      background: #ff3366;
+      color: white;
       text-decoration: none;
+      border-radius: 25px;
       font-weight: bold;
+      transition: 0.3s;
     }
     a:hover {
-      text-decoration: underline;
+      background: #cc0055;
     }
   </style>
 </head>
 <body>
-  <h1>404</h1>
-  <p>Oops! The page you’re looking for doesn’t exist.</p>
-  <p><a href="/">Go back to home</a></p>
+  <div class="card">
+    <h1>404</h1>
+    <p>Oops! We can't find the page you're looking for.</p>
+    <a href="/">Back to Home</a>
+  </div>
 </body>
 </html>
+

@@ -1,52 +1,76 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>505 - HTTP Version Not Supported</title>
+  <style>
+    body { background-color: #f8f9fa; color: #333; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding-top: 10%; margin: 0; }
+    .error-code { font-size: 4em; color: #9333ea; margin: 0; }
+    .error-message { font-size: 1.3em; margin-top: 10px; }
+    a { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 1.1em; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1 class="error-code">505 HTTP Version Not Supported </h1>
+  <p class="error-message">The server does not support the HTTP protocol version used in the request.</p>
+  <a href="/">Go back to Home</a>
+</body>
+</html> -->
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>505 HTTP Version Not Supported</title>
+  <title>404 - Page Not Found</title>
   <style>
     body {
-      background-color: #f2f2f2;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      text-align: center;
-      padding: 60px;
+      background: #ffe6f0; /* soft pink */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Verdana', sans-serif;
     }
-    .container {
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 12px;
-      display: inline-block;
-      padding: 50px 70px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    .card {
+      background: white;
+      padding: 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      text-align: center;
     }
     h1 {
-      font-size: 50px;
-      color: #f0ad4e;
-      margin-bottom: 15px;
+      font-size: 5em;
+      margin: 0;
+      color: #ff3366;
     }
     p {
-      font-size: 20px;
+      font-size: 1.3em;
+      margin: 20px 0;
       color: #555;
-      margin-bottom: 20px;
     }
     a {
       display: inline-block;
-      text-decoration: none;
-      color: #fff;
-      background-color: #f0ad4e;
       padding: 12px 25px;
-      border-radius: 6px;
-      transition: background 0.3s;
+      background: #ff3366;
+      color: white;
+      text-decoration: none;
+      border-radius: 25px;
+      font-weight: bold;
+      transition: 0.3s;
     }
     a:hover {
-      background-color: #ec971f;
+      background: #cc0055;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>505</h1>
-    <p>HTTP Version Not Supported: The server does not support the HTTP protocol version used in the request.</p>
-    <a href="/">Go Back Home</a>
+  <div class="card">
+    <h1>404</h1>
+    <p>Oops! We can't find the page you're looking for.</p>
+    <a href="/">Back to Home</a>
   </div>
 </body>
 </html>
