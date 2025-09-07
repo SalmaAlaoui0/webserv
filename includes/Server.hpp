@@ -41,12 +41,14 @@ class Server
     private:
         std::vector<ServerConfig> _configs;
         std::vector<int> serverSockets;
-        std::map<int, Client> clients;
+        std::map<int, Client> clients;    
+        std::vector<std::string> sessions;
     public:
         Server();
         Server(const std::vector<ServerConfig>& configs);
        ~Server();
         std::vector<ServerConfig> getConfig() const;
+        std::vector<std::string> getSession() const;
         void setupSockets();
         int creatServerSocket(const std::string &ip, int port);
         void run();

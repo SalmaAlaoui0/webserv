@@ -25,6 +25,7 @@ class Client
         bool ResponseChunked;
         bool autoindex;
         bool has_cookie;
+        std::string cookies;
         // std::ifstream file;
         // int fd;
         std::string autoIndexBody;

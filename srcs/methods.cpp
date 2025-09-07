@@ -33,7 +33,6 @@ std::vector<std::string> pathchunks(std::string path)
 	return chunks;
 }
 
-
 std::string getFileExtension(std::string& path) 
 {
     std::size_t lastSlash = path.find_last_of('/');

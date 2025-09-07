@@ -32,6 +32,10 @@ std::vector<ServerConfig> Server::getConfig() const
     return this->_configs;
 }
 
+ std::vector<std::string> Server:: getSession() const
+ {
+        return sessions;
+ }
 void Server:: setupSockets()
 {
     for(size_t i = 0; i < _configs.size(); i++)
