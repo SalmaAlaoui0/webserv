@@ -128,16 +128,17 @@ std::string request::get_version(){return version;}
 
 std::string request::get_path(){return path;}
 
-std::map<std::string,std::string>& request::get_header()   {
+std::map<std::string,std::string>& request::get_header()   
+{
     return map;
-   }
+}
 void request::set_body(std::string& b){body = b;}
 
 std::string& request::get_body(void){return body ;}
 
-std::map<std::string, std::string> parseCookies(const std::string &cookieHeader) 
+std::vector<std::string> parseCookies(const std::string &cookieHeader) 
 {
-    std::map<std::string, std::string> cookies;
+    std::vector <std::string> cookies;
     std::istringstream ss(cookieHeader);
     std::string token;
     while (std::getline(ss, token, ';')) 
@@ -145,14 +146,30 @@ std::map<std::string, std::string> parseCookies(const std::string &cookieHeader)
         size_t pos = token.find('=');
         if (pos != std::string::npos) 
         {
-            std::string key = token.substr(0, pos);
+            //std::string key = token.substr(0, pos);
             std::string value = token.substr(pos + 1);
             // remove spaces
-            key.erase(0, key.find_first_not_of(" "));
-            cookies[key] = value;
+            //key.erase(0, key.find_first_not_of(" "));
+            cookies.push_back (value);
         }
     }
     return cookies;
+}
+
+std::string findCookies(const std::string &cookieHeader) 
+{
+    std::vector <std::string> cookies;
+    std::istringstream ss(cookieHeader);
+    std::string token;
+    if(std::getline(ss, token, ';')) 
+    {
+        size_t pos = token.find('=');
+        if (pos != std::string::npos) 
+        {
+            return(token.substr(pos + 1));
+        }
+    }
+    return NULL;
 }
 
 request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
@@ -209,32 +226,32 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             if(iterator->first == "Transfer-Encoding" && iterator->second == "chunked")
             {
                 clientobj[clientFd].chnked = 1;
-
             }
-            if (iterator->first == "Content-Type")
-               {
-                   clientobj[clientFd].ContentType = iterator->second;
-               }
-           else  if (iterator->first == "Content-Length")
+            else  if (iterator->first == "Content-Length")
             {
-             //   std::cout << "welommmmmmmmmmm\n";
-
+                //   std::cout << "welommmmmmmmmmm\n";
+                
                 std::stringstream ss(iterator->second);
                 ss >> clientobj[clientFd].ContentLength;
                 // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
                 // if (r.ContentLength > max_body_size)
                 // {
-                //     std::cout << "Problem here \n";
-                //     clientobj[clientFd].response = Response::buildResponse(r, 413, "Payload Too Large", "www/413.html", clientFd, clientobj);
-                //     // send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
-                //     return r;
-                // }
+                    //     std::cout << "Problem here \n";
+                    //     clientobj[clientFd].response = Response::buildResponse(r, 413, "Payload Too Large", "www/413.html", clientFd, clientobj);
+                    //     // send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+                    //     return r;
+                    // }
+            }
+            if (iterator->first == "Content-Type")
+            {
+                clientobj[clientFd].ContentType = iterator->second;
             }
             if (iterator->first == "Cookie")  //zadt cookies 
             {
-                cookies = parseCookies(get_header()["Cookie"]);
-                if (cookies.find("session_id") != cookies.end())
-                    std::cout << "Session ID: " << cookies["session_id"] << std::endl;
+                clientobj[clientFd].cookies = iterator->second;
+                std::string id = findCookies(clientobj[clientFd].cookies);
+                //if (s.getSession().find(id) != s.getSession().end())
+                std::cout << "Session ID: " << id << std::endl;
                 clientobj[clientFd].has_cookie = 1;
             }
             iterator++;

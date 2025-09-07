@@ -94,7 +94,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             << "Content-Type: " << res.contentType << "\r\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
-            headers<< "Set-Cookie: " <<res.cookieName << "=" << res.cookieId << "; Path=" << res.cookiePath << (res.extraFlags.empty() ? "" : "; " + res.extraFlags) << "\r\n";
+            headers<< "Set-Cookie: session_id=" << res.sessionId << "\r\n";
             clientobj[clientFd].has_cookie = 1;
         }
             headers<< "Content-Length: " << res.filesize << "\r\n"
@@ -126,7 +126,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
                 {
-                    response << "Set-Cookie: " <<clientobj[clientFd].response.cookieName << "=" << clientobj[clientFd].response.cookieId << "; Path=" << clientobj[clientFd].response.cookiePath << (res.extraFlags.empty() ? "" : "; " + res.extraFlags) << "\r\n";
+                    response << "Set-Cookie: session_id=" << clientobj[clientFd].response.sessionId <<"\r\n";
                     clientobj[clientFd].has_cookie = 1;
                 }
                 response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
@@ -168,16 +168,15 @@ std::string generateId(size_t length = 16)
 
 Response Response::buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &clientobj)
 {
-    std::cerr << "\n@@@@@@@Trying to open: [" << filePath << "]\n";
-
     Response rep;
+    Server s;
     if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
     {
-        std::cout<<"dkhalt lcookies\n\n";
         srand(time(NULL));
-        rep.cookieName = "session_id";
-        rep.cookieId = generateId(16);
-        rep.cookiePath = "/";
+        rep.sessionId = generateId(16);
+        s.getSession() .push_back(rep.sessionId);
+        std::cout << "Set-Cookie: session_id=" << rep.sessionId << "\n";
+        std::cout << "Hello, new user! Data saved on server.\n\n";
     }
     if (clientobj[clientFd].autoindex)
     {
