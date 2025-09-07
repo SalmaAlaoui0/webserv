@@ -1,45 +1,77 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>403 - Forbidden</title>
+  <style>
+    body { background-color: #f8f9fa; color: #333; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding-top: 10%; margin: 0; }
+    .error-code { font-size: 4em; color: #bd1010; margin: 0; }
+    .error-message { font-size: 1.3em; margin-top: 10px; }
+    a { display: inline-block; margin-top: 20px; color: #007bff; text-decoration: none; font-weight: bold; font-size: 1.1em; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1 class="error-code">403 Forbidden</h1>
+  <p class="error-message">You don’t have permission to access this page.</p>
+  <a href="/">Go back to Home</a>
+</body>
+</html> -->
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>403 Forbidden</title>
+  <title>403 - Forbidden</title>
   <style>
     body {
-      background-color: #fefefe;
-      color: #444;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background: #ffe6f0; /* soft pink */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Verdana', sans-serif;
+    }
+    .card {
+      background: white;
+      padding: 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
       text-align: center;
-      padding: 60px;
     }
     h1 {
-      font-size: 6em;
-      color: #d9534f;
+      font-size: 4em;
       margin: 0;
+      color: #ff3366;
     }
     p {
-      font-size: 1.5em;
+      font-size: 1.3em;
       margin: 20px 0;
+      color: #555;
     }
     a {
       display: inline-block;
-      margin-top: 20px;
-      font-size: 1em;
-      color: #337ab7;
+      padding: 12px 25px;
+      background: #ff3366;
+      color: white;
       text-decoration: none;
-      border: 1px solid #337ab7;
-      padding: 10px 20px;
-      border-radius: 5px;
-      transition: background 0.2s;
+      border-radius: 25px;
+      font-weight: bold;
+      transition: 0.3s;
     }
     a:hover {
-      background-color: #337ab7;
-      color: white;
+      background: #cc0055;
     }
   </style>
 </head>
 <body>
-  <h1>403</h1>
-  <p>Forbidden – You don't have permission to access this page.</p>
-  <a href="/">Go Back to Home</a>
+  <div class="card">
+    <h1>403 Forbidden</h1>
+    <p>You don’t have permission to access this page.</p>
+    <a href="/">Back to Home</a>
+  </div>
 </body>
 </html>

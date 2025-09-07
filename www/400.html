@@ -1,52 +1,100 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>400 Bad Request</title>
+  <title>400 - Bad Request</title>
   <style>
     body {
-      background-color: #f8f8f8;
-      font-family: Arial, sans-serif;
+      background-color: #f8f9fa;
+      color: #333;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       text-align: center;
-      padding: 50px;
+      padding-top: 10%;
+      margin: 0;
     }
-    .container {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      display: inline-block;
-      padding: 40px 60px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    .error-code {
+      font-size: 4em;
+      color: #bd1010;
+      margin: 0;
     }
-    h1 {
-      font-size: 48px;
-      color: #d9534f;
-      margin-bottom: 10px;
-    }
-    p {
-      font-size: 18px;
-      color: #666;
+    .error-message {
+      font-size: 1.3em;
+      margin-top: 10px;
     }
     a {
       display: inline-block;
       margin-top: 20px;
+      color: #007bff;
       text-decoration: none;
-      color: #fff;
-      background: #d9534f;
-      padding: 10px 20px;
-      border-radius: 5px;
-      transition: background 0.3s;
+      font-weight: bold;
+      font-size: 1.1em;
     }
     a:hover {
-      background: #c9302c;
+      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>400</h1>
-    <p>Bad Request: Your request could not be understood by the server.</p>
-    <a href="/">Go Back Home</a>
+  <h1 class="error-code">400 Bad Request</h1>
+  <p class="error-message">The server could not understand your request.</p>
+  <a href="/">Go back to Home</a>
+</body>
+</html> -->
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>400 - Bad Request</title>
+  <style>
+    body {
+      background: #ffe6f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Verdana', sans-serif;
+    }
+    .card {
+      background: white;
+      padding: 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1 {
+      font-size: 4em;
+      margin: 0;
+      color: #ff3366;
+    }
+    p {
+      font-size: 1.3em;
+      margin: 20px 0;
+      color: #555;
+    }
+    a {
+      display: inline-block;
+      padding: 12px 25px;
+      background: #ff3366;
+      color: white;
+      text-decoration: none;
+      border-radius: 25px;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+    a:hover {
+      background: #cc0055;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>400 Bad Request</h1>
+    <p>The server could not understand your request.</p>
+    <a href="/">Back to Home</a>
   </div>
 </body>
 </html>
