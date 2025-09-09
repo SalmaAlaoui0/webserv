@@ -57,7 +57,7 @@ class Server
        // void handleClient(int clientFd, EpollManager &epollManager, std::vector<epoll_event> &events);
         void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
         //std::string readRequest(int clientFd, EpollManager &epollManager);
-        void handleRequest(int clientFd, request &r, std::map<int, Client> &clientob);
+        void handleRequest(int clientFd, request &r, std::map<int, Client> &clientob, EpollManager &epoll);
         
         void closeConnection(int fd, EpollManager &epollManager);
         class socketException : public std::exception 
@@ -69,15 +69,13 @@ class Server
             virtual ~socketException() throw();    
             virtual const char* what() const throw();
         };
-        void handle_get_methode(request &r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj);
+        void handle_get_methode(request &r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj, EpollManager &epoll);
         void handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_ir, std::map<int, Client> &clientobj);
         void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj);
         void dir_or_file(std::string &fullpath, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj);
         bool delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj);
-        void CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> &clientobj);
-    };
-    // void send_response(int clientFd, int status_code, const std::string &status_text, const std::string &body);    
-    // void send_newresponse(int clientFd, int status_code, const std::string &status_text, const std::string &body, std::string type);
+        void CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> &clientobj, EpollManager &epoll);
+};
 
 
     

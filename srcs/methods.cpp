@@ -190,8 +190,93 @@ void send_dir_list(int clientFd, std::string requested_path, std::map<int, Clien
 	clientobj[clientFd].autoIndexBody = body.str();
 }
 
+std::string to_string98(size_t value) {
+    std::ostringstream oss;
+    oss << value;
+    return oss.str();
+}
 
-void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> &clientobj)
+
+// std::string execute_cgi(std::string &path, request r, std::string interpreter)
+
+std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string &path, request r, std::string interpreter, EpollManager &epollManager)
+{
+	(void)clientobj;
+	// clientobj[clientFd].ResponseChunked = 1;
+	std::cout << "HEllllllllllllllllllllllllllo world it's a cgi script\n\n";
+    int pipeFD[2];
+    if (pipe(pipeFD) == -1)
+    {
+        std::string HttpHeader = "Cotent-Type: text/plain\r\n\r\n";
+        return HttpHeader + "A CGI pipe error\n";
+    }
+    pid_t pid = fork();
+    std::cout << "HELLLLLLO WORLD\n";
+    if (pid == 0)
+    {
+        dup2(pipeFD[1], STDOUT_FILENO);
+        close(pipeFD[0]);
+        close(pipeFD[1]);
+
+        setenv("REQUEST_METHOD", "GET", 1);
+        setenv("SCRIPT_FILENAME", path.c_str(), 1);
+        setenv("QUERY_STRING", r.get_body().c_str(), 1);
+		std::string len = to_string98(r.get_body().size());
+		setenv("CONTENT_LENGTH", len.c_str(), 1);
+		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+		// so only and only if the request has a body like post we should add the environment
+		// variable called "CONTENT_TYPE"
+
+
+		std::vector<char *> args;
+		args.push_back(const_cast<char*>(interpreter.c_str()));
+		args.push_back(const_cast<char*>(path.c_str()));
+		args.push_back(NULL);
+		execve(args[0], &args[0], environ);
+
+        const char *err = "Content-Type: text/plain\r\n\r\nexecve failed\n";
+        write(1, err, strlen(err));
+        exit (1);
+    }
+    else
+    {
+        close(pipeFD[1]);
+        epoll_event ev;
+        ev.events = EPOLLIN;
+        ev.data.fd = pipeFD[0];
+        // epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_ADD, pipeFD[0], &ev);
+
+        // clientobj->second().cgiMap[pipeFD[0]] = {clientFd, pid};
+        // s.cgiMap[pipeFD[0]] = {clientFd, pid};
+        // s.cgiMap[pipeFD[0]] = std::make_pair(clientFd, pid);
+        CgiInfo info;
+        info.pipefd = pipeFD[0];
+        info.pid = pid;
+		std::cout << "Data need to be saved is: " << clientFd << "and the pid is: " << pid << "AND LAST BUT NOT LEAST LET'S SEE FILE DES. IS; " << pipeFD[0] << std::endl;
+        epollManager.cgiMap[clientFd] = info;
+	// 	char buf[4096];
+	// ssize_t n = read(pipeFD[0], buf, sizeof(buf));
+
+	// if (n > 0) {
+	// 	std::cout << "Read " << n << " bytes from CGI pipe: n	" << pipeFD[0] << "\n";
+
+	// 	// Print raw bytes (safe even if data is binary)
+	// 	std::cout.write(buf, n);
+	// 	std::cout << "\n--- END OF PIPE CONTENT ---\n";
+	// } 
+	// else
+	// {
+	// 	std::cout << "Some error accured " << std::endl;
+	// 	exit (34);
+	// }
+        // epoll_ctl();
+    }
+    return ("hi world\n");
+}
+
+
+
+void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
 	struct stat statbuf;
     if (stat(requested_path.c_str(), &statbuf) == 0)
@@ -203,8 +288,15 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			std::string index_file;
 			index_file = join_path(requested_path, config[i].locations[key].index);
 
+			std::cout << "firstly this hole path is: " << index_file << std::endl;
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
-			 	clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
+			{
+				std::string ext = index_file.substr(index_file.find_last_of('.'));
+				if (ext == ".py" || ext == ".pl" || ext == ".php")
+					std::string res = execute_cgi(clientFd, clientobj, index_file, r, "/usr/bin/python3", epoll);
+				else
+					clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
+			}
 			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
 			{
 				send_dir_list(clientFd, requested_path, clientobj);// using requested path only !
@@ -230,7 +322,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 	}
 }
 
-void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj)
+void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
@@ -241,7 +333,7 @@ void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, 
         clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
-    CheckDirOrFile(value, clientFd, _configs, conf_i, key, r, clientobj);
+    CheckDirOrFile(value, clientFd, _configs, conf_i, key, r, clientobj, epoll);
 }
 
 bool Server::delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj)
