@@ -13,6 +13,7 @@ class Client
         std::time_t lastActivity;
     public :
         int _fd;
+        int checker;
         bool body_complete;
         size_t ContentLength_chnked;
         bool chnked;
@@ -53,6 +54,7 @@ class Client
         std::map<std::string,std::string>& get_header();
         int getFd() const;
         int getLastActivity() const;
+        time_t CgiStartActivity;
         void updateActivity();
         void receiveRequest();
         void sendResponse();

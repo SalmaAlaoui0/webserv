@@ -86,7 +86,7 @@ int Server::creatServerSocket(const std::string &ip, int port)
     return server_fd ; 
 }
 
-void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &clientobj)
+void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
     if (this->clients[clientFd]. conf_i == _configs.size()) 
     {
@@ -99,7 +99,7 @@ void Server::handleRequest( int clientFd, request &r, std::map<int, Client> &cli
         return;
     }
 	if (r.get_method() == "GET")
-		handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
+		handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
     else if(clientobj[clientFd].method== "POST")
         handle_post_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else if (r.get_method() == "DELETE")
@@ -189,13 +189,137 @@ void Server::run()
     }
 	while (true) 
 	{
+        std::cout << "\n\n\n\n*******************\n\n\n\n";
 		std::vector<epoll_event> events = epollManager.waitEvents();
         checkTimeout(clients, epollManager);
         for(size_t i = 0; i < events.size(); i++)
         {   
             int fd = events[i].data.fd;
+            std::cout << ">>>>>>>>>>>>>>>" << fd << std::endl;
             if (isServerSocket(fd))
                 acceptNewClient(a, fd, epollManager);
+            else if (epollManager.cgiMap.count(fd)) {
+                if (clients[fd].checker == 234)
+                {
+                    std::cout << "FOUNDDDD UUUUU " << std::endl;
+                    exit (45);
+                }
+                std::cout << "hello world here in this else if (epollManager.cgiMap.count(fd)) { \n\n";
+                // char buf[4096];
+                // ssize_t n = read(epollManager.cgiMap[fd].pipefd, buf, sizeof(buf));
+
+                // if (n > 0) {
+                    ssize_t sent;
+                    if (!clients[fd].Sending)//////
+                    {
+                        time_t now = std::time(NULL);
+                        clients[fd].CgiStartActivity = now;
+                        clients[fd].Sending = 1;
+                        std::cout << "in Sending bool equals to 0\n\n";
+                        struct stat filesz;
+                        if (fstat(epollManager.cgiMap[fd].pipefd, &filesz) == -1)
+                        {
+                            perror("fstat");
+                        }
+                        std::ostringstream headers;
+                        headers << "HTTP/1.1 " << "200" << "\r\n"
+                            << "Content-Type: " << "text/html" << "\r\n";
+                        headers<< "Content-Length: " << 17200 << "\r\n"
+                            << "Connection: : keep-alive\r\n\r\n";
+                        std::string headerStr = headers.str();
+                        std::cout << "the headerssss are: " << headerStr << "<=====\n\n";
+                        sent = send(fd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
+                    }
+                    else 
+                    {
+                        char buf[4096];
+                        time_t now = std::time(NULL);
+                        ssize_t n = read(epollManager.cgiMap[fd].pipefd, buf, sizeof(buf));
+                        std::cout << "<><><><>Read " << n << " bytes from CGI pipe: n	" << epollManager.cgiMap[fd].pipefd << "\n";
+                        if (n > 0)
+                        {
+                            sent = send(fd, buf, n, MSG_NOSIGNAL);
+                            std::cout << "\n\nSEnnnnding ...\n\n";
+                            // std::cout.write(buf, n);
+                            if (sent < 0)
+                            {
+                                if (errno == EPIPE)
+                                { // do nothing or debugging msg because the connection is closed:) 
+                                    std::cout << "❌client closed connection❌\n\n";
+                                    close(fd);
+                                        // or maybe remove client from epoll events or epoll fds
+                                }
+                                else
+                                    std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+                            }
+                        }
+                        else if (n == 0)
+                        {
+                            close(fd);
+                        }
+                        else
+                        {
+                            perror("read");
+                            std::cout << "Some error accured " << std::endl;
+                            // exit (34);
+                        }
+                        if (difftime(now, clients[fd].CgiStartActivity) > 3)
+                        {
+                            std::cout << "It is a ltimeeeeeeeeout\n\n\n\n\n";
+                            std::cout << "\n\n\n++++++++++++++++LAST READ AND CLOSING AFTER++++++++++++++++\n";
+                            int pid = epollManager.cgiMap[fd].pid;
+                            close(epollManager.cgiMap[fd].pipefd);
+
+                            waitpid(pid, NULL, WNOHANG);
+
+                            // mark client as ready to close/send
+                            if (clients.count(fd)) {
+                                std::cout << "HEHEEEEHEEEE HEHEEEHEEEE\n\n";
+                                clients[fd].send_complete = 1;
+                                clients[fd].body_complete = 1;
+                                clients[fd].ResponseChunked = 1;
+                                clients[fd].no_data = 1;
+                            }
+
+                            epollManager.cgiMap.erase(fd);
+                            // closeConnection(fd, epollManager);
+                            // close(fd);
+                            // exit (34);
+                        }
+                    }
+                    if (clients[fd].Sending)
+                    {
+
+                    }
+                    else if (sent < 4096)
+                    {
+                        // clients[fd].Sending = 1;
+                        std::cout << "\n\n\n++++++++++++++++LAST READ AND CLOSING AFTER++++++++++++++++\n\n\n";
+                        int pid = epollManager.cgiMap[fd].pid;
+                        close(epollManager.cgiMap[fd].pipefd);
+
+                        waitpid(pid, NULL, WNOHANG);
+
+                        // mark client as ready to close/send
+                        if (clients.count(fd)) {
+                            std::cout << "HEHEEEEHEEEE HEHEEEHEEEE\n\n";
+                            clients[fd].send_complete = 1;
+                            clients[fd].body_complete = 1;
+                            clients[fd].ResponseChunked = 1;
+                            clients[fd].no_data = 1;
+                        }
+
+                        epollManager.cgiMap.erase(fd); // erase after we’re done
+                    }
+                    else
+                    {
+                        std::cout << "✅ File response sent to FD: " << fd << std::endl;
+                    }
+                    std::cout << "\n--- END OF PIPE CONTENT ---\n";
+                
+                std::cout << "THE ENDDDDDDDD NOT hereeere\n";
+
+            }
             else
             {
                 clients[fd].no_data = 0;
@@ -204,7 +328,8 @@ void Server::run()
                     // std::cout << "Socket ❌❌❌❌❌ " << fd << " is ready to read\n";
                     try
                     {
-                       a = a.parseRequest(this->clients, epollManager, a, fd);
+                        if (clients[fd].send_complete == 0)
+                            a = a.parseRequest(this->clients, epollManager, a, fd);
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
                             std::cout << "\nMaking the event EPOLLOUT \n";
@@ -228,7 +353,9 @@ void Server::run()
                             if (!a.error_set(this->clients, a, fd, s.getConfig()[this->clients[fd].conf_i]))
                                 throw socketException("❌ error detected ");
                             else
-                                handleRequest(fd, a, clients);
+                            {
+                                handleRequest(fd, a, clients, epollManager);
+                            }
                         }
                         std::map<int, Client>::iterator it = clients.find(fd);
                         if (it != clients.end())
@@ -241,21 +368,32 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
+                    std::cout << "heerereeeeeeeeeeee\n\n";
                     if (clients[fd].method == "GET" && !clients[fd].ResponseChunked)
-                        handleRequest(fd, a, clients);
+                    {
+                        handleRequest(fd, a, clients, epollManager);
+                    }
                     if (!clients[fd].no_data)
                     {
+                        std::cout << "and now this one\n\n";
                         clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                     }
                     if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
                      || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
                     {
-                        close(fd);
-                        std::cout << "✅ client: " << fd << " is disconnected\n";
+                        closeConnection(fd, epollManager);
+                        // close(fd);
+                        // std::cout << "And here the error\n\n";
+                        // std::cout << "✅ client: " << fd << " is disconnected\n";
+                        // clients[fd].checker = 234;
+                        // exit (41);
                     }
                 }
                 else
+                {
                     std::cout<<"maart ach kandir hna\n\n";
+                    // exit (41);
+                }
             }
         }
     }
@@ -267,6 +405,7 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
     close(fd);
     clients.erase(fd);
     std::cout << "🚪 Closed client fd: " << fd << std::endl;
+    // exit (7);
 }
 
 Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
