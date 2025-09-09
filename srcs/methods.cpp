@@ -295,7 +295,9 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 				if (ext == ".py" || ext == ".pl" || ext == ".php")
 					std::string res = execute_cgi(clientFd, clientobj, index_file, r, "/usr/bin/python3", epoll);
 				else
+				{
 					clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
+				}
 			}
 			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
 			{

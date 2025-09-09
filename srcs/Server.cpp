@@ -189,7 +189,7 @@ void Server::run()
     }
 	while (true) 
 	{
-        std::cout << "\n\n\n\n*******************\n\n\n\n";
+        //std::cout << "\n\n\n\n*******************\n\n\n\n";
 		std::vector<epoll_event> events = epollManager.waitEvents();
         checkTimeout(clients, epollManager);
         for(size_t i = 0; i < events.size(); i++)
