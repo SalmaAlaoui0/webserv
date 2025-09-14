@@ -143,6 +143,8 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             close(clientobj[clientFd]._fd);
                 // or maybe remove client from epoll events or epoll fds
         }
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return;
         else
             std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
         //maybe we should close the connection if send failed

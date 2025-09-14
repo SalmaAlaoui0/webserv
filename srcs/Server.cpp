@@ -13,46 +13,11 @@
 
 #include "../includes/Server.hpp"
 
-Server::Server(const std::vector<ServerConfig>& configs)
-{
-    this->_configs = configs;
-    setupSockets();
-}
-
-Server::Server() {}
-
-Server::~Server()
-{
-    for (size_t i = 0; i < serverSockets.size(); ++i)
-        close(serverSockets[i]);
-}
-
-std::vector<ServerConfig> Server::getConfig() const
-{
-    return this->_configs;
-}
-
- std::vector<std::string> Server:: getSession() const
- {
-        return sessions;
- }
-void Server:: setupSockets()
-{
-    for(size_t i = 0; i < _configs.size(); i++)
-    {
-        if (_configs[i].port != 0)
-        {
-            const std::string &ip =_configs[i].host;
-            int port = _configs[i].port;
-           this->serverSockets.push_back(creatServerSocket(ip, port));
-       }
-   }
-}
-
 int Server::creatServerSocket(const std::string &ip, int port)
 {
-    int server_fd  = socket(AF_INET, SOCK_STREAM, 0);
-    if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0)
+    int server_fd  = socket(AF_INET, SOCK_STREAM, 0);  //AF_INET-->ipv4 , SOCK_STREAM-->tcp  
+    int flags = fcntl(server_fd, F_GETFL, 0);
+    if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0)
         throw socketException("❌ Failed to set non-blocking mode on socket");
     if (server_fd  < 0) 
         throw socketException("❌Socket creation failed");
@@ -86,6 +51,44 @@ int Server::creatServerSocket(const std::string &ip, int port)
     return server_fd ; 
 }
 
+void Server:: setupSockets()
+{
+    for(size_t i = 0; i < _configs.size(); i++)
+    {
+        if (_configs[i].port != 0)
+        {
+            const std::string &ip =_configs[i].host;
+            int port = _configs[i].port;
+           this->serverSockets.push_back(creatServerSocket(ip, port));
+       }
+   }
+}
+
+Server::Server(const std::vector<ServerConfig>& configs)
+{
+    this->_configs = configs;
+    setupSockets();
+}
+
+Server::Server() {}
+
+Server::~Server()
+{
+    for (size_t i = 0; i < serverSockets.size(); ++i)
+        close(serverSockets[i]);
+}
+
+std::vector<ServerConfig> Server::getConfig() const
+{
+    return this->_configs;
+}
+
+ std::vector<std::string> Server:: getSession() const
+ {
+        return sessions;
+ }
+
+
 void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
     if (this->clients[clientFd]. conf_i == _configs.size()) 
@@ -118,8 +121,8 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
                 // std::cout << "client fd" << clientFd << std::endl;
-
-        if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1)
+        int flags = fcntl(clientFd, F_GETFL, 0);
+        if (fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 )
         {
             close(clientFd);
             throw socketException("❌fcntl() failed");
@@ -195,15 +198,15 @@ void Server::run()
         for(size_t i = 0; i < events.size(); i++)
         {   
             int fd = events[i].data.fd;
+            if(events[i].events & (EPOLLERR | EPOLLHUP))
+            {
+                closeConnection(fd, epollManager);
+                continue;
+            }
             std::cout << ">>>>>>>>>>>>>>>" << fd << std::endl;
-            if (isServerSocket(fd))
+            if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
             else if (epollManager.cgiMap.count(fd)) {
-                if (clients[fd].checker == 234)
-                {
-                    std::cout << "FOUNDDDD UUUUU " << std::endl;
-                    exit (45);
-                }
                 std::cout << "hello world here in this else if (epollManager.cgiMap.count(fd)) { \n\n";
                 // char buf[4096];
                 // ssize_t n = read(epollManager.cgiMap[fd].pipefd, buf, sizeof(buf));
