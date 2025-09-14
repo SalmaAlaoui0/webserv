@@ -15,7 +15,7 @@
 
 EpollManager::EpollManager()
 {
-    epollFd = epoll_create(1024);
+    epollFd = epoll_create1(EPOLL_CLOEXEC);
     if (epollFd == -1)
         throw epollException("❌ Failed to create epoll instance");
 }
@@ -68,7 +68,7 @@ int EpollManager::getEpollFd() const
 std::vector<epoll_event> EpollManager::waitEvents()
 {
     std::vector< epoll_event> events(MAX_EVENTS);
-    int n = epoll_wait(epollFd, &events[0], MAX_EVENTS , 1000);
+    int n = epoll_wait(epollFd, &events[0], MAX_EVENTS , 0);
     if (n == -1)
         throw epollException("❌ epoll_wait failed");
     events.resize(n);
