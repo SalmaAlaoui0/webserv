@@ -203,7 +203,7 @@ void Server::run()
                 closeConnection(fd, epollManager);
                 continue;
             }
-            std::cout << ">>>>>>>>>>>>>>>" << fd << std::endl;
+            //std::cout << ">>>>>>>>>>>>>>>" << fd << std::endl;
             if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
             else if (epollManager.cgiMap.count(fd)) {
