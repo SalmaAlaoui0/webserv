@@ -6,7 +6,8 @@ Client::Client() : _fd(-1)
     body_complete = false;
 }
 
-Client::Client(int fd) : _fd(fd)
+Client::Client(int fd)
+    :  recived(0), litter_chunk(""),_fd(fd)
 {
     updateActivity();
 }

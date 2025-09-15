@@ -12,6 +12,10 @@ class Client
     private:
         std::time_t lastActivity;
     public :
+  size_t  chunk_size;
+ int recived;
+ std::string litter_chunk;
+ bool reading_size;
         int _fd;
         int checker;
         bool body_complete;
