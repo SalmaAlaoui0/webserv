@@ -29,6 +29,15 @@
 #include "Request.hpp"
 #include "Client.hpp"
 //#include "Utils.hpp"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>       // pour getaddrinfo, addrinfo, AI_PASSIVE
+#include <arpa/inet.h>   // pour inet_pton, htons
+#include <unistd.h>      // pour close()
+#include <fcntl.h>       // pour fcntl, O_NONBLOCK
+#include <cstring>       // pour memset
+#include <string>        // pour std::string
+#include <iostream> 
 
 class request;
 class Response;

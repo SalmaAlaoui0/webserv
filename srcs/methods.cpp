@@ -453,6 +453,17 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 		return;
 	}
 }
+std::string generateId1(size_t length = 16) 
+{
+    const char set[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::string result;
+    result.reserve(length);
+
+    for (size_t i = 0; i < length; i++)
+        result += set[rand() % (sizeof(set) - 1)];
+    return result;
+}
+
 
 void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj)
 {
@@ -503,8 +514,9 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	std::cout << "\nContent Type is: " << clientobj[clientFd].ContentType << std::endl;
 	int ext = clientobj[clientFd].ContentType.find('/');
 	clientobj[clientFd].ContentType = clientobj[clientFd].ContentType.substr(ext + 1);
-	srand(time(NULL));
-	filename << fullpath << "/" << rand() << "." << clientobj[clientFd].ContentType;
+	//srand(time(NULL));
+	//int i =0;
+	filename << fullpath << "/" << generateId1() << "." << clientobj[clientFd].ContentType;
 	std::cout << "\nfile is uploaded in: " << filename.str() << std::endl;
 	std::ofstream out(filename.str().c_str(),std::ios::binary);
 	if(!out)
