@@ -20,6 +20,8 @@
 #include <cerrno>   // pour errno, EAGAIN, EWOULDBLOCK
 #include <cstdio> 
 class EpollManager;
+class Client;
+
 
 
 

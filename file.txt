@@ -1,0 +1,23 @@
+first server's port: 8080
+Listening on 127.0.0.1:8080
+new socket added to lesten for any upcoming connections
+>>>>>>>>>>>>>>>3
+
+✅ New client connected on fd : 5
+>>>>>>>>>>>>>>>5
+entring parse request like a normal code-_-_-_-_-
+Session ID: llYZJntErPa3QrWN
+haniiiiiii------------>
+/cgi-bin!!!!!!!!!!!!!!
+
+
+
+Making the event EPOLLOUT 
+resutl in find matching is: /home/salaoui/Desktop/webserv/cgi-bin/
+----->the requested path is: /home/salaoui/Desktop/webserv/cgi-bin/
+firstly this hole path is: /home/salaoui/Desktop/webserv/cgi-bin/infinie.py
+HEllllllllllllllllllllllllllo world it's a cgi script
+
+>>>>>>>>>>>>>>>5
+cgi file says it's chunked
+

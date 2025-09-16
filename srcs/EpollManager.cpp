@@ -29,7 +29,7 @@ void EpollManager::addSocket(int fd, uint32_t event)
 {
     struct epoll_event ev;
     memset(&ev, 0, sizeof(ev));
-    ev.events = EPOLLIN;
+    // ev.events = EPOLLIN;
     ev.events = event;
     ev.data.fd = fd;
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)

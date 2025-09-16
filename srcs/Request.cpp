@@ -34,10 +34,7 @@ request::request(request const &ref)
 bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig &config)
 {
     std::map<std::string , std::string>headers = r.get_header();
-    //std::cout << "helllllo there method is: " << clients[clientFd].method << "that's itttttttt\n";
-    // std::cout << "helllllo there method is$$$$$$$$$: " << r.get_method() << "that's itttttttt\n";
     std::map<int, Client> :: iterator it = clients.find(clientFd);
-    // std::cout << "begining of error_set function\n";
     if(it == clients.end())
     {
         std::cerr << "❌ clientFd " << clientFd << " not found\n";
@@ -176,6 +173,11 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
 {
     Server s;
     char buffer [800000] = {0};
+    if (clientobj[clientFd].cgiMap[clientFd].pipefd != -1)
+    {
+        std::cout << "should not be parsed it's a pipe event client\n";
+        return r;
+    }
     ssize_t bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
     if ( bytes_received == -1)
     {
@@ -260,6 +262,10 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
     }
     if (clientobj[clientFd].header_complete)
     {
+        r.set_method(clientobj[clientFd].method);
+        r.set_path(clientobj[clientFd].path);
+        r.set_vergion(clientobj[clientFd].version);
+        // std::cout << "\n\n\n\n\nThe content lenght found in the header is: " << clientobj[clientFd].ContentLength << " andthe post body size is: " << clientobj[clientFd].PostBody.size() << std::endl;
         if(clientobj[clientFd].chnked == 1)
         {
             std::cout << " helo-------->\n";
@@ -287,7 +293,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
               //  std::cout << "body reel ===="<<clientobj[clientFd].PostBody<< std::endl;
             }
         }
-       else if (clientobj[clientFd].ContentLength == clientobj[clientFd].PostBody.size() || clientobj[clientFd].method == "GET")
+        if (clientobj[clientFd].ContentLength == clientobj[clientFd].PostBody.size() || clientobj[clientFd].method == "GET")
         {
             std::cout << "haniiiiiii------------>\n";
             clientobj[clientFd].body_complete = 1;
@@ -296,9 +302,6 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
                 std::cout << "\nReading Post body is Done ✅\n";
                 clientobj[clientFd].send_complete = 1;
             }
-            r.set_method(clientobj[clientFd].method);
-            r.set_path(clientobj[clientFd].path);
-            r.set_vergion(clientobj[clientFd].version);
             // std::cout << "THe body has been recieved";
         }
     }

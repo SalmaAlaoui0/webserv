@@ -7,13 +7,17 @@
 //#include "Request.hpp"
 #include "Response.hpp"
 
+struct CgiInfo {
+    int pipefd;
+    pid_t pid;
+};
+
 class Client
 {
     private:
         std::time_t lastActivity;
     public :
         int _fd;
-        int checker;
         bool body_complete;
         size_t ContentLength_chnked;
         bool chnked;
@@ -26,19 +30,23 @@ class Client
         bool ResponseChunked;
         bool autoindex;
         bool has_cookie;
+        bool has_cgi;
         std::string cookies;
-        // std::ifstream file;
-        // int fd;
         std::string autoIndexBody;
         std::string PostBody;
+        std::string CgiBody;
+        size_t CgibytesRead;
         size_t filesize;
         size_t size_send;
         size_t conf_i ;
 
+        std::map<int, CgiInfo> cgiMap;
+        std::map<int, std::string> GetpathMap;
+        
+        
         std::map<std::string, std::string> map;
         std::string ContentType;
         size_t ContentLength;
-        // size_t filesize;
         bool header_complete ;
         bool create_file;
         std::string header;
