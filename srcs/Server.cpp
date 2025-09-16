@@ -208,7 +208,7 @@ void Server::run()
                 closeConnection(fd, epollManager);
                 continue;
             }
-            if (isServerSocket(fd))
+            if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
             else if (clients[fd].cgiMap[fd].pipefd != -1 && clients[fd].cgiMap[fd].pipefd != 0) {
                 // time_t now = time(NULL);
