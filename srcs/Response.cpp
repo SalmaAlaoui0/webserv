@@ -80,13 +80,50 @@ Response send_video(std::map<int, Client> &clientobj, int clientFd, std::string 
     }
     return rep;
 }
-void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client> &clientobj)
+void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
     std::ostringstream response;
     ssize_t sent = 0;
-    std::cout << clientobj[clientFd].method << "<==== this is the method\n\n";
-   
-    if (clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
+    (void)epoll;
+    std::cout << clientobj[clientFd].method << "<==== this is the method and has cgi is; " << clientobj[clientFd].has_cgi << "\n\n";
+    std::cout << "and infos are:  the sending var is->" << clientobj[clientFd].Sending << " and pipefd->" << clientobj[clientFd].cgiMap[clientFd].pipefd << std::endl;
+//    if (clientobj[clientFd].Sending)
+//    {
+//     std::cout << "headers are sent and in body there is: " << clientobj[clientFd].CgiBody << std::endl;
+//         exit (66);
+//    
+    // if (clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && !clientobj[clientFd].send_complete)
+    if (clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].cgiMap[clientFd].pipefd == -1)
+    {
+        if (clientobj[clientFd].CgiBody.find("\r\n\r\n") != std::string::npos)
+        {
+            size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n\r\n");
+            clientobj[clientFd].CgiBody.substr(HeaderEnd + 1);
+            // std::cout << "hahahahahah found headers\n";
+            // exit(23);
+        }
+        std::cout << "come to here\n";
+        std::ostringstream headers;
+        // std::cout << "Headers are starus code is; " << res.statusCode << "content type is: " << res.contentType 
+        headers << "HTTP/1.1 " << 200 << "\r\n"
+            << "Content-Type: " << "text/html" << "\r\n";
+        // if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+        // {
+        //     headers<< "Set-Cookie: session_id=" << res.sessionId << "\r\n";
+        //     clientobj[clientFd].has_cookie = 1;
+        // }
+            headers<< "Content-Length: " << clientobj[clientFd].CgiBody.size() << "\r\n"
+            << "Connection: : keep-alive\r\n\r\n";
+
+        std::string headerStr = headers.str();
+        std::cout << "here1 responseChunked is: " << clientobj[clientFd].ResponseChunked << "\n" ;// keep those u'll need them 
+        send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
+        clientobj[clientFd].Sending = 1;
+        // std::cout.write(clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size());
+        // std::cout << "AGAING it will enter here just make the code\n";
+        // exit (34);
+    }
+    else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked)
     {
         std::ostringstream headers;
@@ -105,7 +142,45 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
-    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
+    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
+        && !clientobj[clientFd].send_complete && clientobj[clientFd].cgiMap[clientFd].pipefd == -1)
+    {
+        // std::cout << "ur buffer size is: " << res.body.size() << " and readbyte are: " << Readbyte << "<----\n\n";
+        std::cout << "here222\n";// keep those u'll need them 
+        // exit (34);
+        // if (clientobj[clientFd].response.body.find("\r\n\r\n") != std::string::npos)
+        // {
+        //     size_t HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
+        //     clientobj[clientFd].response.body.substr(HeaderEnd + 1);
+        //     std::cout << "hahahahahah found headers\n";
+        // }
+        if (!clientobj[clientFd].CgiBody.size())
+        {
+            std::cout << "making the send as complete.. but before the Cgi Body is: \n" << std::endl;
+            std::cout << clientobj[clientFd].CgiBody << std::endl;
+            // std::cout << "Removing CGI pipe fd " << clientobj[clientFd].cgiMap[clientFd].pipefd << " from epoll\n";
+            //     epoll_ctl(epoll.getEpollFd(), EPOLL_CTL_DEL, clientobj[clientFd].cgiMap[clientFd].pipefd, NULL);
+            //     close(clientobj[clientFd].cgiMap[clientFd].pipefd);
+            clientobj[clientFd].send_complete = 1;
+        }
+        // exit(23);
+        ssize_t sendbytes = send(clientFd, clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size(), MSG_NOSIGNAL);
+        if (sendbytes != -1)
+        {
+            clientobj[clientFd].size_send += sendbytes;
+            // std::cout << "byte sended are : " << clientobj[clientFd].size_send << "and file size is: " << clientobj[clientFd].filesize << std::endl;
+        }
+        if (clientobj[clientFd].CgiBody.size() && sendbytes > 0)
+        {
+            if (static_cast<unsigned long>(sendbytes) == clientobj[clientFd].CgiBody.size())
+                clientobj[clientFd].CgiBody = "";
+            else
+                clientobj[clientFd].CgiBody.substr(sendbytes + 1);
+        }
+
+        // clientobj[clientFd].CgiBody.substr(sendbytes + 1);
+    }
+    else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
         && !clientobj[clientFd].ResponseChunked)
     {
         // std::cout << "ur buffer size is: " << res.body.size() << " and readbyte are: " << Readbyte << "<----\n\n";
@@ -120,7 +195,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     // and send response
     // 2-if method is "GET" and first respose than send header of get path
     // 3-if method is "GET" and not first time than send only a body coming in res.body
-    else
+    else if (!clientobj[clientFd].has_cgi)
     {
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";

@@ -6,9 +6,10 @@ print("Content-Type: text/plain\n")
 print("Starting infinite loop...")
 
 # Flush so server can read partial output
-sys.stdout.flush()
+# sys.stdout.flush()
 
 # Infinite loop
 while True:
-    print("Still running...", flush=True)
+    print("Still running...")
+    sys.stdout.flush()
     time.sleep(1)

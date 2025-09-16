@@ -34,7 +34,16 @@ Team Members: Wafaa && Mouna && Salma
       Reason/Notes: it's not handled and it causes leaks
       Priority: High/Medium/Low
 
-- [ ] Feature/Component 2: __________________
+- [ ] Feature/Component 2: the problem of two servers with the same port ex.: 8080 is initially coming from here server.cpp > 285
+this->clients[fd].conf_i = s.getConfig().size();
+                        for (size_t i = 0; i < s.getConfig().size(); ++i)
+                        {
+                            if (s.getConfig()[i].port == a.get_final_port(a))
+                            { 
+                                this->clients[fd].conf_i = i; 
+                                break;
+                            }
+                        }
       Reason/Notes: ________________________
       Priority: High/Medium/Low
 

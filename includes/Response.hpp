@@ -14,11 +14,13 @@
 #include <sys/socket.h>
 #include <vector>
 #include <map>
+#include "EpollManager.hpp"
 //#include "Server.hpp"
 //#include "Request.hpp"
 // #define SEND 8000
 
 class Client;
+class EpollManager;
 class request;
 class Response
 {
@@ -32,7 +34,7 @@ class Response
         ssize_t Readbyte;
         std::string contentType;
         std::string sessionId;
-        void RequestResponse(int clientFd, Response &response, std::map<int, Client> &clientobj);
+        void RequestResponse(int clientFd, Response &response, std::map<int, Client> &clientobj, EpollManager &epoll);
         static Response buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &objclient);    
 };
 //std::string execute_cgi(const std::string &script_path, request &r, const std::string &interpreter);

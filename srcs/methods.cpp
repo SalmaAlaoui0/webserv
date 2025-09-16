@@ -74,6 +74,7 @@ std::string join_path(std::string root, std::string suffix)
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
+	// std::cout << requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
@@ -201,17 +202,16 @@ std::string to_string98(size_t value) {
 
 std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string &path, request r, std::string interpreter, EpollManager &epollManager)
 {
-	(void)clientobj;
 	// clientobj[clientFd].ResponseChunked = 1;
+	clientobj[clientFd].has_cgi = 1;
 	std::cout << "HEllllllllllllllllllllllllllo world it's a cgi script\n\n";
     int pipeFD[2];
     if (pipe(pipeFD) == -1)
     {
         std::string HttpHeader = "Cotent-Type: text/plain\r\n\r\n";
-        return HttpHeader + "A CGI pipe error\n";
+        std::string str =  HttpHeader + "A CGI pipe error\n";
     }
     pid_t pid = fork();
-    std::cout << "HELLLLLLO WORLD\n";
     if (pid == 0)
     {
         dup2(pipeFD[1], STDOUT_FILENO);
@@ -224,8 +224,7 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 		std::string len = to_string98(r.get_body().size());
 		setenv("CONTENT_LENGTH", len.c_str(), 1);
 		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
-		// so only and only if the request has a body like post we should add the environment
-		// variable called "CONTENT_TYPE"
+		// so only and only if the request has a body like post we should add the environment variable called "CONTENT_TYPE"
 
 
 		std::vector<char *> args;
@@ -241,19 +240,16 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
     else
     {
         close(pipeFD[1]);
-        epoll_event ev;
-        ev.events = EPOLLIN;
-        ev.data.fd = pipeFD[0];
-        // epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_ADD, pipeFD[0], &ev);
+		clientobj[clientFd].ResponseChunked = 0;
+		fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
 
-        // clientobj->second().cgiMap[pipeFD[0]] = {clientFd, pid};
-        // s.cgiMap[pipeFD[0]] = {clientFd, pid};
-        // s.cgiMap[pipeFD[0]] = std::make_pair(clientFd, pid);
+		epollManager.addSocket(pipeFD[0], EPOLLIN);
+
         CgiInfo info;
         info.pipefd = pipeFD[0];
         info.pid = pid;
-		std::cout << "Data need to be saved is: " << clientFd << "and the pid is: " << pid << "AND LAST BUT NOT LEAST LET'S SEE FILE DES. IS; " << pipeFD[0] << std::endl;
-        epollManager.cgiMap[clientFd] = info;
+        clientobj[clientFd].cgiMap[clientFd] = info;
+	}
 	// 	char buf[4096];
 	// ssize_t n = read(pipeFD[0], buf, sizeof(buf));
 
@@ -270,7 +266,7 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 	// 	exit (34);
 	// }
         // epoll_ctl();
-    }
+    // }
     return ("hi world\n");
 }
 
@@ -279,6 +275,7 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
 	struct stat statbuf;
+	std::cout << "----->the requested path is: " << requested_path << std::endl;
     if (stat(requested_path.c_str(), &statbuf) == 0)
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
@@ -292,8 +289,11 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
 				std::string ext = index_file.substr(index_file.find_last_of('.'));
-				if (ext == ".py" || ext == ".pl" || ext == ".php")
-					std::string res = execute_cgi(clientFd, clientobj, index_file, r, "/usr/bin/python3", epoll);
+				if (ext == ".sh" || ext == ".pl" || ext == ".php")
+				{
+					execute_cgi(clientFd, clientobj, index_file, r, "/usr/bin/bash", epoll);
+					// acceptNewClient(r, newClient, epoll, 1);
+				}
 				else
 				{
 					clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
@@ -326,10 +326,14 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 
 void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
-	std::map<int, std::string> map;
-    map = getMatchingRootPath(r, _configs[conf_i]);
-    int key = map.begin()->first;
-    std::string value = map.begin()->second;
+    if (!clientobj[clientFd].Sending)
+	{
+		std::map<int, std::string> map;
+		map = getMatchingRootPath(r, _configs[conf_i]);
+		clientobj[clientFd].GetpathMap = map;
+	}
+    int key = clientobj[clientFd].GetpathMap.begin()->first;
+    std::string value = clientobj[clientFd].GetpathMap.begin()->second;
     if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
     {
         clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);

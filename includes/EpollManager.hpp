@@ -22,10 +22,6 @@
 #include <vector>
 #include "../includes/Server.hpp"
 
-struct CgiInfo {
-    int pipefd;
-    pid_t pid;
-};
 
 class Server;
 
@@ -42,8 +38,6 @@ class EpollManager
         void modSocket(int fd, uint32_t event);
         void delSocket(int fd);
         int getEpollFd() const;
-
-        std::map<int, CgiInfo> cgiMap;
 
         //std::vector<int> waitEvents(Server &obj);
          std::vector<epoll_event> waitEvents();
