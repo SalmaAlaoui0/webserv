@@ -104,7 +104,7 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
 	if (r.get_method() == "GET")
 		handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
     else if(clientobj[clientFd].method== "POST")
-        handle_post_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
+        handle_post_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
     else if (r.get_method() == "DELETE")
 		handle_delete_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else
@@ -139,6 +139,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         epollManager.addSocket(clientFd, EPOLLIN);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
         req.ContentLength = 0;
+        clients[clientFd].cgi_active = 0;
         clients[clientFd].body_complete = 0;
         clients[clientFd].send_complete = 0;
         clients[clientFd].start_sending = 0;
@@ -224,8 +225,8 @@ void Server::run()
                 if (bytesRead > 0)
                 {
                     std::cout << "The Body Is Being Appended: " << std::endl;
-                    std::cout << "\n\n************->cgibody: " << clients[fd].CgiBody << "<-\n\n";
                     clients[fd].CgiBody.append(buffer, bytesRead);
+                    std::cout << "\n\n************->cgibody: " << clients[fd].CgiBody << "<-\n\n";
                     clients[fd].CgibytesRead = bytesRead;
                     // clients[fd].ResponseChunked = 0;
                 }

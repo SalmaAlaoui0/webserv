@@ -200,9 +200,10 @@ std::string to_string98(size_t value) {
 
 // std::string execute_cgi(std::string &path, request r, std::string interpreter)
 
-std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string &path, request r, std::string interpreter, EpollManager &epollManager)
+std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, request r, std::string interpreter, EpollManager &epollManager)
 {
 	// clientobj[clientFd].ResponseChunked = 1;
+	(void)r;
 	clientobj[clientFd].has_cgi = 1;
 	std::cout << "HEllllllllllllllllllllllllllo world it's a cgi script\n\n";
     int pipeFD[2];
@@ -217,21 +218,34 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
         dup2(pipeFD[1], STDOUT_FILENO);
         close(pipeFD[0]);
         close(pipeFD[1]);
-
-        setenv("REQUEST_METHOD", "GET", 1);
+		std::string new_body;
+		if(clientobj[clientFd].method == "GET")
+				setenv("REQUEST_METHOD", "GET", 1);
+		if(clientobj[clientFd].method == "POS")
+				setenv("REQUEST_METHOD", "POST", 1);
+			std::string len;
+			if(clientobj[clientFd].chnked)
+			{
+				len = to_string98(clientobj[clientFd].body_chunked.size());
+				new_body = clientobj[clientFd].body_chunked;
+			}
+			else
+			{
+				len =  to_string98(clientobj[clientFd].PostBody.size());
+				new_body = clientobj[clientFd].PostBody;
+			}
         setenv("SCRIPT_FILENAME", path.c_str(), 1);
-        setenv("QUERY_STRING", r.get_body().c_str(), 1);
-		std::string len = to_string98(r.get_body().size());
+        setenv("QUERY_STRING", clientobj[clientFd].QUERY_STRING.c_str(), 1);
 		setenv("CONTENT_LENGTH", len.c_str(), 1);
 		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+		setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
 		// so only and only if the request has a body like post we should add the environment variable called "CONTENT_TYPE"
-
-
 		std::vector<char *> args;
-		args.push_back(const_cast<char*>(interpreter.c_str()));
+		// args.push_back(const_cast<char*>(interpreter.c_str()));
+		args.push_back(const_cast<char*>(path.c_str()));
 		args.push_back(const_cast<char*>(path.c_str()));
 		args.push_back(NULL);
-		execve(args[0], &args[0], environ);
+		execve(interpreter.c_str(), &args[0], environ);
 		// execve(interpreter.c_str(), &args[0], environ);
 
         const char *err = "Content-Type: text/plain\r\n\r\nexecve failed\n";
@@ -481,7 +495,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
     dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj);
 }
 
-void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj)
+void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj,EpollManager &epollManager)
 {
 	std::map<int, std::string> map;
 	
@@ -536,6 +550,10 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	}
 	else 
 		out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
+	if(clientobj[clientFd].cgi_active == 1)
+	{
+		execute_cgi(clientFd,clientobj,filename.str(), r, "/usr/bin/python3",epollManager);
+	}
 	out.flush();
 	out.close();
 	std::cout << "&&&&&&&&&&&&&&&&&77"<< _configs[clients[clientFd].conf_i].ErrorPages[201]<< std::endl;

@@ -17,6 +17,8 @@ class Client
     private:
         std::time_t lastActivity;
     public :
+    int cgi_active;
+    std::string QUERY_STRING;
   size_t  chunk_size;
  int recived;
  std::string litter_chunk;
