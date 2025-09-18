@@ -191,6 +191,30 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
     }
 }
 
+
+void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& clientobj, int fd)
+{
+    int pid = clientobj[fd].cgiMap[fd].pid;
+    int wstatus;
+    pid_t result = waitpid(pid, &wstatus, WNOHANG);
+    if (result == 0)
+    {
+        kill(pid, SIGKILL);
+        waitpid(pid, &wstatus, 0);
+    }
+    int pipefd = clientobj[fd].cgiMap[fd].pipefd;
+    if (pipefd != -1)
+    {
+        std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
+        epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
+        close(clientobj[fd].cgiMap[fd].pipefd);
+        clientobj[fd].cgiMap[fd].pipefd = -1;
+        std::cout << "\n\n->cgibody: " << clientobj[fd].CgiBody << "<-\n\n";
+        // exit (2);
+    }
+    ;
+}
+
 void Server::run()
 {
 	EpollManager epollManager;
@@ -216,7 +240,6 @@ void Server::run()
             if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
             else if (clients[fd].cgiMap[fd].pipefd != -1 && clients[fd].cgiMap[fd].pipefd != 0) {
-                // time_t now = time(NULL);
                 const size_t BUF_SIZE = 4096;
                 char buffer[BUF_SIZE];
                 ssize_t bytesRead;
@@ -224,30 +247,18 @@ void Server::run()
                 clients[fd].ResponseChunked = 0;
                 if (bytesRead > 0)
                 {
-                    std::cout << "The Body Is Being Appended: " << std::endl;
+                    std::cout << "The Body Is Being Appended. " << std::endl;
                     clients[fd].CgiBody.append(buffer, bytesRead);
-                    std::cout << "\n\n************->cgibody: " << clients[fd].CgiBody << "<-\n\n";
-                    clients[fd].CgibytesRead = bytesRead;
+                    // std::cout << "\n\n************->cgiappended buffer: " << buffer << "<-\n\n";
                     // clients[fd].ResponseChunked = 0;
                 }
                 else if (bytesRead == 0)//add timeout
                 {
                     std::cout << "bytesRead is : 0" << std::endl;
                     clients[fd].CgiBody.append(buffer, bytesRead);
-                    clients[fd].CgibytesRead = 0;
-                    int pid = clients[fd].cgiMap[fd].pid;
-                    int wstatus;
-                    waitpid(pid, &wstatus, 0);
-                    int pipefd = clients[fd].cgiMap[fd].pipefd;
-                    if (pipefd != -1)
-                    {
-                        std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
-                        epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clients[fd].cgiMap[fd].pipefd, NULL);
-                        close(clients[fd].cgiMap[fd].pipefd);
-                        clients[fd].cgiMap[fd].pipefd = -1;
-                        std::cout << "\n\n->cgibody: " << clients[fd].CgiBody << "<-\n\n";
-                        // exit (2);
-                    }
+                    clients[fd].statusCode = 200;
+                    clients[fd].statusMsg = "OK";
+                    WaitChildAndClean(epollManager, clients, fd);
                     std::cout << "finish reading cgi\n";
                     // clients[fd].send_complete = 1;
                 }
@@ -257,21 +268,9 @@ void Server::run()
                         clients[fd].no_data = 1;
                     else
                     {
-                        int pid = clients[fd].cgiMap[fd].pid;
-                        int wstatus;
-                        waitpid(pid, &wstatus, 0);
-                        int pipefd = clients[fd].cgiMap[fd].pipefd;
-                        if (pipefd != -1)
-                        {
-                            std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
-                            epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clients[fd].cgiMap[fd].pipefd, NULL);
-                            close(clients[fd].cgiMap[fd].pipefd);
-                            clients[fd].cgiMap[fd].pipefd = -1;
-                            std::cout << "\n\n->cgibody: " << clients[fd].CgiBody << "<-\n\n";
-                            // exit (2);
-                        }
-                        clients[fd].send_complete = 1;
-                        std::cout << "bytesRead is : < 0" << std::endl;
+                        WaitChildAndClean(epollManager, clients, fd);
+                        clients[fd].send_complete = 1; // this should become send complete because 
+                        // I should make an appropriate html response
                         perror("REad");
                         // exit (23);
                     }
@@ -281,24 +280,7 @@ void Server::run()
                 if (difftime(now, clients[fd].CgiStartActivity) > 3)
                 {
                     std::cout << "CGI timeout\n";
-                    int pid = clients[fd].cgiMap[fd].pid;
-                    int wstatus;
-                    pid_t result = waitpid(pid, &wstatus, WNOHANG);
-                    if (result == 0)
-                    {
-                        kill(pid, SIGKILL);
-                        waitpid(pid, &wstatus, 0);
-                    }
-                    int pipefd = clients[fd].cgiMap[fd].pipefd;
-                    if (pipefd != -1)
-                    {
-                        std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
-                        epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clients[fd].cgiMap[fd].pipefd, NULL);
-                        close(clients[fd].cgiMap[fd].pipefd);
-                        clients[fd].cgiMap[fd].pipefd = -1;
-                        std::cout << "\n\n->cgibody: " << clients[fd].CgiBody << "<-\n\n";
-                        // exit (2);
-                    }
+                    WaitChildAndClean(epollManager, clients, fd);
                     // closePipeAndCleanup(fd);
                 }
                 // clients[fd].has_cgi = 0;
@@ -359,8 +341,9 @@ void Server::run()
                     if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
                      || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
                     {
-                        close(fd);
-                        std::cout << "✅ client: " << fd << " is disconnected\n";
+                        closeConnection(fd, epollManager);
+                        // close(fd);
+                        // std::cout << "✅ client: " << fd << " is disconnected\n";
                     }
                 }
                 else

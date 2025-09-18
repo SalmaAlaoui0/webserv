@@ -24,11 +24,13 @@ class Client
  std::string litter_chunk;
  bool reading_size;
         int _fd;
+        int statusCode;
         bool body_complete;
         size_t ContentLength_chnked;
         bool chnked;
         std::string body_chunked;
         bool start_sending;
+        bool cgi_has_problem;
         bool send_complete;
         bool Sending;
         bool file_opened;
@@ -39,9 +41,9 @@ class Client
         bool has_cgi;
         std::string cookies;
         std::string autoIndexBody;
+        std::string statusMsg;
         std::string PostBody;
         std::string CgiBody;
-        size_t CgibytesRead;
         size_t filesize;
         size_t size_send;
         size_t conf_i ;

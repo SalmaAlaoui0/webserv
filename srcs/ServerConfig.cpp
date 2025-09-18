@@ -194,7 +194,6 @@ void parseindex(std::string line, std::vector<ServerConfig> &container, int i)
 
 void parse_max_size(std::string line, std::vector<ServerConfig> &container, int i)
 {
-    // (void) container;
     std::string max_size;
     std::string size;
     max_size = line.substr(isKey(line, "client_max_body_size") + 1);
