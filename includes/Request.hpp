@@ -34,7 +34,6 @@ class request{
     request(request const &ref);
     request();
    int reponse_status;
-  
    std::string body;
     std::string method;
     std::string path;
