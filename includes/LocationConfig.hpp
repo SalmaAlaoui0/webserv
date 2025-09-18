@@ -16,7 +16,7 @@ struct LocationConfig
 	std::string root;  // done ✅
 	std::string index;  // done ✅
 	long	client_max_body_size;  // done ✅
-	std::string cgi_pass;  // done ✅
+	std::map<std::string, std::string> cgi_pass;  // done ✅
 	bool autoindex;  // done ✅
 	std::string upload_store;
 	// parse a return key

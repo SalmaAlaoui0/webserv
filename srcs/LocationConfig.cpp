@@ -203,8 +203,28 @@ void parseLoc_cgi(std::string line, std::vector<ServerConfig> &container, int i,
 	if (cgi[cgi.size() - 1] != ';' || cgi[cgi.size() - 2] == ';')
         throw ::InvalidData();
     cgi = cgi.substr(0, cgi.size() - 1);
-    container[i].locations[j].cgi_pass = cgi;
-    // std::cout << "ur cgi pass is: -" << container[i].locations[j].cgi_pass << "-" << std::endl;
+
+    std::istringstream iss(cgi);
+    std::string ext, interpreter, extra;
+    if (!(iss >> ext) || ext[0] != '.')
+    {
+        std::cerr << "Invalid cgi_pass (bad extension): " << ext << "\n";
+        throw ::InvalidData();
+    }
+
+    if (!(iss >> interpreter))
+    {
+        std::cerr << "Invalid cgi_pass (missing interpreter): " << interpreter << "\n";
+        throw ::InvalidData();
+    }
+
+    if (iss >> extra)
+    {
+        std::cerr << "Invalid cgi_pass (too many arguments): " << line << "\n";
+        throw ::InvalidData();
+    }
+    container[i].locations[j].cgi_pass[ext] = interpreter;
+    std::cout << "ur cgi pass is: ext:-" << ext << "---And interpreter is: -" << interpreter << "-- " << std::endl;
     // exit (0);
 }
 

@@ -200,10 +200,12 @@ std::string to_string98(size_t value) {
 
 // std::string execute_cgi(std::string &path, request r, std::string interpreter)
 
-std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, request r, std::string interpreter, EpollManager &epollManager)
+std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, request &r, std::string interpreter, EpollManager &epollManager, std::vector<ServerConfig> config, int i)
 {
 	// clientobj[clientFd].ResponseChunked = 1;
 	(void)r;
+	(void)i;
+	(void)config;
 	clientobj[clientFd].has_cgi = 1;
 	std::cout << "HEllllllllllllllllllllllllllo world it's a cgi script\n\n";
     int pipeFD[2];
@@ -247,9 +249,9 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 		args.push_back(NULL);
 		execve(interpreter.c_str(), &args[0], environ);
 		// execve(interpreter.c_str(), &args[0], environ);
-
-        const char *err = "Content-Type: text/plain\r\n\r\nexecve failed\n";
-        write(1, err, strlen(err));
+		// clientobj[clientFd].cgi_has_problem = 1;
+		// clientobj[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config[i].ErrorPages[500], clientFd, clientobj);
+	
         exit (1);
     }
     else
@@ -286,15 +288,37 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 }
 
 
+std::string find_matching_inter(std::string ext, std::vector<ServerConfig> config, int i, int key)
+{
+	std::map<std::string, std::string> CgiMap = config[i].locations[key].cgi_pass;
+	std::map<std::string, std::string>::iterator it = CgiMap.begin();
+	while (it != CgiMap.end())
+	{
+		if (it->first == ext)
+			return(it->second);
+		it++;
+	}
+	return "";
+}
+
 
 void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
 	struct stat statbuf;
+	std::string ext;
+	std::string interpreter;
 	std::cout << "----->the requested path is: " << requested_path << std::endl;
     if (stat(requested_path.c_str(), &statbuf) == 0)
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
-			clients[clientFd].response  = clients[clientFd].response.buildResponse(r, 200, "OK", requested_path, clientFd, clientobj);
+		{
+			ext = requested_path.substr(requested_path.find_last_of('.'));
+			interpreter = find_matching_inter(ext, config, i, key);
+			if (!interpreter.empty())
+				execute_cgi(clientFd, clientobj, requested_path, r, interpreter, epoll, config, i);
+			else
+				clients[clientFd].response  = clients[clientFd].response.buildResponse(r, 200, "OK", requested_path, clientFd, clientobj);
+		}
 		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
 		{
 			std::string index_file;
@@ -303,16 +327,12 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			std::cout << "firstly this hole path is: " << index_file << std::endl;
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
-				std::string ext = index_file.substr(index_file.find_last_of('.'));
-				if (ext == ".sh" || ext == ".py" || ext == ".php")
-				{
-					execute_cgi(clientFd, clientobj, index_file, r, "/usr/bin/python3", epoll);
-					// acceptNewClient(r, newClient, epoll, 1);
-				}
+				ext = index_file.substr(index_file.find_last_of('.'));
+				interpreter = find_matching_inter(ext, config, i, key);
+				if (!interpreter.empty())
+					execute_cgi(clientFd, clientobj, index_file, r, interpreter, epoll, config, i);
 				else
-				{
 					clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
-				}
 			}
 			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
 			{
@@ -497,7 +517,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 
 void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj,EpollManager &epollManager)
 {
-	std::map<int, std::string> map;
+	std::map<int, std::string> map;/////hereeee
 	
     map = getMatchingRootPath(r, _configs[conf_i]);
     if (!CheckMethodeIsAllowed("POST", _configs, conf_i, map.begin()->first))
@@ -552,7 +572,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
 	if(clientobj[clientFd].cgi_active == 1)
 	{
-		execute_cgi(clientFd,clientobj,filename.str(), r, "/usr/bin/python3",epollManager);
+		execute_cgi(clientFd,clientobj,filename.str(), r, "/usr/bin/python3",epollManager, _configs, clients[clientFd].conf_i);
 	}
 	out.flush();
 	out.close();
