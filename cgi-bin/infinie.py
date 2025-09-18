@@ -12,4 +12,4 @@ print("Starting infinite loop...")
 while True:
     print("Still running...")
     sys.stdout.flush()
-    time.sleep(1)
+    time.sleep(0.01)

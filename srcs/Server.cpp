@@ -122,6 +122,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         req.path.clear();
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
+        std::cout << "[DEBUG] accepted new client got fd " << clientFd << "\n";
                 // std::cout << "client fd" << clientFd << std::endl;
         int flags = fcntl(clientFd, F_GETFL, 0);
         if (fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 )
@@ -219,7 +220,6 @@ void Server::run()
                 char buffer[BUF_SIZE];
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE);
-                // std::cout << "*********bytesRead is: " << bytesRead << std::endl;
                 clients[fd].ResponseChunked = 0;
                 if (bytesRead > 0)
                 {
@@ -369,14 +369,23 @@ void Server::run()
     }
 }
 
+
 void Server::closeConnection(int fd, EpollManager &epollManager)
 {
-    if (clients.count(fd) && clients[fd].cgiMap[fd].pipefd != -1) {
+    if (clients.count(fd))
+    {
         int pipefd = clients[fd].cgiMap[fd].pipefd;
-        epollManager.delSocket(pipefd);
-        close(pipefd);
+        if (pipefd > 2)
+        {
+            std::cout << "Closing CGI pipefd: " << pipefd << "\n";
+            if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, pipefd, NULL) == -1)
+                    perror("epoll_ctl DEL pipefd");
+            close(pipefd);
+            clients[fd].cgiMap[fd].pipefd = -1;
+        }
     }
-    epollManager.delSocket(fd);
+    if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL) == -1)
+        perror("epoll_ctl DEL fd");
     close(fd);
     clients.erase(fd);
     std::cout << "✅ client: " << fd << " is disconnected\n";
