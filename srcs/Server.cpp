@@ -117,6 +117,7 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
 void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollManager)
 {
         struct sockaddr clientAddr;
+        std::cout << "std::Cout << path is: " << req.get_path() << "std::enld;" << std::endl;
         req.body.clear();
         req.path.clear();
         socklen_t clientLen = sizeof(clientAddr);
@@ -143,6 +144,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].create_file = 0;
         clients[clientFd].Sending = 0;
         clients[clientFd].autoindex = 0;
+        clients[clientFd].header_complete = 0;
         clients[clientFd].ResponseChunked = 0;
         clients[clientFd].PostBody.clear();
         clients[clientFd].CgiBody.clear();
@@ -151,6 +153,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].cgiMap[clientFd].pipefd = -1;
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
+        std::cout << "std::Cout << And now path is: " << req.get_path() << "std::enld;" << std::endl;
         std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
     
 }

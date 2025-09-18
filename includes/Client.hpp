@@ -44,7 +44,7 @@ class Client
         size_t size_send;
         size_t conf_i ;
 
-        std::map<int, CgiInfo> cgiMap;
+        std::map<int, CgiInfo> cgiMap;///// in this map add cgi exit status code and do not send cgi response until code status is 200 
         std::map<int, std::string> GetpathMap;
         
         
