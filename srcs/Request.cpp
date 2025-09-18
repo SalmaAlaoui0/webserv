@@ -204,6 +204,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         std::istringstream line_stream(line);
         line_stream >>  methode >> path >> version;
         clientobj[clientFd].method = methode;
+        std::cout << "^^^^^^^^^^^^^^^^client path" << clientobj[clientFd].path << "\n\n\\n\n";
         clientobj[clientFd].path = path;
         clientobj[clientFd].version = version;
         // r.set_method(method);

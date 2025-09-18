@@ -74,7 +74,7 @@ std::string join_path(std::string root, std::string suffix)
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
-	// std::cout << requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
+	std::cout << requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
@@ -232,6 +232,7 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 		args.push_back(const_cast<char*>(path.c_str()));
 		args.push_back(NULL);
 		execve(args[0], &args[0], environ);
+		// execve(interpreter.c_str(), &args[0], environ);
 
         const char *err = "Content-Type: text/plain\r\n\r\nexecve failed\n";
         write(1, err, strlen(err));
@@ -289,9 +290,9 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
 				std::string ext = index_file.substr(index_file.find_last_of('.'));
-				if (ext == ".sh" || ext == ".pl" || ext == ".php")
+				if (ext == ".sh" || ext == ".py" || ext == ".php")
 				{
-					execute_cgi(clientFd, clientobj, index_file, r, "/usr/bin/bash", epoll);
+					execute_cgi(clientFd, clientobj, index_file, r, "/usr/bin/python3", epoll);
 					// acceptNewClient(r, newClient, epoll, 1);
 				}
 				else
