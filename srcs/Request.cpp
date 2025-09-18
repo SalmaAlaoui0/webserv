@@ -196,7 +196,6 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         size_t HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
         std::string headers = clientobj[clientFd].PostBody.substr(0, HeaderEnd);
         clientobj[clientFd].PostBody = clientobj[clientFd].PostBody.substr(HeaderEnd + 4);
-        // std::cout << "\n\n" << headers << "\n\n";///
         std::istringstream iss(headers);
         std::string methode , path ,version, line;
         std::getline(iss, line,  '\r');
@@ -204,8 +203,19 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         std::istringstream line_stream(line);
         line_stream >>  methode >> path >> version;
         clientobj[clientFd].method = methode;
-        std::cout << "^^^^^^^^^^^^^^^^client path" << clientobj[clientFd].path << "\n\n\\n\n";
-        clientobj[clientFd].path = path;
+        size_t pos1;
+        size_t pos;
+        if( ( pos = path.find("cgi-bin")) != std::string::npos)
+        {
+             clientobj[clientFd].cgi_active = true;
+        }
+        if((pos1 = path.find("?") )!= std::string::npos)
+        {
+            clientobj[clientFd].path = path.substr(0, pos1);
+            clientobj[clientFd].QUERY_STRING = path.substr(pos1+1, path.size()- pos1);
+        }
+        else    
+             clientobj[clientFd].path = path;
         clientobj[clientFd].version = version;
         // r.set_method(method);
         // r.set_path(path);
