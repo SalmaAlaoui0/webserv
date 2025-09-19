@@ -41,6 +41,11 @@ std::string checkValidLocation(std::string line)
     std::string path;
     value = line.substr(isKey(line, "location") + 1);
     value = trim(value);
+    if (value[value.size() -1] != '{')
+    {
+        std::cerr << "location data must be inside braces: `{'" << std::endl;
+        throw ::InvalidData();
+    }
     if (containsChar(value, '{'))
     {
 		if (containsChar(value, '{') == 2)
@@ -64,11 +69,16 @@ void parseLoc_index(std::string line, std::vector<ServerConfig> &container, int 
     std::string index;
     index = line.substr(isKey(line, "index") + 1);
     index = trim(index);
-	if (index[index.size() - 1] != ';')
+	if (index[index.size() - 1] != ';' || index[index.size() - 2] == ';')
+    {
+        std::cout << "Unacceptable notation `;'\n";
         throw ::InvalidData();
+    }
+    index = index.substr(0, index.size() - 1);
+    index = trim(index);
     if (!isValidIndex(index) || !hasExtension(index))
         throw ::InvalidData();
-    index = index.substr(0, index.size() - 1);
+    // index = index.substr(0, index.size() - 1);
     container[i].locations[j].index = index;
     // std::cout << "ur location index file is: -" << container[i].locations[j].index << "-" << std::endl;
 }
@@ -78,8 +88,11 @@ void parseLoc_root(std::string line, std::vector<ServerConfig> &container, int i
 	std::string root;
     root = line.substr(isKey(line, "root") + 1);
     root = trim(root);
-	// if (root[root.creatListeningSocket() - 1] != ';' || root[root.size() - 2] == ';')
-    //     throw ::InvalidData();
+	if (root[root.size() - 1] != ';' || root[root.size() - 2] == ';')
+    {
+        std::cout << "Unacceptable notation `;'\n";
+        throw ::InvalidData();
+    }
     root = root.substr(0, root.size() - 1);
     container[i].locations[j].root = root;
 	// std::cout << "ur location root is: -" << container[i].locations[j].root << "-" << std::endl;
@@ -91,8 +104,11 @@ void parseLoc_upload_store(std::string line, std::vector<ServerConfig> &containe
 	std::string upload_store;
     upload_store = line.substr(isKey(line, "upload_store") + 1);
     upload_store = trim(upload_store);
-	// if (root[root.creatListeningSocket() - 1] != ';' || root[root.size() - 2] == ';')
-    //     throw ::InvalidData();
+	if (upload_store[upload_store.size() - 1] != ';' || upload_store[upload_store.size() - 2] == ';')
+    {
+        std::cout << "Unacceptable notation `;'\n";
+        throw ::InvalidData();
+    }
     upload_store = upload_store.substr(0, upload_store.size() - 1);
     container[i].locations[j].upload_store = upload_store;
 	// std::cout << "ur location root is: -" << container[i].locations[j].root << "-" << std::endl;
@@ -105,7 +121,10 @@ void parseAutoIndex(std::string line, std::vector<ServerConfig> &container, int 
     value = line.substr(isKey(line, "autoindex") + 1);
     value = trim(value);
     if (value[value.size() - 1] != ';' || value[value.size() - 2] == ';')
+    {
+        std::cout << "Unacceptable notation `;'\n";
         throw ::InvalidData();
+    }
     value = value.substr(0, value.size() - 1);
     if (value == "off")
         container[i].locations[j].autoindex = 0;
@@ -224,10 +243,34 @@ void parseLoc_cgi(std::string line, std::vector<ServerConfig> &container, int i,
         throw ::InvalidData();
     }
     container[i].locations[j].cgi_pass[ext] = interpreter;
-    std::cout << "ur cgi pass is: ext:-" << ext << "---And interpreter is: -" << interpreter << "-- " << std::endl;
-    // exit (0);
+    // std::cout << "ur cgi pass is: ext:-" << ext << "---And interpreter is: -" << interpreter << "-- " << std::endl;
 }
 
+void parseReturn(std::string line, std::vector<ServerConfig> &container, int i, int j)
+{
+    std::string Return;
+    std::string return_code;
+    std::string return_path;
+    Return = line.substr(isKey(line, "return") + 1);
+    if (Return[Return.size() - 1] != ';' || Return[Return.size() - 2] == ';')
+    {
+        std::cout << "Unacceptable notation `;'\n";
+        throw ::InvalidData();
+    }
+    Return = Return.substr(0, Return.size() - 1);
+    Return = trim(Return);
+    std::istringstream iss(Return);
+    if (!(iss >> return_code))
+        throw ::InvalidData();
+    if (!(iss >> return_path))
+        throw ::InvalidData();
+    return_path = trim(return_path);
+    if (!isAllDigits(return_code))
+        throw ::InvalidData();
+    container[i].locations[j].Return[toInt(return_code)] = return_path;
+    // std::cout << "ur return page is: -" << Return << "-" << std::endl;
+    // std::cout << "     and it's return code is: -" << return_code << "-" << std::endl;
+}
 void parseLocationConfig(std::string line, std::vector<ServerConfig> &container, int i, int j)
 {
     std::vector<std::string> methods;
@@ -244,7 +287,9 @@ void parseLocationConfig(std::string line, std::vector<ServerConfig> &container,
     else if(isKey(line, "cgi_pass"))
 		parseLoc_cgi(line, container, i, j);
     else if(isKey(line, "upload_store"))
-		parseLoc_upload_store(line, container, i, j);
+        parseLoc_upload_store(line, container, i, j);
+    else if(isKey(line, "return"))
+        parseReturn(line, container, i, j);
     else if(isKey(line, "allowed_methods"))
     {
         parseMethods(line, methods);
