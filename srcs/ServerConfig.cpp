@@ -182,14 +182,17 @@ void parseindex(std::string line, std::vector<ServerConfig> &container, int i)
     std::string index;
     index = line.substr(isKey(line, "index") + 1);
     index = trim(index);
-	if (index[index.size() - 1] != ';')
+	if (index[index.size() - 1] != ';' || index[index.size() - 2] == ';')
+    {
+        std::cout << "Unacceptable notation `;'\n";
         throw ::InvalidData();
-    if (!isValidIndex(index) || (index.substr(index.size() - 6, index.size()) != ".html;"))
-        throw ::InvalidData();
+    }
     index = index.substr(0, index.size() - 1);
-	container[i].index = index;
+    index = trim(index);
+    if (!isValidIndex(index) || (index.substr(index.size() - 5, index.size()) != ".html"))
+        throw ::InvalidData();
+    container[i].index = index;
     // std::cout << "ur index file is: -" << container[i].index << "-" << std::endl;
-    // exit (0);
 }
 
 void parse_max_size(std::string line, std::vector<ServerConfig> &container, int i)
