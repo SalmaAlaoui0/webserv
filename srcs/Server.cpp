@@ -12,43 +12,110 @@
 
 
 #include "../includes/Server.hpp"
+#define RESET   "\033[0m"
+#define RED     "\033[31m"
+#define GREEN   "\033[32m"
+#define YELLOW  "\033[33m"
+#define BLUE    "\033[34m"
+#define MAGENTA "\033[35m"
+#define CYAN    "\033[36m"
+#define WHITE   "\033[37m"
+// int Server::creatServerSocket(const std::string &ip, int port)
+// {
+//     int server_fd  = socket(AF_INET, SOCK_STREAM, 0);  //AF_INET-->ipv4 , SOCK_STREAM-->tcp  
+//     int flags = fcntl(server_fd, F_GETFL, 0);
+//     if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0)
+//         throw socketException("❌ Failed to set non-blocking mode on socket");
+//     if (server_fd  < 0) 
+//         throw socketException("❌Socket creation failed");
+//     int option = 1;
+//     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
+//     {
+//         close(server_fd );
+//         throw socketException("❌ Socket setup failed in setsockopt()");
+//     }
+//     sockaddr_in addr;
+//     std::memset(&addr, 0,sizeof(addr));
+//     addr.sin_family = AF_INET;
+//     addr.sin_port = htons(port);
+//     if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) <= 0) 
+//     {
+//         close(server_fd );
+//         throw socketException("❌ Invalid IP address");
+//     }
+//     if(bind (server_fd, (sockaddr*)&addr, sizeof(addr)) < 0)
+//     {
+//         close(server_fd );
+//         perror("bind() failed : ");
+//         throw socketException("❌ bind() failed"); 
+//     }
+//     if(listen(server_fd , SOMAXCONN) < 0)
+//     {
+//         close(server_fd );
+//         throw socketException("❌ listen() failed");    
+//     }
+//     std::cout << "Listening on " << ip << ":" << port << std::endl;
+//     return server_fd ; 
+// }
 
 int Server::creatServerSocket(const std::string &ip, int port)
 {
-    int server_fd  = socket(AF_INET, SOCK_STREAM, 0);  //AF_INET-->ipv4 , SOCK_STREAM-->tcp  
+    // 1. Create socket
+    int server_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (server_fd < 0)
+        throw socketException("❌ Socket creation failed");
+    // 2. Make socket non-blocking
     int flags = fcntl(server_fd, F_GETFL, 0);
-    if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0)
+    if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0) 
+    {
+        close(server_fd);
         throw socketException("❌ Failed to set non-blocking mode on socket");
-    if (server_fd  < 0) 
-        throw socketException("❌Socket creation failed");
-    int option = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
-    {
-        close(server_fd );
-        throw socketException("❌ Socket setup failed in setsockopt()");
     }
-    sockaddr_in addr;
-    std::memset(&addr, 0,sizeof(addr));
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(port);
-    if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) <= 0) 
+    // 3. Allow address reuse
+    int opt = 1;
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) 
     {
-        close(server_fd );
-        throw socketException("❌ Invalid IP address");
+        close(server_fd);
+        throw socketException("❌ setsockopt(SO_REUSEADDR) failed");
     }
-    if(bind (server_fd, (sockaddr*)&addr, sizeof(addr)) < 0)
+    // 4. Prepare hints
+    struct addrinfo hints;
+    std::memset(&hints, 0, sizeof(hints));
+    hints.ai_family   = AF_INET;       // IPv4
+    hints.ai_socktype = SOCK_STREAM;   // TCP
+    hints.ai_flags    = AI_PASSIVE;    // For binding
+    // Convert port to string
+    std::stringstream ss;
+    ss << port;
+    std::string portStr = ss.str();
+    // 5. Resolve address
+    struct addrinfo *res;
+    const char *host = ip.empty() ? NULL : ip.c_str();
+    int status = getaddrinfo(host, portStr.c_str(), &hints, &res);
+    if (status != 0) 
     {
-        close(server_fd );
-        perror("bind() failed : ");
-        throw socketException("❌ bind() failed"); 
+        close(server_fd);
+        throw socketException(std::string("❌ getaddrinfo: ") + gai_strerror(status));
     }
-    if(listen(server_fd , SOMAXCONN) < 0)
+    // 6. Bind socket
+    if (bind(server_fd, res->ai_addr, res->ai_addrlen) < 0) 
     {
-        close(server_fd );
-        throw socketException("❌ listen() failed");    
+        freeaddrinfo(res);
+        close(server_fd);
+        throw socketException("❌ bind() failed");
     }
-    std::cout << "Listening on " << ip << ":" << port << std::endl;
-    return server_fd ; 
+    if (listen(server_fd, SOMAXCONN) < 0) 
+    {
+        freeaddrinfo(res);
+        close(server_fd);
+        throw socketException("❌ listen() failed");
+    }
+    freeaddrinfo(res);
+
+    std::cout << GREEN << "✅ Listening on "<< CYAN << (ip.empty() ? "0.0.0.0" : ip)
+          << RESET << ":"<< YELLOW << port<< RESET << std::endl;
+          
+    return server_fd;
 }
 
 void Server:: setupSockets()
