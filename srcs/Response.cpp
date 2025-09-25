@@ -173,7 +173,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         std::ostringstream headers;
         // std::cout << "Headers are starus code is; " << res.statusCode << "content type is: " << res.contentType 
         headers << "HTTP/1.1 " << 200 << "\r\n"
-            << "Content-Type: " << "text/html" << "\r\n";
+            << "Content-Type: " << "video/mp4" << "\r\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
             headers<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";

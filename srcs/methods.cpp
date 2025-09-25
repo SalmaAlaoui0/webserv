@@ -451,6 +451,7 @@ bool is_directory_empty(const std::string& path)
 
 void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj)
 {
+	std::cout << "-------------------->>>>>>fuulpath"<<fullpath<<std::endl;
 	struct stat st;
 	if(stat(fullpath.c_str() , &st) != 0)
 	{
