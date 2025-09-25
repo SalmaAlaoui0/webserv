@@ -37,5 +37,6 @@ std::vector<ServerConfig> serverdata;
 bool emptylines(std::string file);
 int isKey(std::string line, std::string target);
 bool checkClosing(std::string file);
+int valid_return_path(std::vector<LocationConfig> locations, std::string Path, int index);
 
 #endif

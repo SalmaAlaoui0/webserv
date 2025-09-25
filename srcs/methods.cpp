@@ -14,6 +14,7 @@
 #include "../includes/Response.hpp"
 #include "../includes/ServerConfig.hpp"
 #include "../includes/LocationConfig.hpp"
+#include "../includes/ConfigParser.hpp"
 #include "../includes/Utils.hpp"
 
 
@@ -74,7 +75,7 @@ std::string join_path(std::string root, std::string suffix)
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
-	std::cout << requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
+	// std::cout << requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
@@ -107,6 +108,7 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 	i = 0;
 	while (i < config.locations.size())
 	{
+		std::string root;
 		locPath = config.locations[i].path;
 		Pchunks = pathchunks(locPath);
 		if (Pchunks.size() == 1)
@@ -115,22 +117,34 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 			locPath = Pchunks[1];
 		if (locPath[1] == '\0' && requestedPath.empty())
 		{
-			result[i] = config.locations[i].root;
+			if (config.locations[i].root.empty())
+				root = config.root;
+			else
+				root = config.locations[i].root;
+			result[i] = root;
 			return result;
 		}
 		if (Pchunks.size() == 2 && Pchunks[0] == "^~")
 		{
 			if (requestedPath.find(locPath) == 0)
 			{
-				matchedRoot = join_path(config.locations[i].root, requestedPath.substr(locPath.length()));
+				if (config.locations[i].root.empty())
+					root = config.root;
+				else
+					root = config.locations[i].root;
+				matchedRoot = join_path(root, requestedPath.substr(locPath.length()));
 				result[i] = matchedRoot;
 				return result;
 			}
 		}
 		else if (requestedPath.find(locPath) == 0 && locPath.length() > maxMatchLength)
 		{
+			if (config.locations[i].root.empty())
+				root = config.root;
+			else
+				root = config.locations[i].root;
 			maxMatchLength = locPath.length();
-			matchedRoot = join_path(config.locations[i].root, requestedPath.substr(locPath.length()));
+			matchedRoot = join_path(root, requestedPath.substr(locPath.length()));
 			coorLoc = i;
 		}
 		i++;
@@ -307,7 +321,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 	struct stat statbuf;
 	std::string ext;
 	std::string interpreter;
-	std::cout << "----->the requested path is: " << requested_path << std::endl;
+	// std::cout << "----->the requested path is: " << requested_path << std::endl;
     if (stat(requested_path.c_str(), &statbuf) == 0)
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
@@ -324,7 +338,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			std::string index_file;
 			index_file = join_path(requested_path, config[i].locations[key].index);
 
-			std::cout << "firstly this hole path is: " << index_file << std::endl;
+			// std::cout << "firstly this hole path is: " << index_file << std::endl;
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
 				ext = index_file.substr(index_file.find_last_of('.'));
@@ -368,13 +382,21 @@ void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, 
 		clientobj[clientFd].GetpathMap = map;
 	}
     int key = clientobj[clientFd].GetpathMap.begin()->first;
+	if (!_configs[conf_i].locations[key].Return.empty())
+	{
+		clientobj[clientFd].statusCode = _configs[conf_i].locations[key].Return.begin()->first;
+		clientobj[clientFd].statusMsg = "Found";
+		clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
+	}
     std::string value = clientobj[clientFd].GetpathMap.begin()->second;
+	// std::cout << "====>>>>" << value << std::endl;
     if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
     {
         clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
-    CheckDirOrFile(value, clientFd, _configs, conf_i, key, r, clientobj, epoll);
+    if (_configs[conf_i].locations[key].Return.empty())
+		CheckDirOrFile(value, clientFd, _configs, conf_i, key, r, clientobj, epoll);
 }
 
 bool Server::delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj)
@@ -504,12 +526,19 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 {
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
-    int key = map.begin()->first;
+	int key = map.begin()->first;
     if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
     {
 		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 405, "Method Not Allowed", _configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
+	// if (!_configs[conf_i].locations[key].Return.empty())
+	// {
+	// 	clientobj[clientFd].statusCode = _configs[conf_i].locations[key].Return.begin()->first;
+	// 	clientobj[clientFd].statusMsg = "Found";
+	// 	clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
+	// 	return;
+	// }
     std::string fullpath = map.begin()->second;
     // std::cout << "\nFull path is:" << fullpath << std::endl;
     dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj);
@@ -520,13 +549,21 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	std::map<int, std::string> map;/////hereeee
 	
     map = getMatchingRootPath(r, _configs[conf_i]);
-    if (!CheckMethodeIsAllowed("POST", _configs, conf_i, map.begin()->first))
+	int key = map.begin()->first;
+    if (!CheckMethodeIsAllowed("POST", _configs, conf_i, key))
     {
 		//std::cout << "here internalllll\n";
         //send_response(clientFd, 405, "Method Not Allowed", load_html_file("www/405.html"));
 		clients[clientFd].response= Response::buildResponse(r, 405, "Method Not Allowed",_configs[clients[clientFd].conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
+	// if (!_configs[conf_i].locations[key].Return.empty())
+	// {
+	// 	clientobj[clientFd].statusCode = _configs[conf_i].locations[key].Return.begin()->first;
+	// 	clientobj[clientFd].statusMsg = "Found";
+	// 	clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
+	// 	return;
+	// }
 	if (_configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store.empty())
 	{
 		//std::cout << "here internalllll\n";

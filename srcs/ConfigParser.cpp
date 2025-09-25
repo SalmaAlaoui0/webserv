@@ -83,7 +83,7 @@ bool ValidBraces(std::string file)
 	return 1;
 }
 
-bool valid_return_path(std::vector<LocationConfig> locations, std::string Path)
+int valid_return_path(std::vector<LocationConfig> locations, std::string Path, int index)
 {
 	size_t i = 0;
 	while (i < locations.size())
@@ -92,7 +92,12 @@ bool valid_return_path(std::vector<LocationConfig> locations, std::string Path)
 		std::string locpath = trim(locations[i].path);
 		// std::cout << "Location is: " << i << " and it's path is: -" << locpath << "-" << std::endl;
 		if (locpath == Path)
-			return 1;
+		{
+			if (index == 2)
+				return 1;
+			else 
+				return i;
+		}
 		i++;
 	}
 	return 0;
@@ -122,25 +127,33 @@ std::string return_found(std::vector<LocationConfig> locations, std::string Path
 	return "";
 }
 
-void Check_return(std::vector<ServerConfig> container)
+void Check_return(std::vector<ServerConfig> &container)
 {
 	size_t server = 0, loc;
 	std::vector<std::string> returnPath;
 	while (server < container.size())
 	{
+		if (container[server].host.empty())
+		{
+			std::cerr << "`listen ip:port;' is mondatory in server" << std::endl;
+			throw ::InvalidData();
+		}
+		if (container[server].server_name.empty())
+		{
+			std::cerr << "`server_name server;' is mondatory in server" << std::endl;
+			throw ::InvalidData();
+		}
 		loc = 0;
 		while (loc < container[server].locations.size())
 		{
 			returnPath.clear();
-			// std::cout << "looping in the:--" << loc << "--location with path" << container[server].locations[loc].path << std::endl;
 			if (!container[server].locations[loc].Return.empty())
 			{
 				std::string value = container[server].locations[loc].Return.begin()->second;
-				std::cout << "entered condition in:--" << loc << "--location with value: " << value << std::endl;
+				// std::cout << "entered condition in:--" << loc << "--location with value: " << value << std::endl;
 				while (!value.empty())
 				{
-					// std::cout << "---->Now the value is not empty it's: " << value << std::endl;
-					if (!valid_return_path(container[server].locations, value))
+					if (!valid_return_path(container[server].locations, value, 2))
 					{
 						std::cout << "Invalid `return' value Detected" << std::endl;
 						throw ::InvalidData();
@@ -157,14 +170,12 @@ void Check_return(std::vector<ServerConfig> container)
 						throw ::InvalidData();
 					}
 				}
-				std::cout << "And Location: " << loc << "new return path value will be: " << container[server].locations[loc].Return.begin()->second << std::endl;
+				// std::cout << "And Location: " << loc << "new return path value will be: " << container[server].locations[loc].Return.begin()->second << std::endl;
 			}
 			loc++;
-			// << " has the path: " << container[server].locations[loc].path
 		}
 		server++;
 	}
-	// server++;
 }
 
 std::vector<ServerConfig> ConfigParser::parseConfig(std::string file)
@@ -208,7 +219,6 @@ std::vector<ServerConfig> ConfigParser::parseConfig(std::string file)
 				}
 				else if (isKey(line, "location"))
 				{
-					// std::cout << "container number is: " << server_counter << std::endl;
     				container[server_counter].locations.push_back(LocationConfig());
 					lcounter++;
 					parseLocationConfig(line, container, server_counter, lcounter);
@@ -222,7 +232,6 @@ std::vector<ServerConfig> ConfigParser::parseConfig(std::string file)
 			}
 			if (isKey(line, "server"))
 			{
-				// std::cout << "New server: "  << server_counter << std::endl;
 				server_counter++;
 				lcounter = -1;
 				container.push_back(ServerConfig());
@@ -233,6 +242,11 @@ std::vector<ServerConfig> ConfigParser::parseConfig(std::string file)
 		}
 		else if (Server == 0)
 			throw ConfigParser::InvalidFile();
+	}
+	if (container.empty())
+	{
+		std::cerr << "Error: at least one 'server' block is required in the config file" << std::endl;
+		throw ConfigParser::InvalidFile();
 	}
 	Check_return(container);
 	return container;
