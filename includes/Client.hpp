@@ -38,15 +38,21 @@ class Client
         bool ResponseChunked;
         bool autoindex;
         bool has_cookie;
+        bool Read;
         bool has_cgi;
+        bool connected;
         std::string cookies;
         std::string autoIndexBody;
         std::string statusMsg;
         std::string PostBody;
+        std::string ReturnLocation;
         std::string CgiBody;
+        std::string sessionId;
+        std::vector<std::string> sessions;
         size_t filesize;
         size_t size_send;
         size_t conf_i ;
+        size_t bytesRead;
 
         std::map<int, CgiInfo> cgiMap;///// in this map add cgi exit status code and do not send cgi response until code status is 200 
         std::map<int, std::string> GetpathMap;
@@ -68,6 +74,7 @@ class Client
         ~Client();
         void set_header(std::string key, std::string value);
         std::map<std::string,std::string>& get_header();
+        std::vector<std::string> getSession() const;
         int getFd() const;
         int getLastActivity() const;
         time_t CgiStartActivity;

@@ -19,6 +19,11 @@ std::map<std::string,std::string>& Client::get_header()   {
 return map;
 }
 
+ std::vector<std::string> Client::getSession() const  {
+return sessions;
+}
+
+
 // void Client::set_header(std::string key, std::string value){
 //     map[key] = value;}
 

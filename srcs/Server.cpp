@@ -59,7 +59,7 @@ void Server:: setupSockets()
         {
             const std::string &ip =_configs[i].host;
             int port = _configs[i].port;
-           this->serverSockets.push_back(creatServerSocket(ip, port));
+            this->serverSockets.push_back(creatServerSocket(ip, port));
        }
    }
 }
@@ -98,6 +98,7 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
     }
     if (r.get_path() == "/favicon.ico")
     {
+        std::cout << "hereeee: the favicon thing\n";
         clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients);
         return;
     }
@@ -121,8 +122,6 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         req.path.clear();
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
-        std::cout << "[DEBUG] accepted new client got fd " << clientFd << "\n";
-                // std::cout << "client fd" << clientFd << std::endl;
         int flags = fcntl(clientFd, F_GETFL, 0);
         if (fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 )
         {
@@ -154,6 +153,8 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].cgiMap[clientFd].pipefd = -1;
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
+        clients[clientFd].Read = 0;
+        clients[clientFd].connected = 1;
         std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
     
 }
@@ -195,6 +196,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
     int pid = clientobj[fd].cgiMap[fd].pid;
     int wstatus;
     pid_t result = waitpid(pid, &wstatus, WNOHANG);
+    clientobj[fd].send_complete = 1;
     if (result == 0)
     {
         kill(pid, SIGKILL);
@@ -207,7 +209,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
         epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
         close(clientobj[fd].cgiMap[fd].pipefd);
         clientobj[fd].cgiMap[fd].pipefd = -1;
-        std::cout << "\n\n->cgibody: " << clientobj[fd].CgiBody << "<-\n\n";
+        // std::cout << "\n\n->cgibody: " << clientobj[fd].CgiBody << "<-\n\n";
         // exit (2);
     }
     ;
@@ -217,7 +219,6 @@ void Server::run()
 {
 	EpollManager epollManager;
     request a;
-    Server s;
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
         epollManager.addSocket(serverSockets[i], EPOLLIN);
@@ -230,6 +231,7 @@ void Server::run()
         for(size_t i = 0; i < events.size(); i++)
         {   
             int fd = events[i].data.fd;
+
             if(events[i].events & (EPOLLERR | EPOLLHUP))
             {
                 closeConnection(fd, epollManager);
@@ -237,23 +239,24 @@ void Server::run()
             }
             if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
-            else if (clients[fd].cgiMap[fd].pipefd != -1 && clients[fd].cgiMap[fd].pipefd != 0) {
-                const size_t BUF_SIZE = 4096;
+            else if (clients[fd].cgiMap[fd].pipefd != -1 && clients[fd].cgiMap[fd].pipefd != 0 && !clients[fd].Read && clients[fd].Sending) {
+                const size_t BUF_SIZE = 8000;
                 char buffer[BUF_SIZE];
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE);
-                clients[fd].ResponseChunked = 0;
+                // clients[fd].ResponseChunked = 0;
                 if (bytesRead > 0)
                 {
-                    std::cout << "The Body Is Being Appended. " << std::endl;
-                    clients[fd].CgiBody.append(buffer, bytesRead);
-                    // std::cout << "\n\n************->cgiappended buffer: " << buffer << "<-\n\n";
-                    // clients[fd].ResponseChunked = 0;
+                    // std::cout << "The Body Is Being Appended. " << std::endl;
+                    clients[fd].CgiBody.assign(buffer, bytesRead);
+                    std::cout << "hereere READINNG IS: 1\n";
+                    clients[fd].bytesRead = bytesRead;
+                    clients[fd].Read = 1;
                 }
                 else if (bytesRead == 0)//add timeout
                 {
                     std::cout << "bytesRead is : 0" << std::endl;
-                    clients[fd].CgiBody.append(buffer, bytesRead);
+                    // clients[fd].CgiBody.append(buffer, bytesRead);
                     clients[fd].statusCode = 200;
                     clients[fd].statusMsg = "OK";
                     WaitChildAndClean(epollManager, clients, fd);
@@ -273,7 +276,6 @@ void Server::run()
                         // exit (23);
                     }
                 }
-                // if 
                 time_t now = time(NULL);
                 if (difftime(now, clients[fd].CgiStartActivity) > 3)
                 {
@@ -303,10 +305,11 @@ void Server::run()
                                 perror("epoll_ctl: mod");
                             }
                         }
-                        this->clients[fd].conf_i = s.getConfig().size();
-                        for (size_t i = 0; i < s.getConfig().size(); ++i)
+                        // std::cout << "the size is: " << s.getConfig().size();
+                        this->clients[fd].conf_i = this->_configs.size();
+                        for (size_t i = 0; i < this->_configs.size(); ++i)
                         {
-                            if (s.getConfig()[i].port == a.get_final_port(a))
+                            if (this->_configs[i].port == a.get_final_port(a))
                             { 
                                 this->clients[fd].conf_i = i; 
                                 break;
@@ -314,7 +317,7 @@ void Server::run()
                         }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
-                            if (!a.error_set(this->clients, a, fd, s.getConfig()[this->clients[fd].conf_i]))
+                            if (!a.error_set(this->clients, a, fd, this->_configs[this->clients[fd].conf_i]))
                                 throw socketException("❌ error detected ");
                             else
                                 handleRequest(fd, a, clients, epollManager);
@@ -333,9 +336,7 @@ void Server::run()
                     if (clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi)
                         handleRequest(fd, a, clients, epollManager);
                     if (!clients[fd].no_data)
-                    {
                         clients[fd].response.RequestResponse(fd, clients[fd].response, clients, epollManager);
-                    }
                     if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
                      || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
                     {
@@ -370,6 +371,7 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
         perror("epoll_ctl DEL fd");
     close(fd);
     clients.erase(fd);
+    clients[fd].connected = 0;
     std::cout << "✅ client: " << fd << " is disconnected\n";
     // std::cout << "🚪 Closed client fd: " << fd << std::endl;
 }
