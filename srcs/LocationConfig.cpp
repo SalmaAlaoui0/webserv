@@ -267,6 +267,11 @@ void parseReturn(std::string line, std::vector<ServerConfig> &container, int i, 
     return_path = trim(return_path);
     if (!isAllDigits(return_code))
         throw ::InvalidData();
+    if (toInt(return_code) != 302)
+    {
+        std::cerr << "Invalid return codeStatus for our server: Value Accepted is `302'\n";
+        throw ::InvalidData();
+    }
     container[i].locations[j].Return[toInt(return_code)] = return_path;
     // std::cout << "ur return page is: -" << Return << "-" << std::endl;
     // std::cout << "     and it's return code is: -" << return_code << "-" << std::endl;

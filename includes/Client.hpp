@@ -40,7 +40,6 @@ class Client
         bool has_cookie;
         bool Read;
         bool has_cgi;
-        bool connected;
         std::string cookies;
         std::string autoIndexBody;
         std::string statusMsg;
