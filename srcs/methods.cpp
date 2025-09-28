@@ -56,18 +56,22 @@ std::string getFileExtension(std::string& path)
     return filename.substr(dotPos + 1);
 }
 
-std::string join_path(std::string root, std::string suffix)
+std::string join_path(request &r, std::string root, std::string suffix)
 {
 	std::string fixedRoot = root;
 	std::string fixedSuffix = suffix;
+	std::cout << "the root is: -" << fixedRoot << "- and the suffix is: -" << fixedSuffix << "-\n";
 
-	if (!fixedRoot.empty() && fixedRoot[fixedRoot.length() - 1] == '/')
+	if (!fixedRoot.empty() && fixedRoot[fixedRoot.length() - 1] == '/' && r.get_method() != "DELETE")
 		fixedRoot.erase(fixedRoot.length() - 1);
 
-	if (!fixedSuffix.empty() && fixedSuffix[0] == '/')
+	if (!fixedSuffix.empty() && fixedSuffix[0] == '/' && r.get_method() != "DELETE")
 		fixedSuffix = fixedSuffix.substr(1);
 
-	return fixedRoot + "/" + fixedSuffix;
+	if (r.get_method() != "DELETE")
+		return fixedRoot + "/" + fixedSuffix;
+	else 
+		return fixedRoot + fixedSuffix;
 }
 
 
@@ -75,7 +79,7 @@ std::string join_path(std::string root, std::string suffix)
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
-	// std::cout << requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
+	std::cout << requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
@@ -132,7 +136,7 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 					root = config.root;
 				else
 					root = config.locations[i].root;
-				matchedRoot = join_path(root, requestedPath.substr(locPath.length()));
+				matchedRoot = join_path(r, root, requestedPath.substr(locPath.length()));
 				result[i] = matchedRoot;
 				return result;
 			}
@@ -144,12 +148,13 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 			else
 				root = config.locations[i].root;
 			maxMatchLength = locPath.length();
-			matchedRoot = join_path(root, requestedPath.substr(locPath.length()));
+			std::cout << "requested path is: " << requestedPath << " and loc path is: " << locPath << " and root is: " << root << std::endl;	
+			matchedRoot = join_path(r, root, requestedPath.substr(locPath.length()));
 			coorLoc = i;
 		}
 		i++;
 	}
-	std::cout << "resutl in find matching is: " << matchedRoot << std::endl;
+	std::cout << "resutl in find matching is: ^^^^^^" << matchedRoot << std::endl;
 	result[coorLoc] = matchedRoot;
 	return result;
 }
@@ -222,6 +227,7 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 	(void)config;
 	clientobj[clientFd].has_cgi = 1;
 	std::cout << "HEllllllllllllllllllllllllllo world it's a cgi script\n\n";
+	std::cout << "the cgi path is: " << path << ", and cgi interpreter is: " << interpreter << std::endl;
     int pipeFD[2];
     if (pipe(pipeFD) == -1)
     {
@@ -266,9 +272,12 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 		// clientobj[clientFd].cgi_has_problem = 1;
 		// clientobj[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config[i].ErrorPages[500], clientFd, clientobj);
 	
+		const char *err = "Content-Type: text/plain\r\n\r\nexecve failed\n";
+        write(1, err, strlen(err));	
+
         exit (1);
     }
-    else
+	else
     {
         close(pipeFD[1]);
 		clientobj[clientFd].ResponseChunked = 0;
@@ -281,6 +290,36 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
         info.pid = pid;
         clientobj[clientFd].cgiMap[clientFd] = info;
 	}
+	// else
+	// {
+	// 	close(pipeFD[1]);  // close write end in parent
+
+	// 	clientobj[clientFd].ResponseChunked = 0;
+
+	// 	// Make the pipe blocking for testing/debugging (optional)
+	// 	// fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
+
+	// 	// Read from the pipe directly
+	// 	char buffer[4096];
+	// 	ssize_t bytesRead;
+	// 	std::string pipeOutput;
+
+	// 	while ((bytesRead = read(pipeFD[0], buffer, sizeof(buffer) - 1)) > 0) {
+	// 		buffer[bytesRead] = '\0';
+	// 		pipeOutput += buffer;
+	// 	}
+
+	// 	std::cout << "DEBUG: CGI output from pipe:\n" << pipeOutput << std::endl;
+
+	// 	// If you still want epoll for later use, keep it registered
+	// 	epollManager.addSocket(pipeFD[0], EPOLLIN);
+
+	// 	CgiInfo info;
+	// 	info.pipefd = pipeFD[0];
+	// 	info.pid = pid;
+	// 	clientobj[clientFd].cgiMap[clientFd] = info;
+	// }
+	// exit(4);
 	// 	char buf[4096];
 	// ssize_t n = read(pipeFD[0], buf, sizeof(buf));
 
@@ -336,7 +375,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
 		{
 			std::string index_file;
-			index_file = join_path(requested_path, config[i].locations[key].index);
+			index_file = join_path(r, requested_path, config[i].locations[key].index);
 
 			// std::cout << "firstly this hole path is: " << index_file << std::endl;
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
@@ -551,6 +590,30 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
+	if (clientobj[clientFd].has_cgi)
+	{
+		// std::string ext = "text/plain";
+		std::ofstream out(clientobj[clientFd].filename.c_str(),std::ios::binary | std::ios::trunc);
+		if(!out)
+		{
+			std::cout << "yesssss\n0";
+			std::cerr << "❌ Failed to open file: " << clientobj[clientFd].filename << std::endl;
+			clients[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clients[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
+			return;
+		}
+		out << clientobj[clientFd].CGIPostBody;
+		out.flush();
+		out.close();
+		if (std::rename(clientobj[clientFd].filename.c_str(), "/home/salaoui/Desktop/webserv/www/upload/FA37jNCchRYdSBZA.html") == 0) {
+			std::cout << "File renamed successfully!\n";
+		} else {
+			std::cerr << "❌ Failed to rename file: " << clientobj[clientFd].filename << std::endl;
+			clients[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clients[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
+			return;
+		}
+		clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);
+		return ;
+	}
     if (!CheckMethodeIsAllowed("POST", _configs, conf_i, key))
     {
 		//std::cout << "here internalllll\n";
@@ -573,7 +636,8 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		return ;
 	}
     std::string fullpath = map.begin()->second;
-	fullpath = join_path(fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+
+	fullpath = join_path(r, fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
     std::cout << "\nuploading path for post is:" << fullpath << std::endl;
 	
 	if ((long)r.body.size() > _configs[clients[clientFd].conf_i].client_max_body_size)
@@ -589,7 +653,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	clientobj[clientFd].ContentType = clientobj[clientFd].ContentType.substr(ext + 1);
 	//srand(time(NULL));
 	//int i =0;
-	filename << fullpath << "/" << generateId1() << "." << clientobj[clientFd].ContentType;
+	filename << fullpath << "/" << generateId1() << "." << "py";/////hereee
 	std::cout << "\nfile is uploaded in: " << filename.str() << std::endl;
 	std::ofstream out(filename.str().c_str(),std::ios::binary);
 	if(!out)
@@ -608,12 +672,35 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	}
 	else 
 		out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
-	if(clientobj[clientFd].cgi_active == 1)
-	{
-		execute_cgi(clientFd,clientobj,filename.str(), r, "/usr/bin/python3",epollManager, _configs, clients[clientFd].conf_i);
-	}
 	out.flush();
 	out.close();
+	if(clientobj[clientFd].cgi_active == 1 ) // !interpre.emp()
+	{
+		clientobj[clientFd].filename = filename.str();
+		execute_cgi(clientFd,clientobj,filename.str(), r, "/usr/bin/python3",epollManager, _configs, clients[clientFd].conf_i);
+
+				// Read from the pipe directly
+		// char buffer[4096];
+		// ssize_t bytesRead;
+		// std::string pipeOutput;
+
+
+		int status;
+		waitpid(clientobj[clientFd].cgiMap[clientFd].pid, &status, 0);
+
+		// while ((bytesRead = read(clientobj[clientFd].cgiMap[clientFd].pipefd, buffer, sizeof(buffer) - 1)) > 0) {
+		// 	buffer[bytesRead] = '\0';
+		// 	pipeOutput += buffer;
+		// }
+
+		// std::cout << "DEBUG: CGI output from pipe:\n" << pipeOutput << std::endl;
+		// exit (3);
+
+		// exit (3);
+	}
+
 	std::cout << "&&&&&&&&&&&&&&&&&77"<< _configs[clients[clientFd].conf_i].ErrorPages[201]<< std::endl;
-	clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);
+	if (!clientobj[clientFd].has_cgi)
+		clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);
+
 }

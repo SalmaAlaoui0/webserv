@@ -46,7 +46,9 @@ class Client
         std::string PostBody;
         std::string ReturnLocation;
         std::string CgiBody;
+        std::string CGIPostBody;
         std::string sessionId;
+        std::string filename;
         std::vector<std::string> sessions;
         size_t filesize;
         size_t size_send;

@@ -95,14 +95,21 @@ std::string generateId(size_t length = 16)
     return result;
 }
 
-void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client> &clientobj, EpollManager &epoll)
+void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client> &clientobj, request &r, std::vector<ServerConfig> _configs)
 {
-    (void)epoll;
+    (void)r;
+    (void)_configs;
     std::ostringstream response;
     ssize_t sent = 0;
 
-    // std::cout << "Come to here in request response\n";
-    // exit (8);
+    // std::cout << clientobj[clientFd].method << "<==== this is the method and has cgi is; " << clientobj[clientFd].has_cgi << "\n\n";
+    // std::cout << "and infos are:  the sending var is->" << clientobj[clientFd].Sending << " and pipefd->" << clientobj[clientFd].cgiMap[clientFd].pipefd << std::endl;
+//    if (clientobj[clientFd].Sending)
+//    {
+//     std::cout << "headers are sent and in body there is: " << clientobj[clientFd].CgiBody << std::endl;
+//         exit (66);
+//    
+    // if (clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && !clientobj[clientFd].send_complete)
     if (clientobj[clientFd].statusCode == 302)
     {
         // clientobj[clientFd].statusCode = 0;
@@ -127,8 +134,10 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
         std::cout << "it's 302 \n";
         std::cout << "the data location should be served is: " << clientobj[clientFd].ReturnLocation << std::endl;
+
+        // exit(32);
     }
-    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read)
+    else if (clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read && !clientobj[clientFd].cgi_has_problem)
     {
         if (clientobj[clientFd].CgiBody == "Content-Type: text/plain\r\n\r\nexecve failed\n")
         {
@@ -147,7 +156,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             clientobj[clientFd].getSession().push_back(clientobj[clientFd].sessionId);
             std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";
             std::cout << "Hello, new user! Data saved on server.\n\n";
-            // exit(7); if I have a cgi script
         }
         if (clientobj[clientFd].CgiBody.find("Content-Type:") != std::string::npos)
         {
@@ -161,12 +169,23 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             // std::cout << "hahahahahah found Content-Type: -" << clientobj[clientFd].ContentType << "- and the new cgi body is: -" << clientobj[clientFd].CgiBody << "--\n";
             // exit(23);
         }
+        // if (!clientobj[clientFd].CgiBody.empty())
+        // {
+        //     std::cout << "Body is not empty()\n";
+        //     exit(23);
+        // }
+        if (clientobj[clientFd].CgiBody.find("\r\n\r\n") != std::string::npos)
+        {
+            size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n\r\n");
+            std::string headers = clientobj[clientFd].CgiBody.substr(0, HeaderEnd);
+            clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + 1);
+        }
         std::cout << "come to here\n";
         std::ostringstream headers;
-        // std::cout << "Content Type is: " << clientobj[clientFd].ContentType << std::endl;
-        // exit (45);
-        headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
-            << "Content-Type: " << "text/html" << "\r\n";
+        // headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << " " << clientobj[clientFd].statusMsg << "\r\n"
+        //     << "Content-Type: " << clientobj[clientFd].ContentType << "\r\n";
+        headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << " " << clientobj[clientFd].statusMsg << "\r\n"
+            << "Content-Type: " << "video/mp4" << "\r\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
             headers<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
@@ -175,8 +194,12 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             headers << "Connection: keep-alive\r\n\r\n"; ////<< "Content-Length: " << clientobj[clientFd].CgiBody.size() << "\r\n" <--- removed this because the response is chuncked
 
         std::string headerStr = headers.str();
+        std::cout << "here1 responseChunked is: " << clientobj[clientFd].ResponseChunked << "\n" ;// keep those u'll need them 
         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
+        // std::cout.write(clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size());
+        // std::cout << "AGAING it will enter here just make the code\n";
+        // exit (34);
     }
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked)
@@ -193,6 +216,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             << "Connection: : keep-alive\r\n\r\n";
 
         std::string headerStr = headers.str();
+        std::cout << "here1 and filesize is: " << res.filesize << "\n";// keep those u'll need them 
         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
@@ -252,7 +276,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     // and send response
     // 2-if method is "GET" and first respose than send header of get path
     // 3-if method is "GET" and not first time than send only a body coming in res.body
-    else if (!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST")
+    else if (!clientobj[clientFd].has_cgi || clientobj[clientFd].cgi_has_problem)
     {
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
