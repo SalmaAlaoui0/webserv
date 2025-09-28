@@ -12,6 +12,7 @@
 
 
 #include "../includes/Server.hpp"
+#include <csignal>
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
 #define GREEN   "\033[32m"
@@ -20,6 +21,14 @@
 #define MAGENTA "\033[35m"
 #define CYAN    "\033[36m"
 #define WHITE   "\033[37m"
+
+bool g_running = 1; 
+
+void handle_sigint(int)
+{
+    g_running = 0;  
+    std::cout << "\n🛑 SIGINT received, shutting down..." << std::endl;
+}
 // int Server::creatServerSocket(const std::string &ip, int port)
 // {
 //     int server_fd  = socket(AF_INET, SOCK_STREAM, 0);  //AF_INET-->ipv4 , SOCK_STREAM-->tcp  
@@ -111,7 +120,6 @@ int Server::creatServerSocket(const std::string &ip, int port)
         throw socketException("❌ listen() failed");
     }
     freeaddrinfo(res);
-
     std::cout << GREEN << "✅ Listening on "<< CYAN << (ip.empty() ? "0.0.0.0" : ip)
           << RESET << ":"<< YELLOW << port<< RESET << std::endl;
           
@@ -283,6 +291,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
 
 void Server::run()
 {
+    std::signal(SIGINT, handle_sigint);
 	EpollManager epollManager;
     request a;
 	for (size_t i =0; i < serverSockets.size(); i++)
@@ -290,7 +299,7 @@ void Server::run()
         epollManager.addSocket(serverSockets[i], EPOLLIN);
         std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
     }
-	while (true) 
+	while (g_running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
         checkTimeout(clients, epollManager);
