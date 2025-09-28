@@ -149,24 +149,66 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             std::cout << "Hello, new user! Data saved on server.\n\n";
             // exit(7); if I have a cgi script
         }
-        if (clientobj[clientFd].CgiBody.find("Content-Type:") != std::string::npos)
-        {
-            size_t contentType = clientobj[clientFd].CgiBody.find("Content-Type:");
-            std::string headers = clientobj[clientFd].CgiBody.substr(contentType + 14);
-            clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(contentType + 14);
-            contentType = headers.find("\n");
-            if (contentType != std::string::npos)
-                clientobj[clientFd].ContentType = headers.substr(0, contentType - 1);
-            clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(contentType + 3);
-            // std::cout << "hahahahahah found Content-Type: -" << clientobj[clientFd].ContentType << "- and the new cgi body is: -" << clientobj[clientFd].CgiBody << "--\n";
-            // exit(23);
+        clientobj[clientFd].ContentType = "text/html";
+        size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n\r\n");
+        size_t sepLength = 4; // default CRLF
+
+        if (HeaderEnd == std::string::npos) {
+            HeaderEnd = clientobj[clientFd].CgiBody.find("\n\n");
+            sepLength = 2; // LF only
         }
+
+        if (HeaderEnd != std::string::npos)
+        {
+            std::string headers = clientobj[clientFd].CgiBody.substr(0, HeaderEnd);
+            
+        //     // Extract Content-Type line
+        //     size_t contentPos = headers.find("Content-Type:");
+        //     if (contentPos != std::string::npos) {
+        //         size_t lineEnd = headers.find("\n", contentPos);
+        //         if (lineEnd == std::string::npos)
+        //             lineEnd = headers.size();
+        //         clientobj[clientFd].ContentType = headers.substr(contentPos + 13, lineEnd - (contentPos + 13));
+        //         // trim any whitespace
+        //         clientobj[clientFd].ContentType.erase(0, clientobj[clientFd].ContentType.find_first_not_of(" \t\r"));
+        //         clientobj[clientFd].ContentType.erase(clientobj[clientFd].ContentType.find_last_not_of(" \t\r") + 1);
+        //     }
+
+        //     // Remove headers from body
+            // clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + sepLength);
+
+            std::cout << "Headers found:\n" << headers << "\n";
+            std::cout << "the size of headers is: " << headers.size() << " and HeaderEnd is: " << HeaderEnd << "-----\n\n";
+        //     std::cout << "Content-Type: -" << clientobj[clientFd].ContentType << "-\n";
+            std::cout << "Body: -" << clientobj[clientFd].CgiBody << "-\n";
+            std::cout << "hahahahahah found Headers:\n";
+            exit(23);
+        }
+        // if (clientobj[clientFd].CgiBody.find("\r\n") != std::string::npos)
+        // {
+        //     std::cout << "hahahahahah found Headers:\n";
+        //     size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n");
+        //     std::string headers = clientobj[clientFd].CgiBody.substr(0, HeaderEnd + 2);
+        //     clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + 2);
+        //     std::cout << "Headers are; -=" << headers << "\n";
+        //     std::cout << "cgi body is; -=" << clientobj[clientFd].CgiBody << "\n";
+        //     exit(23);
+        //     size_t contentType = headers.find("Content-Type:");
+        //     if (contentType != std::string::npos)
+        //         clientobj[clientFd].ContentType = headers.substr(contentType + 14);
+        //     contentType = clientobj[clientFd].ContentType.find("\n");
+        //     if (contentType != std::string::npos)
+        //         clientobj[clientFd].ContentType = headers.substr(0, contentType - 1);
+        //     // clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + 2);
+        //     // std::cout << "lastly the data found is: content type: -" << clientobj[clientFd].ContentType << "- headers are: -" << headers << "- and the new cgi body is: -" << clientobj[clientFd].CgiBody << "--\n";
+        //     // exit(23);
+        // }
         std::cout << "come to here\n";
         std::ostringstream headers;
         // std::cout << "Content Type is: " << clientobj[clientFd].ContentType << std::endl;
         // exit (45);
-        headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
-            << "Content-Type: " << "text/html" << "\r\n";
+        headers << "HTTP/1.1 " << 200 << "\r\n"
+            << "Content-Type: " << "video/mp4" << "\r\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
             headers<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
@@ -266,6 +308,11 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
         std::cout << "here3\n";// keep those u'll need them 
         sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
+    }
+    else 
+    {
+        // std::cerr << "❌ Unknown method or state in RequestResponse\n";
+        return;
     }
     if (sent < 0)
     {
