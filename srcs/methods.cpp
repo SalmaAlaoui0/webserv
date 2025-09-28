@@ -622,7 +622,6 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		}
 		//out << clientobj[clientFd].CGIPostBody;
 		out.flush();
-		//out.close();
 		if (std::rename(clientobj[clientFd].filename.c_str(), "/home/mlabyed/Desktop/goodnews/www/upload/FA37jNCchRYdSBZA.html") == 0) {
 			std::cout << "File renamed successfully!\n";
 		} 
@@ -631,10 +630,11 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			clients[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clients[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
 			return;
 		}
-		std::cout << clientobj[clientFd].CGIPostBody;
+		// std::cout << clientobj[clientFd].CGIPostBody;
 		out.write(clientobj[clientFd].CGIPostBody.c_str(), clientobj[clientFd].CGIPostBody.size());
 
 		clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);
+		out.close();
 		return ;
 	}
     if (!CheckMethodeIsAllowed("POST", _configs, conf_i, key))
@@ -723,6 +723,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	}
 	else if(!inter.empty() ) // !interpre.emp()
 	{
+		std::cout << " hiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii\n\n\n";
 		srand(time(NULL));
 		//int i =0;
 		filename << fullpath << "/" << generateId1()  << extt;/////hereee
@@ -756,8 +757,8 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		// std::string pipeOutput;
 
 
-		int status;
-		waitpid(clientobj[clientFd].cgiMap[clientFd].pid, &status, 0);
+		// int status;
+		// waitpid(clientobj[clientFd].cgiMap[clientFd].pid, &status, 0);
 
 		// while ((bytesRead = read(clientobj[clientFd].cgiMap[clientFd].pipefd, buffer, sizeof(buffer) - 1)) > 0) {
 		// 	buffer[bytesRead] = '\0';
