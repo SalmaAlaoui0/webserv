@@ -15,14 +15,9 @@
 #include "../includes/Request.hpp"
 #include "../includes/Server.hpp"
 
-// void sigpipe_handler(int signum) {
-//     if (signum)
-//     {}
-// }
-
 int main(int argc, char** argv) 
 {
-
+    
     ConfigParser obj;
     try
     {

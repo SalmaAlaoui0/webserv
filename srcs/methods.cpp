@@ -622,7 +622,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		}
 		//out << clientobj[clientFd].CGIPostBody;
 		out.flush();
-		if (std::rename(clientobj[clientFd].filename.c_str(), "/home/mlabyed/Desktop/goodnews/www/upload/FA37jNCchRYdSBZA.html") == 0) {
+		if (std::rename(clientobj[clientFd].filename.c_str(), "/home/wzahir/@webserv/www/upload/FA37jNCchRYdSBZA.html") == 0) {
 			std::cout << "File renamed successfully!\n";
 		} 
 		else {
