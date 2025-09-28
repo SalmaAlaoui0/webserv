@@ -221,6 +221,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
+        req.slash = 0;
         std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
     
 }

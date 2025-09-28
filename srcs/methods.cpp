@@ -79,7 +79,9 @@ std::string join_path(request &r, std::string root, std::string suffix)
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
-	std::cout << requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
+	std::cout <<"!!!!!!!!!!!!!!~~~~~~~"<< requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
+	if (requestedPath[requestedPath.size() - 1] == '/')
+		r.slash = 1;
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
@@ -579,7 +581,10 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 	// 	clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
 	// 	return;
 	// }
-    std::string fullpath = map.begin()->second;
+	std::string fullpath = map.begin()->second ;
+	if (r.slash)
+		fullpath += '/';
+	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<<fullpath <<std::endl;
     // std::cout << "\nFull path is:" << fullpath << std::endl;
     dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj);
 }

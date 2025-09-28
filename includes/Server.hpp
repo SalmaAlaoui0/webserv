@@ -52,10 +52,10 @@ class Server
         std::vector<int> serverSockets;
         std::map<int, Client> clients;    
         std::vector<std::string> sessions;
-    public:
+        public:
         Server();
         Server(const std::vector<ServerConfig>& configs);
-       ~Server();
+        ~Server();
         std::vector<ServerConfig> getConfig() const;
         std::vector<std::string> getSession() const;
         void setupSockets();
