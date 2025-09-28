@@ -215,7 +215,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             clientobj[clientFd].QUERY_STRING = path.substr(pos1+1, path.size()- pos1);
         }
         else    
-             clientobj[clientFd].path = path;
+             clientobj[clientFd].path = trim1(path);
         clientobj[clientFd].version = version;
         // r.set_method(method);
         // r.set_path(path);

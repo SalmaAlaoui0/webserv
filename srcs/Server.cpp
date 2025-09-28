@@ -221,6 +221,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
+        req.slash = 0;
         std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
     
 }
@@ -295,7 +296,6 @@ void Server::run()
         checkTimeout(clients, epollManager);
         for(size_t i = 0; i < events.size(); i++)
         {
-            // std::cout << "\n\n\nLoooooping over events\n\n\n";
             int fd = events[i].data.fd;
 
             if(events[i].events & (EPOLLERR | EPOLLHUP))
@@ -333,7 +333,7 @@ void Server::run()
                     else if (clients[fd].method == "POST")
                     {
                         clients[fd].CGIPostBody.append(buffer, bytesRead);
-                        std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                     //   std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                         // exit (19);
                     }
                     clients[fd].bytesRead = bytesRead;
