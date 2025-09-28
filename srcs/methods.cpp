@@ -604,7 +604,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		out << clientobj[clientFd].CGIPostBody;
 		out.flush();
 		out.close();
-		if (std::rename(clientobj[clientFd].filename.c_str(), "/home/salaoui/Desktop/webserv/www/upload/FA37jNCchRYdSBZA.html") == 0) {
+		if (std::rename(clientobj[clientFd].filename.c_str(), "/home/salaoui/Desktop/webserv/www/upload/FA37jNCchRYdSBZA.mp4") == 0) {
 			std::cout << "File renamed successfully!\n";
 		} else {
 			std::cerr << "❌ Failed to rename file: " << clientobj[clientFd].filename << std::endl;
@@ -678,25 +678,6 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	{
 		clientobj[clientFd].filename = filename.str();
 		execute_cgi(clientFd,clientobj,filename.str(), r, "/usr/bin/python3",epollManager, _configs, clients[clientFd].conf_i);
-
-				// Read from the pipe directly
-		// char buffer[4096];
-		// ssize_t bytesRead;
-		// std::string pipeOutput;
-
-
-		int status;
-		waitpid(clientobj[clientFd].cgiMap[clientFd].pid, &status, 0);
-
-		// while ((bytesRead = read(clientobj[clientFd].cgiMap[clientFd].pipefd, buffer, sizeof(buffer) - 1)) > 0) {
-		// 	buffer[bytesRead] = '\0';
-		// 	pipeOutput += buffer;
-		// }
-
-		// std::cout << "DEBUG: CGI output from pipe:\n" << pipeOutput << std::endl;
-		// exit (3);
-
-		// exit (3);
 	}
 
 	std::cout << "&&&&&&&&&&&&&&&&&77"<< _configs[clients[clientFd].conf_i].ErrorPages[201]<< std::endl;

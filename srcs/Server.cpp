@@ -295,7 +295,7 @@ void Server::run()
         checkTimeout(clients, epollManager);
         for(size_t i = 0; i < events.size(); i++)
         {
-            std::cout << "\n\n\nLoooooping over events\n\n\n";
+            // std::cout << "\n\n\nLoooooping over events\n\n\n";
             int fd = events[i].data.fd;
 
             if(events[i].events & (EPOLLERR | EPOLLHUP))
@@ -310,7 +310,7 @@ void Server::run()
             if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
             else if (clients[fd].cgiMap[fd].pipefd != -1 && clients[fd].cgiMap[fd].pipefd != 0 && !clients[fd].Read) {
-                std::cout << "Handling CGI pipe read for fd: " << fd << ", pipefd: " << clients[fd].cgiMap[fd].pipefd << std::endl;
+                // std::cout << "Handling CGI pipe read for fd: " << fd << ", pipefd: " << clients[fd].cgiMap[fd].pipefd << std::endl;
                 // std::cout << "\n\n Here in reading cgi pipe content\n\n";
                 // exit (18);
                 const size_t BUF_SIZE = 4096;
@@ -322,7 +322,7 @@ void Server::run()
                 // exit (18);
                 if (bytesRead > 0)
                 {
-                    buffer[bytesRead] = '\0'; 
+                    buffer[bytesRead] = '\0';
                     // std::cout << "The Body Is Being Appended. " << std::endl;
                     if (clients[fd].method == "GET")
                     {
