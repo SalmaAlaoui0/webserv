@@ -150,7 +150,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             // exit(7); if I have a cgi script
         }
         clientobj[clientFd].ContentType = "text/html";
-        size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n\r\n");
+  /*      size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n\r\n");
         size_t sepLength = 4; // default CRLF
 
         if (HeaderEnd == std::string::npos) {
@@ -161,7 +161,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         if (HeaderEnd != std::string::npos)
         {
             std::string headers = clientobj[clientFd].CgiBody.substr(0, HeaderEnd);
-            
+           */ 
         //     // Extract Content-Type line
         //     size_t contentPos = headers.find("Content-Type:");
         //     if (contentPos != std::string::npos) {
@@ -176,14 +176,14 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
         //     // Remove headers from body
             // clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + sepLength);
-
+/*
             std::cout << "Headers found:\n" << headers << "\n";
             std::cout << "the size of headers is: " << headers.size() << " and HeaderEnd is: " << HeaderEnd << "-----\n\n";
         //     std::cout << "Content-Type: -" << clientobj[clientFd].ContentType << "-\n";
             std::cout << "Body: -" << clientobj[clientFd].CgiBody << "-\n";
             std::cout << "hahahahahah found Headers:\n";
             exit(23);
-        }
+        }*/
         // if (clientobj[clientFd].CgiBody.find("\r\n") != std::string::npos)
         // {
         //     std::cout << "hahahahahah found Headers:\n";
@@ -208,7 +208,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         // std::cout << "Content Type is: " << clientobj[clientFd].ContentType << std::endl;
         // exit (45);
         headers << "HTTP/1.1 " << 200 << "\r\n"
-            << "Content-Type: " << "video/mp4" << "\r\n";
+            << "Content-Type: " << clientobj[clientFd].ContentType << "\r\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
             headers<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
