@@ -16,6 +16,8 @@
 EpollManager::EpollManager()
 {
     epollFd = epoll_create1(EPOLL_CLOEXEC);
+     MAX_EVENTS = 64;
+    
     if (epollFd == -1)
         throw epollException("❌ Failed to create epoll instance");
 }

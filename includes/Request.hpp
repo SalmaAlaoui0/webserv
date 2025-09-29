@@ -17,22 +17,17 @@
 #define e413 "Payload Too Large"
 #include"Server.hpp"
 #include"Client.hpp"
-#include <cerrno>   // pour errno, EAGAIN, EWOULDBLOCK
+#include<sstream>
+#include <cerrno> 
 #include <cstdio> 
 class EpollManager;
 class Client;
-
-
-
-
-#define e404 "Page not found"
-
-
 class request{
     public:
-    request& operator=(const request& other);
-    request(request const &ref);
     request();
+    request(request const &ref);
+    request& operator=(const request& other);
+    ~request();
    int reponse_status;
    std::string body;
     std::string method;
@@ -68,6 +63,6 @@ class request{
       virtual const char* what() const throw();
   };
 };
-
+ std::string trim1(std::string &s);
 
 #endif

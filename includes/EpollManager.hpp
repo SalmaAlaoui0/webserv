@@ -29,7 +29,7 @@ class EpollManager
 {
     private :
         int epollFd;
-        static const int MAX_EVENTS = 64;
+        int MAX_EVENTS;
     public :
         EpollManager();
         ~EpollManager();

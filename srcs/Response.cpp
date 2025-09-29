@@ -96,7 +96,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 {
     std::ostringstream response;
     ssize_t sent = 0;
-
+//std::cout << " wafaaaa%%%%%%%%%% "<< clientobj[clientFd].statusCode<< std::endl;
     if (clientobj[clientFd].statusCode == 302)
     {
         std::string body =
@@ -241,6 +241,8 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
 Response Response::buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &clientobj)
 {
+    std::cout << " i m in errorr setttttttttttttt\n\n";
+
     Response rep;
     Server s;
     if(clientobj[clientFd].has_cookie == 0)  //zadt cookies

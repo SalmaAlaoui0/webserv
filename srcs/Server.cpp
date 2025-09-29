@@ -192,11 +192,12 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
 
 void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollManager)
 {
-        struct sockaddr clientAddr;
+       struct sockaddr clientAddr ;
+        memset(&clientAddr, 0, sizeof(clientAddr)); 
         req.body.clear();
         req.path.clear();
         socklen_t clientLen = sizeof(clientAddr);
-        int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
+        int clientFd = accept(serverFd, (struct sockaddr *)&clientAddr , &clientLen);
         int flags = fcntl(clientFd, F_GETFL, 0);
         if (fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 )
         {
@@ -229,9 +230,11 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
+        clients[clientFd].chnked = 0;
+        clients[clientFd].body_chunked.clear();
+        clients[clientFd].statusCode = 0;
         req.slash = 0;
-        std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
-    
+        std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;    
 }
 
 bool Server::isServerSocket(int fd) const 
@@ -319,6 +322,10 @@ void Server::run()
                 acceptNewClient(a, fd, epollManager);
             else if (clients[fd].cgiMap[fd].pipefd != -1 && clients[fd].cgiMap[fd].pipefd != 0 && !clients[fd].Read) {
                 const size_t BUF_SIZE = 8000;
+
+               // std::cout << "Handling CGI pipe read for fd: " << fd << ", pipefd: " << clients[fd].cgiMap[fd].pipefd << std::endl;
+                // std::cout << "\n\n Here in reading cgi pipe content\n\n";
+                // exit (18);
                 char buffer[BUF_SIZE];
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE - 1);
@@ -330,8 +337,11 @@ void Server::run()
                         clients[fd].CgiBody.assign(buffer, bytesRead);
                         clients[fd].Read = 1;
                     }
-                    else if (clients[fd].method == "POST")
+                    else if (clients[fd].method == "POST"){
                         clients[fd].CGIPostBody.append(buffer, bytesRead);
+                    //    std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                        // exit (19);
+                    }
                     clients[fd].bytesRead = bytesRead;
                 }
                 else if (bytesRead == 0)//add timeout
@@ -383,7 +393,7 @@ void Server::run()
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
                             if (!a.error_set(this->clients, a, fd, this->_configs[this->clients[fd].conf_i]))
-                                throw socketException("❌ error detected ");
+                                throw socketException("❌ error detected  in error set");
                             else
                                 handleRequest(fd, a, clients, epollManager);
                         }
