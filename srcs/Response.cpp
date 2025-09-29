@@ -1,11 +1,11 @@
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
 #include "../includes/Request.hpp"
+#include "../includes/Utils.hpp"
 #include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <unistd.h>
-
 
 Response::Response() : statusCode(0), statusMsg(""), body(""), contentType("text/html") {}
 
@@ -91,58 +91,6 @@ std::string generateId(size_t length = 16)
         result += set[rand() % (sizeof(set) - 1)];
     return result;
 }
-
-std::string ft_content_type(const std::string &headers) {
-    std::istringstream stream(headers);
-    std::string line;
-    while (std::getline(stream, line)) {
-        if (line.find("Content-Type:") != std::string::npos) {
-            size_t pos = line.find(":");
-            if (pos != std::string::npos) {
-                std::string contentType = line.substr(pos + 1);
-                // Trim whitespace
-                contentType.erase(0, contentType.find_first_not_of(" \t\r\n"));
-                contentType.erase(contentType.find_last_not_of(" \t\r\n") + 1);
-                return contentType;
-            }
-        }
-    }
-    return "text/plain"; // Default content type
-}
-
-int ft_code_status(std::string headers) {
-    std::istringstream stream(headers);
-    std::string line;
-
-    while (std::getline(stream, line)) {
-        if (line.find("Status:") != std::string::npos) {
-            size_t pos = line.find(":");
-            if (pos != std::string::npos) {
-                std::string statusCodeStr = line.substr(pos + 1);
-
-                // Trim leading whitespace
-                size_t start = statusCodeStr.find_first_not_of(" \t\r\n");
-                if (start != std::string::npos)
-                    statusCodeStr = statusCodeStr.substr(start);
-
-                // Trim trailing whitespace
-                size_t end = statusCodeStr.find_last_not_of(" \t\r\n");
-                if (end != std::string::npos)
-                    statusCodeStr = statusCodeStr.substr(0, end + 1);
-
-                // Convert string to int using stringstream (C++98 safe)
-                std::stringstream ss(statusCodeStr);
-                int code;
-                if (ss >> code)
-                    return code;
-                else
-                    return 200; // Default if conversion fails
-            }
-        }
-    }
-    return 200; // Default status code
-}
-
 
 void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client> &clientobj)
 {

@@ -214,7 +214,7 @@ std::string to_string98(size_t value) {
     return oss.str();
 }
 
-std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, std::string interpreter, EpollManager &epollManager)
+void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, std::string interpreter, EpollManager &epollManager)
 {
 	clientobj[clientFd].has_cgi = 1;
     int pipeFD[2];
@@ -284,54 +284,6 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
         info.pid = pid;
         clientobj[clientFd].cgiMap[clientFd] = info;
 	}
-	// else
-	// {
-	// 	close(pipeFD[1]);  // close write end in parent
-
-	// 	clientobj[clientFd].ResponseChunked = 0;
-
-	// 	// Make the pipe blocking for testing/debugging (optional)
-	// 	// fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
-
-	// 	// Read from the pipe directly
-	// 	char buffer[4096];
-	// 	ssize_t bytesRead;
-	// 	std::string pipeOutput;
-
-	// 	while ((bytesRead = read(pipeFD[0], buffer, sizeof(buffer) - 1)) > 0) {
-	// 		buffer[bytesRead] = '\0';
-	// 		pipeOutput += buffer;
-	// 	}
-
-	// 	std::cout << "DEBUG: CGI output from pipe:\n" << pipeOutput << std::endl;
-
-	// 	// If you still want epoll for later use, keep it registered
-	// 	epollManager.addSocket(pipeFD[0], EPOLLIN);
-
-	// 	CgiInfo info;
-	// 	info.pipefd = pipeFD[0];
-	// 	info.pid = pid;
-	// 	clientobj[clientFd].cgiMap[clientFd] = info;
-	// }
-	// exit(4);
-	// 	char buf[4096];
-	// ssize_t n = read(pipeFD[0], buf, sizeof(buf));
-
-	// if (n > 0) {
-	// 	std::cout << "Read " << n << " bytes from CGI pipe: n	" << pipeFD[0] << "\n";
-
-	// 	// Print raw bytes (safe even if data is binary)
-	// 	std::cout.write(buf, n);
-	// 	std::cout << "\n--- END OF PIPE CONTENT ---\n";
-	// } 
-	// else
-	// {
-	// 	std::cout << "Some error accured " << std::endl;
-	// 	exit (34);
-	// }
-        // epoll_ctl();
-    // }
-    return ("hi world\n");
 }
 
 
@@ -368,8 +320,12 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
 		{
 			std::string index_file;
-			index_file = join_path(r, requested_path, config[i].locations[key].index);
-
+			std::string file;
+			if (!config[i].locations[key].index.empty())
+				file = config[i].locations[key].index;
+			else
+				file = config[i].index;
+			index_file = join_path(r, requested_path, file);
 			// std::cout << "firstly this hole path is: " << index_file << std::endl;
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
