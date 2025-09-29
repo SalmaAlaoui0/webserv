@@ -137,7 +137,7 @@ void parsename(std::string line, std::vector<ServerConfig> &container, int i)
     std::string server_name;
     server_name = line.substr(isKey(line, "server_name") + 1);
     server_name = trim(server_name);
-	if (server_name[server_name.size() - 1] != ';')
+	if (server_name[server_name.size() - 1] != ';' || server_name[server_name.size() - 2] == ';')
         throw ::InvalidData();
     server_name = server_name.substr(0, server_name.size() - 1);
 	container[i].server_name = server_name;
@@ -163,6 +163,12 @@ void parsepages(std::string line, std::vector<ServerConfig> &container, int i) /
     error_path = error_path.substr(0, error_path.size() - 1);
     if (!isAllDigits(error_code) || (error_path.substr(error_path.size() - 5, error_path.size()) != ".html"))
         throw ::InvalidData();
+        // 400–599
+    if (toInt(error_code) < 200 || toInt(error_code) > 599)
+    {
+        std::cerr << "Invalid error code\n";
+        throw ::InvalidData();
+    }
     std::ifstream file(error_path.c_str(), std::ios::in | std::ios::binary);// we open file in binary read mode to support text && binary files
     if (!file)
     {
