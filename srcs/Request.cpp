@@ -26,6 +26,8 @@ request& request::operator=(const request& other)
         }
 return *this;
 }
+request::~request(){}
+
 request::request(request const &ref)
 {
     *this = ref;
@@ -33,6 +35,7 @@ request::request(request const &ref)
 
 bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig &config)
 {
+    
     std::map<std::string , std::string>headers = r.get_header();
     std::map<int, Client> :: iterator it = clients.find(clientFd);
     if(it == clients.end())
@@ -99,7 +102,7 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
     return 1;
 }
 
-static std::string trim1(std::string &s)
+ std::string trim1(std::string &s)
 {
     size_t start = s.find_first_not_of(" \t\r\n");
     size_t end = s.find_last_not_of(" \t\r\n");
@@ -108,7 +111,16 @@ static std::string trim1(std::string &s)
         return "";
     return s.substr(start, end - start + 1);
 }
- request::request() {}
+ request::request() {
+    reponse_status = 0;
+    body = "";
+    method = "" ;
+    path = "";
+    body_chnked = "";
+    fullUploadpath = "";
+    ContentType = "";
+    ContentLength = 0;
+ }
 
 void request::set_method(std::string m) {method= m;}
 
@@ -132,6 +144,7 @@ std::map<std::string,std::string>& request::get_header()
 void request::set_body(std::string& b){body = b;}
 
 std::string& request::get_body(void){return body ;}
+
 
 std::vector<std::string> parseCookies(const std::string &cookieHeader) 
 {
@@ -172,6 +185,7 @@ std::string findCookies(const std::string &cookieHeader)
 request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
     Server s;
+   // std::cout << " wafaaaaaaaaaaa  ****"<< clientobj[clientFd].cgiMap[clientFd].pipefd <<std::endl;
     if (clientobj[clientFd].cgiMap[clientFd].pipefd != -1)
     {
         // std::cout << "should not be parsed it's a pipe event client\n";
