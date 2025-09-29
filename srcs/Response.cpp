@@ -64,16 +64,13 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         {
             rep.body.assign(buffer, Readbyte);
             rep.Readbyte = Readbyte;
-            std::cout << "✅ Reading has been finished" << std::endl;
             clientobj[clientFd].send_complete = 1;
             close(clientobj[clientFd]._fd);
         }
         else if (Readbyte > 0)
         {
             rep.body.assign(buffer, Readbyte);
-            // std::cout << "I read ==>" << rep.body << std::endl;
             rep.Readbyte = Readbyte;
-            std::cout << "and the size of it is: ==>" << rep.Readbyte << std::endl;
         }
         else
         {
@@ -95,17 +92,65 @@ std::string generateId(size_t length = 16)
     return result;
 }
 
-void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client> &clientobj, EpollManager &epoll)
+std::string ft_content_type(const std::string &headers) {
+    std::istringstream stream(headers);
+    std::string line;
+    while (std::getline(stream, line)) {
+        if (line.find("Content-Type:") != std::string::npos) {
+            size_t pos = line.find(":");
+            if (pos != std::string::npos) {
+                std::string contentType = line.substr(pos + 1);
+                // Trim whitespace
+                contentType.erase(0, contentType.find_first_not_of(" \t\r\n"));
+                contentType.erase(contentType.find_last_not_of(" \t\r\n") + 1);
+                return contentType;
+            }
+        }
+    }
+    return "text/plain"; // Default content type
+}
+
+int ft_code_status(std::string headers) {
+    std::istringstream stream(headers);
+    std::string line;
+
+    while (std::getline(stream, line)) {
+        if (line.find("Status:") != std::string::npos) {
+            size_t pos = line.find(":");
+            if (pos != std::string::npos) {
+                std::string statusCodeStr = line.substr(pos + 1);
+
+                // Trim leading whitespace
+                size_t start = statusCodeStr.find_first_not_of(" \t\r\n");
+                if (start != std::string::npos)
+                    statusCodeStr = statusCodeStr.substr(start);
+
+                // Trim trailing whitespace
+                size_t end = statusCodeStr.find_last_not_of(" \t\r\n");
+                if (end != std::string::npos)
+                    statusCodeStr = statusCodeStr.substr(0, end + 1);
+
+                // Convert string to int using stringstream (C++98 safe)
+                std::stringstream ss(statusCodeStr);
+                int code;
+                if (ss >> code)
+                    return code;
+                else
+                    return 200; // Default if conversion fails
+            }
+        }
+    }
+    return 200; // Default status code
+}
+
+
+void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client> &clientobj)
 {
-    (void)epoll;
     std::ostringstream response;
     ssize_t sent = 0;
 
-    // std::cout << "Come to here in request response\n";
-    // exit (8);
     if (clientobj[clientFd].statusCode == 302)
     {
-        // clientobj[clientFd].statusCode = 0;
         std::string body =
             "<html>\n"
             "<head><title>302 Found</title></head>\n"
@@ -130,16 +175,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read)
     {
-        if (clientobj[clientFd].CgiBody == "Content-Type: text/plain\r\n\r\nexecve failed\n")
-        {
-            clientobj[clientFd].statusCode = 500;
-            clientobj[clientFd].statusMsg = "Internal Server Error";
-        }
-        else 
-        {
-            clientobj[clientFd].statusCode = 200;
-            clientobj[clientFd].statusMsg = "OK";
-        }
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
             srand(time(NULL));
@@ -147,10 +182,9 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             clientobj[clientFd].getSession().push_back(clientobj[clientFd].sessionId);
             std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";
             std::cout << "Hello, new user! Data saved on server.\n\n";
-            // exit(7); if I have a cgi script
         }
         clientobj[clientFd].ContentType = "text/html";
-  /*      size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n\r\n");
+        size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n\r\n");
         size_t sepLength = 4; // default CRLF
 
         if (HeaderEnd == std::string::npos) {
@@ -161,62 +195,24 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         if (HeaderEnd != std::string::npos)
         {
             std::string headers = clientobj[clientFd].CgiBody.substr(0, HeaderEnd);
-           */ 
-        //     // Extract Content-Type line
-        //     size_t contentPos = headers.find("Content-Type:");
-        //     if (contentPos != std::string::npos) {
-        //         size_t lineEnd = headers.find("\n", contentPos);
-        //         if (lineEnd == std::string::npos)
-        //             lineEnd = headers.size();
-        //         clientobj[clientFd].ContentType = headers.substr(contentPos + 13, lineEnd - (contentPos + 13));
-        //         // trim any whitespace
-        //         clientobj[clientFd].ContentType.erase(0, clientobj[clientFd].ContentType.find_first_not_of(" \t\r"));
-        //         clientobj[clientFd].ContentType.erase(clientobj[clientFd].ContentType.find_last_not_of(" \t\r") + 1);
-        //     }
-
-        //     // Remove headers from body
-            // clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + sepLength);
-/*
-            std::cout << "Headers found:\n" << headers << "\n";
-            std::cout << "the size of headers is: " << headers.size() << " and HeaderEnd is: " << HeaderEnd << "-----\n\n";
-        //     std::cout << "Content-Type: -" << clientobj[clientFd].ContentType << "-\n";
-            std::cout << "Body: -" << clientobj[clientFd].CgiBody << "-\n";
-            std::cout << "hahahahahah found Headers:\n";
-            exit(23);
-        }*/
-        // if (clientobj[clientFd].CgiBody.find("\r\n") != std::string::npos)
-        // {
-        //     std::cout << "hahahahahah found Headers:\n";
-        //     size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n");
-        //     std::string headers = clientobj[clientFd].CgiBody.substr(0, HeaderEnd + 2);
-        //     clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + 2);
-        //     std::cout << "Headers are; -=" << headers << "\n";
-        //     std::cout << "cgi body is; -=" << clientobj[clientFd].CgiBody << "\n";
-        //     exit(23);
-        //     size_t contentType = headers.find("Content-Type:");
-        //     if (contentType != std::string::npos)
-        //         clientobj[clientFd].ContentType = headers.substr(contentType + 14);
-        //     contentType = clientobj[clientFd].ContentType.find("\n");
-        //     if (contentType != std::string::npos)
-        //         clientobj[clientFd].ContentType = headers.substr(0, contentType - 1);
-        //     // clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + 2);
-        //     // std::cout << "lastly the data found is: content type: -" << clientobj[clientFd].ContentType << "- headers are: -" << headers << "- and the new cgi body is: -" << clientobj[clientFd].CgiBody << "--\n";
-        //     // exit(23);
-        // }
-        std::cout << "come to here\n";
-        std::ostringstream headers;
-        // std::cout << "Content Type is: " << clientobj[clientFd].ContentType << std::endl;
-        // exit (45);
-        headers << "HTTP/1.1 " << 200 << "\r\n"
+            clientobj[clientFd].ContentType = ft_content_type(headers);
+            clientobj[clientFd].statusCode = ft_code_status(headers);
+            clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + sepLength);
+        }
+        if (clientobj[clientFd].ContentType == "video/mp4" || clientobj[clientFd].ContentType == "image/png" || 
+            clientobj[clientFd].ContentType == "image/jpg" || clientobj[clientFd].ContentType == "image/jpeg")
+            clientobj[clientFd].Read = 0;
+        std::ostringstream heaaad;
+        heaaad << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
             << "Content-Type: " << clientobj[clientFd].ContentType << "\r\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
-            headers<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
+            heaaad<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
             clientobj[clientFd].has_cookie = 1;
         }
-            headers << "Connection: keep-alive\r\n\r\n"; ////<< "Content-Length: " << clientobj[clientFd].CgiBody.size() << "\r\n" <--- removed this because the response is chuncked
+            heaaad << "Connection: keep-alive\r\n\r\n";
 
-        std::string headerStr = headers.str();
+        std::string headerStr = heaaad.str();
         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
@@ -241,60 +237,21 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
         && !clientobj[clientFd].send_complete && clientobj[clientFd].Read)
     {
-        // std::cout << "ur buffer size is: " << res.body.size() << " and readbyte are: " << Readbyte << "<----\n\n";
-        std::cout << "here222\n";// keep those u'll need them 
-        // exit (34);
-        // if (clientobj[clientFd].response.body.find("\r\n\r\n") != std::string::npos)
-        // {
-        //     size_t HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
-        //     clientobj[clientFd].response.body.substr(HeaderEnd + 1);
-        //     std::cout << "hahahahahah found headers\n";
-        // }
-        // if (!clientobj[clientFd].CgiBody.size())
-        // {
-        //     std::cout << "making the send as complete.. but before the Cgi Body is: \n" << std::endl;
-        //     std::cout << clientobj[clientFd].CgiBody << std::endl;
-        //     // std::cout << "Removing CGI pipe fd " << clientobj[clientFd].cgiMap[clientFd].pipefd << " from epoll\n";
-        //     //     epoll_ctl(epoll.getEpollFd(), EPOLL_CTL_DEL, clientobj[clientFd].cgiMap[clientFd].pipefd, NULL);
-        //     //     close(clientobj[clientFd].cgiMap[clientFd].pipefd);
-        //     clientobj[clientFd].send_complete = 1;
-        // }
-        // exit(23);
-        ssize_t sendbytes = send(clientFd, clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].bytesRead, MSG_NOSIGNAL);
-        std::cout << "AND NOW the  READINNG IS: --0-- it's sending\n";
-        std::cout << "----------THE NUMBER OF BYTES SENDED IS: " << sendbytes << "-----\n";
+        ssize_t sendbytes = send(clientFd, clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size(), MSG_NOSIGNAL);
         if (sendbytes != -1)
         {
             clientobj[clientFd].Read = 0;
             clientobj[clientFd].size_send += sendbytes;
-            // std::cout << "byte sended are : " << clientobj[clientFd].size_send << "and file size is: " << clientobj[clientFd].filesize << std::endl;
         }
-        // if (clientobj[clientFd].CgiBody.size() && sendbytes > 0)
-        // {
-        //     if (static_cast<unsigned long>(sendbytes) == clientobj[clientFd].CgiBody.size())
-        //         clientobj[clientFd].CgiBody = "";
-        //     else
-        //         clientobj[clientFd].CgiBody.substr(sendbytes + 1);
-        // }
-
-        // clientobj[clientFd].CgiBody.substr(sendbytes + 1);
     }
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
         && !clientobj[clientFd].ResponseChunked && !clientobj[clientFd].send_complete)
     {
-        // std::cout << "ur buffer size is: " << res.body.size() << " and readbyte are: " << Readbyte << "<----\n\n";
-        std::cout << "here2\n";// keep those u'll need them 
         ssize_t sendbytes = send(clientFd, res.body.c_str(), Readbyte, MSG_NOSIGNAL);
         if (sendbytes != -1)
-        {
             clientobj[clientFd].size_send += sendbytes;
-            std::cout << "byte sended are : " << clientobj[clientFd].size_send << "and file size is: " << clientobj[clientFd].filesize << std::endl;
-        }
     }
-    // and send response
-    // 2-if method is "GET" and first respose than send header of get path
-    // 3-if method is "GET" and not first time than send only a body coming in res.body
-    else if (!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST")
+    else if ((!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST") && clientobj[clientFd].ResponseChunked)
     {
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
@@ -306,12 +263,10 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
                 response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
                 << clientobj[clientFd].response.body;
 
-        std::cout << "here3\n";// keep those u'll need them 
-        sent = send(clientFd, response.str().c_str(), response.str().size(), 0);
+        sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
     }
     else 
     {
-        // std::cerr << "❌ Unknown method or state in RequestResponse\n";
         return;
     }
     if (sent < 0)
@@ -330,7 +285,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     else
     {
-        std::cout << "✅ File response sent to FD: " << clientFd << std::endl;
+        // std::cout << "✅ File response sent to FD: " << clientFd << std::endl;
         return ;
     }
     return;
@@ -393,7 +348,6 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
             clientobj[clientFd].ResponseChunked = 0;
             send_bigsize(clientobj, clientFd, filePath, rep);
         }
-        std::cout << "data are==>: the file path is: " << filePath << " and the type is: " << rep.contentType << "\n ";
     }
     if ((r.get_method() == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
     {
