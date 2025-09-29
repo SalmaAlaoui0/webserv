@@ -60,7 +60,6 @@ std::string join_path(request &r, std::string root, std::string suffix)
 {
 	std::string fixedRoot = root;
 	std::string fixedSuffix = suffix;
-	std::cout << "the root is: -" << fixedRoot << "- and the suffix is: -" << fixedSuffix << "-\n";
 
 	if (!fixedRoot.empty() && fixedRoot[fixedRoot.length() - 1] == '/' && r.get_method() != "DELETE")
 		fixedRoot.erase(fixedRoot.length() - 1);
@@ -79,7 +78,6 @@ std::string join_path(request &r, std::string root, std::string suffix)
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
-	std::cout <<"!!!!!!!!!!!!!!~~~~~~~"<< requestedPath << "!!!!!!!!!!!!!!\n\n" << std::endl;
 	if (requestedPath[requestedPath.size() - 1] == '/')
 		r.slash = 1;
 	std::string matchedRoot;
@@ -150,13 +148,11 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 			else
 				root = config.locations[i].root;
 			maxMatchLength = locPath.length();
-			std::cout << "requested path is: " << requestedPath << " and loc path is: " << locPath << " and root is: " << root << std::endl;	
 			matchedRoot = join_path(r, root, requestedPath.substr(locPath.length()));
 			coorLoc = i;
 		}
 		i++;
 	}
-	std::cout << "resutl in find matching is: ^^^^^^" << matchedRoot << std::endl;
 	result[coorLoc] = matchedRoot;
 	return result;
 }
@@ -218,18 +214,9 @@ std::string to_string98(size_t value) {
     return oss.str();
 }
 
-
-// std::string execute_cgi(std::string &path, request r, std::string interpreter)
-
-std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, request &r, std::string interpreter, EpollManager &epollManager, std::vector<ServerConfig> config, int i)
+std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, std::string interpreter, EpollManager &epollManager)
 {
-	// clientobj[clientFd].ResponseChunked = 1;
-	(void)r;
-	(void)i;
-	(void)config;
 	clientobj[clientFd].has_cgi = 1;
-	std::cout << "HEllllllllllllllllllllllllllo world it's a cgi script\n\n";
-	std::cout << "the cgi path is: " << path << ", and cgi interpreter is: " << interpreter << std::endl;
     int pipeFD[2];
     if (pipe(pipeFD) == -1)
     {
@@ -270,13 +257,18 @@ std::string execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::str
 		args.push_back(const_cast<char*>(path.c_str()));
 		args.push_back(NULL);
 		execve(interpreter.c_str(), &args[0], environ);
-		// execve(interpreter.c_str(), &args[0], environ);
-		// clientobj[clientFd].cgi_has_problem = 1;
-		// clientobj[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config[i].ErrorPages[500], clientFd, clientobj);
-	
-		const char *err = "Content-Type: text/plain\r\n\r\nexecve failed\n";
+		const char *err =
+			"Status: 500\r\n"
+			"Content-Type: text/html\r\n\r\n"
+			"<!DOCTYPE html>\n"
+			"<html>\n"
+			"<head><title>500 Internal Server Error</title></head>\n"
+			"<body>\n"
+			"<h1>500 Internal Server Error</h1>\n"
+			"<p>Something went wrong executing the CGI script.</p>\n"
+			"</body>\n"
+			"</html>\n";
         write(1, err, strlen(err));	
-
         exit (1);
     }
 	else
@@ -362,7 +354,6 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 	struct stat statbuf;
 	std::string ext;
 	std::string interpreter;
-	// std::cout << "----->the requested path is: " << requested_path << std::endl;
     if (stat(requested_path.c_str(), &statbuf) == 0)
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
@@ -370,7 +361,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			ext = requested_path.substr(requested_path.find_last_of('.'));
 			interpreter = find_matching_inter(ext, config, i, key);
 			if (!interpreter.empty())
-				execute_cgi(clientFd, clientobj, requested_path, r, interpreter, epoll, config, i);
+				execute_cgi(clientFd, clientobj, requested_path, interpreter, epoll);
 			else
 				clients[clientFd].response  = clients[clientFd].response.buildResponse(r, 200, "OK", requested_path, clientFd, clientobj);
 		}
@@ -385,7 +376,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 				ext = index_file.substr(index_file.find_last_of('.'));
 				interpreter = find_matching_inter(ext, config, i, key);
 				if (!interpreter.empty())
-					execute_cgi(clientFd, clientobj, index_file, r, interpreter, epoll, config, i);
+					execute_cgi(clientFd, clientobj, index_file, interpreter, epoll);
 				else
 					clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
 			}
@@ -393,7 +384,6 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			{
 				send_dir_list(clientFd, requested_path, clientobj);// using requested path only !
 			 	clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
-				// change return value to void and make buildresponse instead of send
             }
 			else
 			{
@@ -749,7 +739,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
 		out.flush();
 		out.close();
-		execute_cgi(clientFd,clientobj,filename.str(), r, inter,epollManager, _configs, clients[clientFd].conf_i);
+		execute_cgi(clientFd,clientobj,filename.str(), inter,epollManager);
 
 				// Read from the pipe directly
 		// char buffer[4096];
