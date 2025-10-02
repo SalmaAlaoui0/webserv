@@ -391,7 +391,7 @@ void Server::run()
                     {
                         if (clients[fd].send_complete == 0)
                             a = a.parseRequest(this->clients, epollManager, a, fd);
-                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" || this->clients[fd].method.empty())
+                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
                         {
                             std::cout << "\nMaking the event EPOLLOUT \n";
                             events[i].events = EPOLLOUT;
@@ -400,14 +400,22 @@ void Server::run()
                                 perror("epoll_ctl: mod");
                             }
                         }
-                        for (size_t i = 0; i < this->_configs.size(); ++i)
+                        if (this->clients[fd].header_complete)
                         {
-                            if (this->_configs[i].port ==clients[fd].get_final_port())
+                            for (size_t i = 0; i < this->_configs.size(); ++i)
                             {
-                                this->clients[fd].conf_i = i;
-                                break;
+                                // if (!clients[fd].get_final_port())
+                                // {
+                                //     std::cout << "BBBad request msgg\n\n";
+                                //  //   clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);
+                                // }
+                                if (this->_configs[i].port == clients[fd].get_final_port())
+                                { 
+                                    this->clients[fd].conf_i = i; 
+                                    break;
+                                }
                             }
-                        }
+                       }
                         
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
@@ -451,7 +459,8 @@ void Server::run()
                         std::map<int, Client>::iterator it = clients.find(fd);
                         if (it != clients.end())
                             it->second.updateActivity();
-                    }}
+                }
+                    }
                     catch(std::exception &e)
                     {
                         std::cout << e.what() << std::endl;
@@ -507,7 +516,7 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
         perror("epoll_ctl DEL fd");
     close(fd);
     clients.erase(fd);
-   clients[fd].~Client();
+  // clients[fd].~Client();
     std::cout << "✅ client: " << fd << " is disconnected\n";
     // std::cout << "🚪 Closed client fd: " << fd << std::endl;
 }
