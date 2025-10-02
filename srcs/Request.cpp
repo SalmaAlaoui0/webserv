@@ -185,16 +185,17 @@ std::string findCookies(const std::string &cookieHeader)
 request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
     Server s;
-   // std::cout << " wafaaaaaaaaaaa  ****"<< clientobj[clientFd].cgiMap[clientFd].pipefd <<std::endl;
+//    std::cout << " wafaaaaaaaaaaa  ****"<< clientobj[clientFd].cgiMap[clientFd].pipefd <<std::endl;
     if (clientobj[clientFd].cgiMap[clientFd].pipefd != -1)
     {
         // std::cout << "should not be parsed it's a pipe event client\n";
         return r;
     }
-    char buffer [1024] = {0};
+    char buffer [8000] = {0};
     ssize_t bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
+    // std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
 
-    if ( bytes_received == -1)
+    if ( bytes_received <= 0)
     {
 
         if (errno != EAGAIN && errno != EWOULDBLOCK)
@@ -204,9 +205,11 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         }
     }
     clientobj[clientFd].PostBody.append(buffer, bytes_received);
+    std::cout << "Postbody is: " << clientobj[clientFd].PostBody << "*************<<<\n\n";
     //std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
-    if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete ==0 )
+    if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0 )
     {
+        // std::cout << "\n*****8wch kanl3bo hnaya\n";
         size_t HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
         std::string headers = clientobj[clientFd].PostBody.substr(0, HeaderEnd);
         clientobj[clientFd].PostBody = clientobj[clientFd].PostBody.substr(HeaderEnd + 4);
@@ -216,6 +219,14 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         iss.ignore();
         std::istringstream line_stream(line);
         line_stream >>  methode >> path >> version;
+        // std::cout << "mettttttttttthode is: " << methode << "--*\n\n";
+        if (methode.empty() || path.empty() || version.empty())
+        {
+            std::cout << "herererere\n";
+            r.method = "";
+            clientobj[clientFd].method = "";
+            return r;
+        }
         clientobj[clientFd].method = methode;
         size_t pos1;
         size_t pos;
