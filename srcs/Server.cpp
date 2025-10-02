@@ -160,7 +160,7 @@ std::vector<ServerConfig> Server::getConfig() const
 
  std::vector<std::string> Server:: getSession() const
  {
-        return sessions;
+    return sessions;
  }
 
 
@@ -231,12 +231,13 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].Read = 0;
         clients[clientFd].conf_i = 0;
         req.slash = 0;
-        std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
+        std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl; 
     
 }
 
 bool Server::isServerSocket(int fd) const 
 {
+    std::cout << "\n✅✅✅✅✅ New client connected on fd : " << std::endl; 
     for (size_t i = 0; i < serverSockets.size(); ++i) 
     {
         if (serverSockets[i] == fd) 
@@ -307,7 +308,6 @@ void Server::run()
         for(size_t i = 0; i < events.size(); i++)
         {
             int fd = events[i].data.fd;
-
             if(events[i].events & (EPOLLERR | EPOLLHUP))
             {
                 if (clients[fd].cgiMap[fd].pipefd > 0 && fd != clients[fd].cgiMap[fd].pipefd) 
@@ -391,7 +391,7 @@ void Server::run()
                     {
                         if (clients[fd].send_complete == 0)
                             a = a.parseRequest(this->clients, epollManager, a, fd);
-                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
+                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" || this->clients[fd].method.empty())
                         {
                             std::cout << "\nMaking the event EPOLLOUT \n";
                             events[i].events = EPOLLOUT;
@@ -403,16 +403,34 @@ void Server::run()
                         for (size_t i = 0; i < this->_configs.size(); ++i)
                         {
                             if (this->_configs[i].port ==clients[fd].get_final_port())
-                            { 
+                            {
                                 this->clients[fd].conf_i = i;
-                                found = true;
                                 break;
                             }
                         }
+                        
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
-                            if (!a.error_set(this->clients, a, fd, _configs[this->clients[fd].conf_i]))
-                                throw socketException("❌ error detected ");
+                            std::cout << "hereee is\n\n";
+                            // if (clients.find(fd) == clients.end()) {
+                            //     std::cout << "ERROR: Client fd " << fd << " not found in clients map!" << std::endl;
+                            //     return;
+                            // }
+
+                            // std::cout << "conf_i value: " << clients[fd].conf_i << std::endl;
+                            // std::cout << "_configs size: " << _configs.size() << std::endl;
+                            
+                            // if (clients[fd].conf_i < 0 || clients[fd].conf_i >= _configs.size()) {
+                            //     std::cout << "ERROR: Invalid conf_i!" << std::endl;
+                            //     return;
+                            // }
+
+
+                            if (!a.error_set(this->clients, a, fd, this->_configs[this->clients[fd].conf_i]))
+                            {
+                                std::cout << "error_._set is: equal to zero\n";
+                                throw socketException("❌ error detected  in error set");
+                            }
                             else
                             {
                                 std::cout << "Hrererere is the leakkk for fd: " << fd << std::endl;
@@ -429,40 +447,40 @@ void Server::run()
 
                                 // std::cout << "DEBUG: CGI output from pipe:\n" << pipeOutput << std::endl;
                             }
-                        }
+                        
                         std::map<int, Client>::iterator it = clients.find(fd);
                         if (it != clients.end())
                             it->second.updateActivity();
-                    }
+                    }}
                     catch(std::exception &e)
                     {
                         std::cout << e.what() << std::endl;
                     }
                 }
                 else if (events[i].events & EPOLLOUT)
-                {
-                    std::cout << "hewerererer in epoollout for fd: " << fd << std::endl;
-                    if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
                     {
-                        std::cout << "here first ft\n";
-                        handleRequest(fd, a, clients, epollManager);
+                        std::cout << "hewerererer in epoollout for fd: " << fd << std::endl;
+                        if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
+                        {
+                            std::cout << "here first ft\n";
+                            handleRequest(fd, a, clients, epollManager);
+                        }
+                        if (!clients[fd].no_data)
+                        {
+                            std::cout << "here second ft\n";
+                            clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
+                            closeConnection(fd, epollManager);
+                        }
+                        if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
+                        || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
+                        {
+                            std::cout << "here third ft\n";
+                            closeConnection(fd, epollManager);
+                            // close(fd);
+                            // std::cout << "✅ client: " << fd << " is disconnected\n";
+                        }
+                        // exit(33);
                     }
-                    if (!clients[fd].no_data)
-                    {
-                        std::cout << "here second ft\n";
-                        clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
-                        closeConnection(fd, epollManager);
-                    }
-                    if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
-                    || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
-                    {
-                        std::cout << "here third ft\n";
-                        closeConnection(fd, epollManager);
-                        // close(fd);
-                        // std::cout << "✅ client: " << fd << " is disconnected\n";
-                    }
-                    // exit(33);
-                }
                 else
                     std::cout<<"maart ach kandir hna\n\n";
             }
