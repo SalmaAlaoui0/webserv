@@ -199,7 +199,8 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         if (sendbytes != -1)
             clientobj[clientFd].size_send += sendbytes;
     }
-    else if ((!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST") && clientobj[clientFd].ResponseChunked)
+    else if (((!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST") && clientobj[clientFd].ResponseChunked) || 
+        clientobj[clientFd].method.empty())
     {
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
@@ -252,6 +253,16 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
         std::cout << "Set-Cookie: session_id=" << rep.sessionId << "\n";
         std::cout << "Hello, new user! Data saved on server.\n\n";
         // exit(7); if I have a cgi script
+    }
+    if (code == 400 && filePath.empty())
+    {
+        rep.statusCode = 400;
+        rep.statusMsg  = msg;
+        rep.body       = "<h1>400 Bad Request</h1>";
+        rep.contentType = "text/html";
+        clientobj[clientFd].Sending = 1;
+        clientobj[clientFd].send_complete = 1;
+        return (rep);
     }
     if (clientobj[clientFd].autoindex)
     {
