@@ -37,12 +37,6 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
 {
     std::cout  << " jittttttttttt\n\n";
     std::map<std::string , std::string>headers = clients[clientFd].get_header();
-    std::map<int, Client> :: iterator it = clients.find(clientFd);
-    if(it == clients.end())
-    {
-        std::cerr << "❌ clientFd " << clientFd << " not found\n";
-        return 0;
-    }
     if(clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
     {
         
