@@ -52,7 +52,7 @@ class request{
    std::map<std::string,std::string>& get_header();
    void set_body(std::string& b);
   std::string& get_body(void);
-  bool error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig &config);
+  bool error_set(std::map<int, Client>& clients, request &r, int clientFd ,  ServerConfig& configs);
  class requetetException : public std::exception 
   {
     private:

@@ -82,4 +82,6 @@ class Client
         void updateActivity();
         void receiveRequest();
         void sendResponse();
+int get_final_port();
+
 };

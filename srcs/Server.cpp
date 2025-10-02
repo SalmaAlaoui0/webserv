@@ -139,7 +139,7 @@ void Server:: setupSockets()
    }
 }
 
-Server::Server(const std::vector<ServerConfig>& configs)
+Server::Server(const std::vector<ServerConfig> &configs)
 {
     this->_configs = configs;
     setupSockets();
@@ -192,12 +192,11 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
 
 void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollManager)
 {
-       struct sockaddr clientAddr ;
-        memset(&clientAddr, 0, sizeof(clientAddr)); 
+        struct sockaddr clientAddr;
         req.body.clear();
         req.path.clear();
         socklen_t clientLen = sizeof(clientAddr);
-        int clientFd = accept(serverFd, (struct sockaddr *)&clientAddr , &clientLen);
+        int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
         int flags = fcntl(clientFd, F_GETFL, 0);
         if (fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 )
         {
@@ -230,11 +229,10 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
-        clients[clientFd].chnked = 0;
-        clients[clientFd].body_chunked.clear();
-        clients[clientFd].statusCode = 0;
+        clients[clientFd].conf_i = 0;
         req.slash = 0;
-        std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;    
+        std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl;
+    
 }
 
 bool Server::isServerSocket(int fd) const 
@@ -283,7 +281,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
     int pipefd = clientobj[fd].cgiMap[fd].pipefd;
     if (pipefd != -1)
     {
-        std::cout << "✅ pipe client: " << pipefd << " is disconnected\n";
+        std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
         epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
         close(clientobj[fd].cgiMap[fd].pipefd);
         clientobj[fd].cgiMap[fd].pipefd = -1;
@@ -314,6 +312,7 @@ void Server::run()
             {
                 if (clients[fd].cgiMap[fd].pipefd > 0 && fd != clients[fd].cgiMap[fd].pipefd) 
                 {
+                    std::cerr << "❌ EPOLLERR or EPOLLHUP on fd: " << fd << ", closing connection" << std::endl;
                     closeConnection(fd, epollManager);
                     continue;
                 }
@@ -321,31 +320,44 @@ void Server::run()
             if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
             else if (clients[fd].cgiMap[fd].pipefd != -1 && clients[fd].cgiMap[fd].pipefd != 0 && !clients[fd].Read) {
-                const size_t BUF_SIZE = 8000;
-
-               // std::cout << "Handling CGI pipe read for fd: " << fd << ", pipefd: " << clients[fd].cgiMap[fd].pipefd << std::endl;
+                // std::cout << "Handling CGI pipe read for fd: " << fd << ", pipefd: " << clients[fd].cgiMap[fd].pipefd << std::endl;
                 // std::cout << "\n\n Here in reading cgi pipe content\n\n";
                 // exit (18);
+                const size_t BUF_SIZE = 4096;
                 char buffer[BUF_SIZE];
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE - 1);
+                // clients[fd].ResponseChunked = 0;
+                // std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                // exit (18);
                 if (bytesRead > 0)
                 {
                     buffer[bytesRead] = '\0';
+                    // std::cout << "The Body Is Being Appended. " << std::endl;
                     if (clients[fd].method == "GET")
                     {
                         clients[fd].CgiBody.assign(buffer, bytesRead);
                         clients[fd].Read = 1;
+                        std::cout << "hereere READINNG IS: 1\n";
                     }
-                    else if (clients[fd].method == "POST"){
+                    else if (clients[fd].method == "POST")
+                    {
                         clients[fd].CGIPostBody.append(buffer, bytesRead);
-                    //    std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                     //   std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                         // exit (19);
                     }
                     clients[fd].bytesRead = bytesRead;
                 }
                 else if (bytesRead == 0)//add timeout
+                {
+                    std::cout << "bytesRead is : 0" << std::endl;
+                    // clients[fd].CgiBody.append(buffer, bytesRead);
+                    clients[fd].statusCode = 200;
+                    clients[fd].statusMsg = "OK";
                     WaitChildAndClean(epollManager, clients, fd);
+                    std::cout << "finish reading cgi\n";
+                    // clients[fd].send_complete = 1;
+                }
                 else if (bytesRead < 0)
                 {
                     if (errno == EAGAIN)
@@ -354,12 +366,20 @@ void Server::run()
                     {
                         WaitChildAndClean(epollManager, clients, fd);
                         clients[fd].send_complete = 1;
+                        // make an error html response
                         perror("REad");
+                        // exit (23);
                     }
                 }
                 time_t now = time(NULL);
                 if (difftime(now, clients[fd].CgiStartActivity) > 3)
+                {
+                    std::cout << "CGI timeout\n";
                     WaitChildAndClean(epollManager, clients, fd);
+                    // closePipeAndCleanup(fd);
+                }
+                // clients[fd].has_cgi = 0;
+                // clients[fd].cgiMap[fd].pipefd
             }
             else
             {
@@ -380,22 +400,35 @@ void Server::run()
                                 perror("epoll_ctl: mod");
                             }
                         }
-                        // std::cout << "the size is: " << s.getConfig().size();
-                        this->clients[fd].conf_i = this->_configs.size();
                         for (size_t i = 0; i < this->_configs.size(); ++i)
                         {
-                            if (this->_configs[i].port == a.get_final_port(a))
+                            if (this->_configs[i].port ==clients[fd].get_final_port())
                             { 
-                                this->clients[fd].conf_i = i; 
+                                this->clients[fd].conf_i = i;
+                                found = true;
                                 break;
                             }
                         }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
-                            if (!a.error_set(this->clients, a, fd, this->_configs[this->clients[fd].conf_i]))
-                                throw socketException("❌ error detected  in error set");
+                            if (!a.error_set(this->clients, a, fd, _configs[this->clients[fd].conf_i]))
+                                throw socketException("❌ error detected ");
                             else
+                            {
+                                std::cout << "Hrererere is the leakkk for fd: " << fd << std::endl;
                                 handleRequest(fd, a, clients, epollManager);
+                                        // Read from the pipe directly
+                                // char buffer[4096];
+                                // ssize_t bytesRead;
+                                // std::string pipeOutput;
+
+                                // while ((bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, sizeof(buffer) - 1)) > 0) {
+                                //     buffer[bytesRead] = '\0';
+                                //     pipeOutput += buffer;
+                                // }
+
+                                // std::cout << "DEBUG: CGI output from pipe:\n" << pipeOutput << std::endl;
+                            }
                         }
                         std::map<int, Client>::iterator it = clients.find(fd);
                         if (it != clients.end())
@@ -408,13 +441,27 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
+                    std::cout << "hewerererer in epoollout for fd: " << fd << std::endl;
                     if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
+                    {
+                        std::cout << "here first ft\n";
                         handleRequest(fd, a, clients, epollManager);
+                    }
                     if (!clients[fd].no_data)
+                    {
+                        std::cout << "here second ft\n";
                         clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
+                        closeConnection(fd, epollManager);
+                    }
                     if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
                     || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
+                    {
+                        std::cout << "here third ft\n";
                         closeConnection(fd, epollManager);
+                        // close(fd);
+                        // std::cout << "✅ client: " << fd << " is disconnected\n";
+                    }
+                    // exit(33);
                 }
                 else
                     std::cout<<"maart ach kandir hna\n\n";
@@ -442,6 +489,7 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
         perror("epoll_ctl DEL fd");
     close(fd);
     clients.erase(fd);
+   clients[fd].~Client();
     std::cout << "✅ client: " << fd << " is disconnected\n";
     // std::cout << "🚪 Closed client fd: " << fd << std::endl;
 }
