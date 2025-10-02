@@ -242,18 +242,9 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
 Response Response::buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &clientobj)
 {
-
+//(void)r;
     Response rep;
     Server s;
-    if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
-    {
-        srand(time(NULL));
-        rep.sessionId = generateId(16);
-        s.getSession() .push_back(rep.sessionId);
-        std::cout << "Set-Cookie: session_id=" << rep.sessionId << "\n";
-        std::cout << "Hello, new user! Data saved on server.\n\n";
-        // exit(7); if I have a cgi script
-    }
     if (code == 400 && filePath.empty())
     {
         rep.statusCode = 400;
@@ -263,6 +254,15 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
         clientobj[clientFd].Sending = 1;
         clientobj[clientFd].send_complete = 1;
         return (rep);
+    }
+    if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+    {
+        srand(time(NULL));
+        rep.sessionId = generateId(16);
+        s.getSession() .push_back(rep.sessionId);
+        std::cout << "Set-Cookie: session_id=" << rep.sessionId << "\n";
+        std::cout << "Hello, new user! Data saved on server.\n\n";
+        // exit(7); if I have a cgi script
     }
     if (clientobj[clientFd].autoindex)
     {
@@ -309,7 +309,7 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
             send_bigsize(clientobj, clientFd, filePath, rep);
         }
     }
-    if ((r.get_method() == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
+    if ((r.get_method()== "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
     {
         // std::cout << "helllllllllllllo\n";
         std::ostringstream ss; // to put file content in it ;)
