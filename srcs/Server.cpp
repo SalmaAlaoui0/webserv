@@ -371,7 +371,7 @@ void Server::run()
                     {
                         if (clients[fd].send_complete == 0)
                             a = a.parseRequest(this->clients, epollManager, a, fd);
-                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" || this->clients[fd].method.empty())
+                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
                         {
                             std::cout << "\nMaking the event EPOLLOUT \n";
                             events[i].events = EPOLLOUT;
@@ -381,17 +381,21 @@ void Server::run()
                             }
                         }
                         // std::cout << "the size is: " << s.getConfig().size();
-                        this->clients[fd].conf_i = this->_configs.size();
-                        for (size_t i = 0; i < this->_configs.size(); ++i)
+                        if (this->clients[fd].header_complete)
                         {
-                            if (!a.get_final_port(a))
+                            this->clients[fd].conf_i = this->_configs.size();
+                            for (size_t i = 0; i < this->_configs.size(); ++i)
                             {
-                                clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);
-                            }
-                            if (this->_configs[i].port == a.get_final_port(a))
-                            { 
-                                this->clients[fd].conf_i = i; 
-                                break;
+                                if (!a.get_final_port(a))
+                                {
+                                    std::cout << "BBBad request msgg\n\n";
+                                    clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);
+                                }
+                                if (this->_configs[i].port == a.get_final_port(a))
+                                { 
+                                    this->clients[fd].conf_i = i; 
+                                    break;
+                                }
                             }
                         }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
