@@ -241,7 +241,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
 Response Response::buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &clientobj)
 {
-    std::cout << " i m in errorr setttttttttttttt\n\n";
 
     Response rep;
     Server s;

@@ -15,6 +15,7 @@
 
 #include <iostream>
 #include <vector>
+#include <list>
 #include <map>
 #include <algorithm>
 #include <cstring>
@@ -55,7 +56,7 @@ class Server
         std::vector<std::string> sessions;
         public:
         Server();
-        Server(const std::vector<ServerConfig>& configs);
+        Server(const std::vector<ServerConfig> &configs);
         ~Server();
         std::vector<ServerConfig> getConfig() const;
         std::vector<std::string> getSession() const;

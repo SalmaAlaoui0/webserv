@@ -33,15 +33,13 @@ request::request(request const &ref)
     *this = ref;
 }
 
-bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig &config)
+bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig& config)
 {
-    
-    std::map<std::string , std::string>headers = r.get_header();
+    std::map<std::string , std::string>headers = clients[clientFd].get_header();
     std::map<int, Client> :: iterator it = clients.find(clientFd);
     if(it == clients.end())
     {
         std::cerr << "❌ clientFd " << clientFd << " not found\n";
-
         return 0;
     }
     if(clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
@@ -82,6 +80,15 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
         clients[clientFd].response = Response::buildResponse(r, 505, "HTTP Version Not Supported", config.ErrorPages[505], clientFd, clients);
         return 0;
     }
+    // debug
+    std::cerr << "DEBUG: clientFd=" << clientFd << " config addr=" << &config
+          << " ErrorPages.size=" << config.ErrorPages.size() << std::endl;
+
+    for (std::map<int, std::string>::const_iterator it = config.ErrorPages.begin(); it != config.ErrorPages.end(); ++it)
+    {
+        std::cerr << "  page: " << it->first << " => " << it->second << std::endl;
+    }
+    //
 	if(headers.find("Host") == headers.end())	
     {
         clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
