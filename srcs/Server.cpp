@@ -371,7 +371,7 @@ void Server::run()
                     {
                         if (clients[fd].send_complete == 0)
                             a = a.parseRequest(this->clients, epollManager, a, fd);
-                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
+                        if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" || this->clients[fd].method.empty())
                         {
                             std::cout << "\nMaking the event EPOLLOUT \n";
                             events[i].events = EPOLLOUT;
@@ -384,6 +384,10 @@ void Server::run()
                         this->clients[fd].conf_i = this->_configs.size();
                         for (size_t i = 0; i < this->_configs.size(); ++i)
                         {
+                            if (!a.get_final_port(a))
+                            {
+                                clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);
+                            }
                             if (this->_configs[i].port == a.get_final_port(a))
                             { 
                                 this->clients[fd].conf_i = i; 
@@ -392,8 +396,26 @@ void Server::run()
                         }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
+                            std::cout << "hereee is\n\n";
+                            // if (clients.find(fd) == clients.end()) {
+                            //     std::cout << "ERROR: Client fd " << fd << " not found in clients map!" << std::endl;
+                            //     return;
+                            // }
+
+                            // std::cout << "conf_i value: " << clients[fd].conf_i << std::endl;
+                            // std::cout << "_configs size: " << _configs.size() << std::endl;
+                            
+                            // if (clients[fd].conf_i < 0 || clients[fd].conf_i >= _configs.size()) {
+                            //     std::cout << "ERROR: Invalid conf_i!" << std::endl;
+                            //     return;
+                            // }
+
+
                             if (!a.error_set(this->clients, a, fd, this->_configs[this->clients[fd].conf_i]))
+                            {
+                                std::cout << "error_._set is: equal to zero\n";
                                 throw socketException("❌ error detected  in error set");
+                            }
                             else
                                 handleRequest(fd, a, clients, epollManager);
                         }
