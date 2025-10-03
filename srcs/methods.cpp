@@ -235,7 +235,7 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 		std::string new_body;
 		if(clientobj[clientFd].method == "GET")
 				setenv("REQUEST_METHOD", "GET", 1);
-		if(clientobj[clientFd].method == "POS")
+		if(clientobj[clientFd].method == "POST")
 				setenv("REQUEST_METHOD", "POST", 1);
 			std::string len;
 			if(clientobj[clientFd].chnked)
@@ -252,7 +252,10 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
         setenv("QUERY_STRING", clientobj[clientFd].QUERY_STRING.c_str(), 1);
 		setenv("CONTENT_LENGTH", len.c_str(), 1);
 		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+		setenv("REDIRECT_STATUS", "200", 1);
 		setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
+		setenv("GATEWAY_INTERFACE", "CGI/1.1", 1);
+		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
 		// so only and only if the request has a body like post we should add the environment variable called "CONTENT_TYPE"
 		std::vector<char *> args;
 		// args.push_back(const_cast<char*>(interpreter.c_str()));
@@ -559,7 +562,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	int key = map.begin()->first;
 		if (clientobj[clientFd].has_cgi)
 	{
-
+std::cout << "body cgiiiiiiiiiiiii ::"<< clientobj[clientFd].CGIPostBody<< std::endl;
 		std::ofstream out(clientobj[clientFd].filename.c_str(),std::ios::binary | std::ios::trunc);
 		if(!out)
 		{
@@ -576,7 +579,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			header = clientobj[clientFd].CGIPostBody.substr(0, header_end + 4);
 			clientobj[clientFd].CGIPostBody = clientobj[clientFd].CGIPostBody.substr(header.size());
 
-			//std::cout << " hedder is**************"<< header<< std::endl;
+			std::cout << " hedder is1**************"<< header<< std::endl;
 
 		}
 		else if ((header_end = clientobj[clientFd].CGIPostBody.find("\n\n")) != std::string::npos )
@@ -585,7 +588,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			header = clientobj[clientFd].CGIPostBody.substr(0, header_end + 2);
 			clientobj[clientFd].CGIPostBody = clientobj[clientFd].CGIPostBody.substr(header.size());
 
-			//std::cout << " hedder is**************"<< header<< std::endl;
+			std::cout << " hedder is2**************"<< header<< std::endl;
 		}
 		else if(header_end == std::string::npos)
 		{
@@ -608,9 +611,9 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			value = trim1(value);
 			size_t i1 = value.find(";");
 			value = value.substr(0,i1);
-			//std::cout << "key^^^^^^^^^^^^^"<< key << std::endl;
+			std::cout << "key^^^^^^^^^^^^^"<< key << std::endl;
 			map_h[key] = value;
-			//std::cout << "value^^^^^^^^^^^^^"<< value << std::endl;
+			std::cout << "value^^^^^^^^^^^^^"<< value << std::endl;
 			header = header.substr(i +1);
 		}
 		std::map<std::string,std::string> contentTypeToExt;
@@ -625,6 +628,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
  		size_t i2 = clientobj[clientFd].filename.find(".");
 		std::string ex_final = "";
 		 ex_final = contentTypeToExt[map_h["Content-Type"]];
+		 std::cout << " contenet ty  isssssssssss ::: "<<map_h["Content-Type"]<< std::endl;
 		if(ex_final.empty())
 		{
 			std::cout << " ############################a\n\n\n";
