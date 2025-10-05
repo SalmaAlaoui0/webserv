@@ -251,6 +251,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         // r.set_vergion(version);
         while(std::getline(iss, line, '\r') && !line.empty())
         {
+            std::cout << "line is: " << line << std::endl;
             iss.ignore();
             size_t pos = line.find(":");
             if(pos != std::string::npos)
