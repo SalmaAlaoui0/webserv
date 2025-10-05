@@ -233,6 +233,7 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
         close(pipeFD[0]);
         close(pipeFD[1]);
 		std::string new_body;
+		setenv("REDIRECT_STATUS", "200", 1);
 		if(clientobj[clientFd].method == "GET")
 				setenv("REQUEST_METHOD", "GET", 1);
 		if(clientobj[clientFd].method == "POS")

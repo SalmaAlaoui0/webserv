@@ -404,12 +404,13 @@ void Server::run()
                         {
                             for (size_t i = 0; i < this->_configs.size(); ++i)
                             {
+                                std::cout << "the port in config is: " << this->_configs[i].port << " and the final port is: " << clients[fd].get_final_port() << std::endl;
                                 if (!clients[fd].get_final_port())
                                 {
                                     std::cout << "BBBad request msgg and methode is: " << clients[fd].method.empty() << "\n\n";
-                                   clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);
+                                    clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);
                                 }
-                                if (this->_configs[i].port == clients[fd].get_final_port())
+                                if (this->_configs[i].port == 8080)
                                 { 
                                     this->clients[fd].conf_i = i; 
                                     break;
