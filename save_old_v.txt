@@ -1,0 +1,70 @@
+
+<<<<<<< HEAD
+	//std::cout << "the cgi path is: " << path << ", and cgi interpreter is: " << interpreter << std::endl;
+ int pipeFD[2];
+    if (pipe(pipeFD) == -1)
+    {
+        std::string HttpHeader = "Cotent-Type: text/plain\r\n\r\n";
+        std::string str =  HttpHeader + "A CGI pipe error\n";
+    }
+    pid_t pid = fork();
+    if (pid == 0)
+    {
+        dup2(pipeFD[1], STDOUT_FILENO);
+        close(pipeFD[0]);
+        close(pipeFD[1]);
+		std::string new_body;
+		setenv("REDIRECT_STATUS", "200", 1);
+		if(clientobj[clientFd].method == "GET")
+				setenv("REQUEST_METHOD", "GET", 1);
+		if(clientobj[clientFd].method == "POST")
+				setenv("REQUEST_METHOD", "POST", 1);
+			std::string len;
+			if(clientobj[clientFd].chnked)
+			{
+				len = to_string98(clientobj[clientFd].body_chunked.size());
+				new_body = clientobj[clientFd].body_chunked;
+			}
+			else
+			{
+				len =  to_string98(clientobj[clientFd].PostBody.size());
+				new_body = clientobj[clientFd].PostBody;
+			}
+        setenv("SCRIPT_FILENAME", path.c_str(), 1);
+        setenv("QUERY_STRING", clientobj[clientFd].QUERY_STRING.c_str(), 1);
+		setenv("CONTENT_LENGTH", len.c_str(), 1);
+		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+		setenv("REDIRECT_STATUS", "200", 1);
+		setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
+		setenv("GATEWAY_INTERFACE", "CGI/1.1", 1);
+		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+		// so only and only if the request has a body like post we should add the environment variable called "CONTENT_TYPE"
+		std::vector<char *> args;
+		// args.push_back(const_cast<char*>(interpreter.c_str()));
+		args.push_back(const_cast<char*>(path.c_str()));
+		args.push_back(const_cast<char*>(path.c_str()));
+		args.push_back(NULL);
+		execve(interpreter.c_str(), &args[0], environ);
+		exit (1);
+		// If execve returns, an error occurred
+		std::cerr << "Failed to execute CGI script: " << strerror(errno) << std::endl;
+		const char *err =
+			"Status: 500\r\n"
+			"Content-Type: text/html\r\n\r\n"
+			"<!DOCTYPE html>\n"
+			"<html>\n"
+			"<head><title>500 Internal Server Error</title></head>\n"
+			"<body>\n"
+			"<h1>500 Internal Server Error</h1>\n"
+			"<p>Something went wrong executing the CGI script.</p>\n"
+			"</body>\n"
+			"</html>\n";
+        write(1, err, strlen(err));	
+        exit (1);
+    }
+	else
+    {
+        close(pipeFD[1]);
+		clientobj[clientFd].ResponseChunked = 0;
+		fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
+=======
