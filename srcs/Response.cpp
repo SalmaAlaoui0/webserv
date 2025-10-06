@@ -80,6 +80,12 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
     return rep;
 }
 
+static std::string intToString(int num)
+{
+    std::ostringstream ss;
+    ss << num;
+    return ss.str();
+}
 
 std::string generateId(size_t length = 16) 
 {
@@ -96,20 +102,24 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 {
     std::ostringstream response;
     ssize_t sent = 0;
-    std::cout << "\n\nfd number is: " << clientFd << "and status code is: " << clientobj[clientFd].statusCode << "===\n\n";
-//std::cout << " wafaaaa%%%%%%%%%% "<< clientobj[clientFd].statusCode<< std::endl;
-    if (clientobj[clientFd].statusCode == 302)
+    if (clientobj[clientFd].statusCode == 301 || clientobj[clientFd].statusCode == 302)
     {
+        std::string statusStr = intToString(clientobj[clientFd].statusCode); 
+        std::string reasonPhrase = (clientobj[clientFd].statusCode == 301)
+                                    ? "Moved Permanently"
+                                    : "Found";
+
         std::string body =
             "<html>\n"
-            "<head><title>302 Found</title></head>\n"
+            "<head><title>" + statusStr + " " + reasonPhrase + "</title></head>\n"
             "<body>\n"
-            "<p>Resource moved to <a href=\"" + clientobj[clientFd].ReturnLocation + "\">" + clientobj[clientFd].ReturnLocation + "</a></p>\n"
+            "<p>Resource moved to <a href=\"" + clientobj[clientFd].ReturnLocation + "\">" +
+            clientobj[clientFd].ReturnLocation + "</a></p>\n"
             "</body>\n"
             "</html>";
 
         std::ostringstream headers;
-        headers << "HTTP/1.1 302 Found\r\n"
+        headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << " " << reasonPhrase << "\r\n"
                 << "Location: " << clientobj[clientFd].ReturnLocation << "\r\n"
                 << "Content-Type: text/html\r\n"
                 << "Content-Length: " << body.size() << "\r\n"
@@ -119,12 +129,12 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         std::string response = headers.str();
         send(clientFd, response.c_str(), response.size(), MSG_NOSIGNAL);
 
-        std::cout << "it's 302 \n";
-        std::cout << "the data location should be served is: " << clientobj[clientFd].ReturnLocation << std::endl;
+        std::cout << "✅ Redirect response sent to FD: " << clientFd << " with the return code is: " << statusStr << std::endl;
+        clientobj[clientFd].send_complete = 1;
     }
-    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read)
+
+    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read && clientobj[clientFd].statusCode != 204)
     {
-        std::cout << "has cgi first:::\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
             srand(time(NULL));
@@ -169,7 +179,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked)
     {
-        std::cout << "hasn't cgi first:::\n";
         std::ostringstream headers;
         headers << "HTTP/1.1 " << res.statusCode << "\r\n"
             << "Content-Type: " << res.contentType << "\r\n";
@@ -186,9 +195,8 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         clientobj[clientFd].Sending = 1;
     }
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
-        && !clientobj[clientFd].send_complete && clientobj[clientFd].Read)
+        && !clientobj[clientFd].send_complete && clientobj[clientFd].Read && clientobj[clientFd].statusCode != 204)
     {
-        std::cout << "has cgi second:::\n";
         ssize_t sendbytes = send(clientFd, clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size(), MSG_NOSIGNAL);
         if (sendbytes != -1)
         {
@@ -199,7 +207,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
         && !clientobj[clientFd].ResponseChunked && !clientobj[clientFd].send_complete)
     {
-        std::cout << "hasn't cgi second:::\n";
         ssize_t sendbytes = send(clientFd, res.body.c_str(), Readbyte, MSG_NOSIGNAL);
         if (sendbytes != -1)
             clientobj[clientFd].size_send += sendbytes;
@@ -207,7 +214,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (((!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST") && clientobj[clientFd].ResponseChunked) || 
         clientobj[clientFd].method.empty())
     {
-        std::cout << "::::lastly:::::\n";
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
@@ -222,8 +228,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     else if (clientobj[clientFd].statusCode == 204)
     {
-        std::cout << ":::: not lastly:::::\n";
-        std::cout << "THE BODY OF UR FILE IS: " << clientobj[clientFd].response.body << std::endl;
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
@@ -238,8 +242,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     else 
     {
-        std::cout << "hasn't cgi lastly:::\n";
-    //     std::cout << "fd number is: " << clientFd << "and status code is: " << clientobj[clientFd].statusCode << std::endl;
     // exit(13);
         return;
     }

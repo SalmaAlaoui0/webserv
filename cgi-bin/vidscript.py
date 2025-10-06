@@ -6,7 +6,7 @@ with open("/home/salaoui/images/cat.jpg", "rb") as f:
     data = f.read()
 
 # headers first, as bytes
-sys.stdout.buffer.write(b"Content-Type: image/png\r\n")
+sys.stdout.buffer.write(b"Content-Type: image/jpeg\r\n")
 sys.stdout.buffer.write(f"Content-Length: {len(data)}\r\n\r\n".encode())
 
 # then the video data
