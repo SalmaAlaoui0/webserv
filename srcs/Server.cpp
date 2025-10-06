@@ -379,17 +379,17 @@ void Server::run()
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE - 1);
                 // clients[fd].ResponseChunked = 0;
-                std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                // std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                 // exit (18);
-                // if (!clients[fd].CgiSend && bytesRead == 0)
-                // {
-                //     std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
-                //     clients[fd].response = Response::buildResponse(a, 204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients);
-                //     clients[fd].statusCode = 204;
-                //     clients[fd].statusMsg = "No Content";
-                //     WaitChildAndClean(epollManager, clients, fd, _configs, a);
-                //     // exit(13);
-                // }
+                if (!clients[fd].CgiSend && bytesRead == 0)
+                {
+                    std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
+                    clients[fd].response = Response::buildResponse(a, 204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients);
+                    clients[fd].statusCode = 204;
+                    clients[fd].statusMsg = "No Content";
+                    WaitChildAndClean(epollManager, clients, fd, _configs, a);
+                    // exit(13);
+                }
                 if (bytesRead > 0)
                 {
                     clients[fd].CgiSend = 1;
@@ -399,7 +399,7 @@ void Server::run()
                     {
                         clients[fd].CgiBody.assign(buffer, bytesRead);
                         clients[fd].Read = 1;
-                        std::cout << "hereere READINNG IS: 1\n";
+                        // std::cout << "hereere READINNG IS: 1\n";
                     }
                     else if (clients[fd].method == "POST")
                     {
@@ -423,7 +423,7 @@ void Server::run()
                 {
                     if (errno == EAGAIN)
                     {
-                        std::cout << " Heeeeeeeere\n\n";
+                        // std::cout << " Heeeeeeeere\n\n";
                         clients[fd].no_data = 1;
                     }
                     else
