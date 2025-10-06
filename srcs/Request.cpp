@@ -46,20 +46,22 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
     }
     if(clients[clientFd].method == "POST")/// 5ass n3awd les error dyl post 
     {
-        // std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
-        // if(ptr != headers.end())
+        //std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
+        // if(ptr != headers.end() || ptr ->second.empty())
         // {
+        //     std::cout << " hanai hnaaaaaaaaaaaaaaa\n\n";
+        //     clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
 		// 	std::string a = ptr->second;
 		// 	unsigned long b = std::atoi(a.c_str());
 		// 	if(b < 0 || (b != r.get_body().size()))
         //     {
         //         std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
-        //         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
         //         //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
 
         //         return 0;
         //     }
         // }
+        
         // else
         // {
         //     //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));

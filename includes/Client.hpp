@@ -9,6 +9,8 @@
 
 struct CgiInfo {
     int pipefd;
+    int start;// initailiserrr 
+    bool flag_rep;/// initailiserrrrr 
     pid_t pid;
 };
 
