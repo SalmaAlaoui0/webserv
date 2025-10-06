@@ -212,12 +212,14 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         epollManager.addSocket(clientFd, EPOLLIN);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
         req.ContentLength = 0;
+        clients[clientFd].statusCode = 200;
         clients[clientFd].cgi_active = 0;
         clients[clientFd].body_complete = 0;
         clients[clientFd].send_complete = 0;
         clients[clientFd].start_sending = 0;
         clients[clientFd].create_file = 0;
         clients[clientFd].Sending = 0;
+        clients[clientFd].CgiSendHeader = 0;
         clients[clientFd].autoindex = 0;
         clients[clientFd].header_complete = 0;
         clients[clientFd].ResponseChunked = 0;
@@ -327,6 +329,16 @@ void Server::run()
                 char buffer[BUF_SIZE];
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE - 1);
+                if (!clients[fd].CgiSendHeader && bytesRead == 0)
+                {
+                    std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
+                    clients[fd].response = Response::buildResponse(a, 204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients);
+                    clients[fd].statusCode = 204;
+                    clients[fd].statusMsg = "No Content";
+                    WaitChildAndClean(epollManager, clients, fd);
+                    std::cout << "\n\nherere in the function off fd=: " << fd << "and status code is: " << clients[fd].statusCode << "===\n\n";
+                    // exit(13);
+                }
                 // clients[fd].ResponseChunked = 0;
                 // std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                 // exit (18);
@@ -348,7 +360,7 @@ void Server::run()
                     }
                     clients[fd].bytesRead = bytesRead;
                 }
-                else if (bytesRead == 0)//add timeout
+                else if (bytesRead == 0 && clients[fd].statusCode != 204)//add timeout
                 {
                     std::cout << "bytesRead is : 0" << std::endl;
                     // clients[fd].CgiBody.append(buffer, bytesRead);
@@ -456,6 +468,7 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                     {
+                        std::cout << "\n\nfd number is: " << fd << "and status code is: " << clients[fd].statusCode << "===\n\n";
                         if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
                             handleRequest(fd, a, clients, epollManager);
                         if (!clients[fd].no_data)
