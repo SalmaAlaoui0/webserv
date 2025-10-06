@@ -10,7 +10,6 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-
 #include "../includes/Server.hpp"
 #include "../includes/Response.hpp"
 #include "../includes/ServerConfig.hpp"
@@ -219,81 +218,106 @@ std::string to_string98(size_t value) {
 void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, std::string interpreter, EpollManager &epollManager)
 {
 	clientobj[clientFd].has_cgi = 1;
-	//std::cout << "the cgi path is: " << path << ", and cgi interpreter is: " << interpreter << std::endl;
- int pipeFD[2];
-    if (pipe(pipeFD) == -1)
-    {
-        std::string HttpHeader = "Cotent-Type: text/plain\r\n\r\n";
-        std::string str =  HttpHeader + "A CGI pipe error\n";
-    }
-    pid_t pid = fork();
-    if (pid == 0)
-    {
-        dup2(pipeFD[1], STDOUT_FILENO);
-        close(pipeFD[0]);
-        close(pipeFD[1]);
-		std::string new_body;
-		setenv("REDIRECT_STATUS", "200", 1);
-		if(clientobj[clientFd].method == "GET")
-				setenv("REQUEST_METHOD", "GET", 1);
-		if(clientobj[clientFd].method == "POST")
-				setenv("REQUEST_METHOD", "POST", 1);
-			std::string len;
-			if(clientobj[clientFd].chnked)
-			{
-				len = to_string98(clientobj[clientFd].body_chunked.size());
-				new_body = clientobj[clientFd].body_chunked;
-			}
-			else
-			{
-				len =  to_string98(clientobj[clientFd].PostBody.size());
-				new_body = clientobj[clientFd].PostBody;
-			}
-        setenv("SCRIPT_FILENAME", path.c_str(), 1);
-        setenv("QUERY_STRING", clientobj[clientFd].QUERY_STRING.c_str(), 1);
-		setenv("CONTENT_LENGTH", len.c_str(), 1);
-		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
-		setenv("REDIRECT_STATUS", "200", 1);
-		setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
-		setenv("GATEWAY_INTERFACE", "CGI/1.1", 1);
-		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
-		// so only and only if the request has a body like post we should add the environment variable called "CONTENT_TYPE"
-		std::vector<char *> args;
-		// args.push_back(const_cast<char*>(interpreter.c_str()));
-		args.push_back(const_cast<char*>(path.c_str()));
-		args.push_back(const_cast<char*>(path.c_str()));
-		args.push_back(NULL);
-		execve(interpreter.c_str(), &args[0], environ);
-		exit (1);
-		// If execve returns, an error occurred
-		std::cerr << "Failed to execute CGI script: " << strerror(errno) << std::endl;
-		const char *err =
-			"Status: 500\r\n"
-			"Content-Type: text/html\r\n\r\n"
-			"<!DOCTYPE html>\n"
-			"<html>\n"
-			"<head><title>500 Internal Server Error</title></head>\n"
-			"<body>\n"
-			"<h1>500 Internal Server Error</h1>\n"
-			"<p>Something went wrong executing the CGI script.</p>\n"
-			"</body>\n"
-			"</html>\n";
-        write(1, err, strlen(err));	
-        exit (1);
-    }
-	else
-    {
-        close(pipeFD[1]);
-		clientobj[clientFd].ResponseChunked = 0;
-		fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
+	std::cout << "the cgi path is: " << path << ", and cgi interpreter is: " << interpreter << std::endl;
 
-		epollManager.addSocket(pipeFD[0], EPOLLIN);
+int input_pipe[2];
+int pipeFD[2];
+if (pipe(input_pipe) == -1 || pipe(pipeFD) == -1)
+{
+    perror("pipe");
+    return;
+}
 
-        CgiInfo info;
-        info.pipefd = pipeFD[0];
-        info.pid = pid;
-        clientobj[clientFd].cgiMap[clientFd] = info;
-	}
+pid_t pid = fork();
+
+if (pid == -1)
+{
+    perror("fork");
+    return;
+}
+
+if (pid == 0)
+{
+    // ──────────────── ENFANT (CGI) ────────────────
+    // Rediriger stdin / stdout
+    dup2(input_pipe[0], STDIN_FILENO);
+    dup2(pipeFD[1], STDOUT_FILENO);
+
+    // Fermer les extrémités inutiles
+    close(input_pipe[0]);
+    close(input_pipe[1]);
+    close(pipeFD[0]);
+    close(pipeFD[1]);
+
+    // Arguments (ex : python3 script.py)
+    std::vector<char *> args;
+    args.push_back(const_cast<char*>(interpreter.c_str())); // /usr/bin/python3
+    args.push_back(const_cast<char*>(path.c_str()));        // script
+    args.push_back(NULL);
+
+    // Variables d’environnement CGI
+    if (clientobj[clientFd].method == "POST")
+    {
+        setenv("REQUEST_METHOD", "POST", 1);
+        std::string body;
+        if (clientobj[clientFd].chnked)
+            body = clientobj[clientFd].body_chunked;
+        else
+            body = clientobj[clientFd].PostBody;
+        std::string len = to_string98(body.size());
+        setenv("CONTENT_LENGTH", len.c_str(), 1);
+        setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
+    }
+    else
+    {
+        setenv("REQUEST_METHOD", "GET", 1);
+        setenv("CONTENT_LENGTH", "0", 1);
+    }
+
+    setenv("SCRIPT_FILENAME", path.c_str(), 1);
+    setenv("QUERY_STRING", clientobj[clientFd].QUERY_STRING.c_str(), 1);
+    setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+    setenv("REDIRECT_STATUS", "200", 1);
+
+    // Exécuter le script CGI
+    execve(interpreter.c_str(), &args[0], environ);
+
+    // Si execve échoue
+    perror("execve");
+    exit(1);
+}
+else
+{
+    // ──────────────── PARENT (Serveur) ────────────────
+    close(input_pipe[0]); // inutile au parent
+    close(pipeFD[1]);     // inutile au parent
+
+    // Si POST, écrire le body dans stdin de l’enfant
+    if (clientobj[clientFd].method == "POST" && !clientobj[clientFd].PostBody.empty())
+    {
+		std::cerr << " kayktab fe ipie33333333333333\n\n";
+        ssize_t written = write(input_pipe[1],
+            clientobj[clientFd].PostBody.c_str(),
+            clientobj[clientFd].PostBody.size());
+        if (written == -1)
+            perror("write to CGI stdin");
+    }
+
+    // Très important : fermer le stdin du CGI pour signaler EOF
+    close(input_pipe[1]);
+
+    // Lecture du stdout du CGI en mode non-bloquant
+    fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
+    epollManager.addSocket(pipeFD[0], EPOLLIN);
+
+    // Stocker les infos CGI pour suivi
+    CgiInfo info;
+    info.pipefd = pipeFD[0];
+    info.pid = pid;
+    info.start = time(NULL);
+    clientobj[clientFd].cgiMap[clientFd] = info;
+}
+
 }
 
 
@@ -561,17 +585,26 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 
 void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj,EpollManager &epollManager)
 {
+	std::cout << " i m in posttttttttttttt\n\n"; 
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
 		if (clientobj[clientFd].has_cgi)
 	{
-std::cout << "body cgiiiiiiiiiiiii ::"<< clientobj[clientFd].CGIPostBody<< std::endl;
+		// std::cout << " bodyy cgii "<<  clientobj[clientFd].CGIPostBody<< std::endl;
+		if(clientobj[clientFd].cgiMap[clientFd].flag_rep)
+		{
+			std::cout << " i m in flagggggggggggggg\n\n\n";
+		clients[clientFd].response= Response::buildResponse(r, 502, "Created",_configs[clients[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);
+		if(remove(clients[clientFd].filename.c_str()))
+			return;
+		return ;
+		}
 		std::ofstream out(clientobj[clientFd].filename.c_str(),std::ios::binary | std::ios::trunc);
 		if(!out)
 		{
 			std::cerr << "❌ Failed to open file: " << clientobj[clientFd].filename << std::endl;
-			clients[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clients[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
+			clients[clientFd].response= Response::buildResponse(r, 404, "Not Found",_configs[clients[clientFd].conf_i].ErrorPages[404], clientFd, clientobj);
 			out.close();
 			return;
 		}
@@ -583,7 +616,7 @@ std::cout << "body cgiiiiiiiiiiiii ::"<< clientobj[clientFd].CGIPostBody<< std::
 			header = clientobj[clientFd].CGIPostBody.substr(0, header_end + 4);
 			clientobj[clientFd].CGIPostBody = clientobj[clientFd].CGIPostBody.substr(header.size());
 
-			std::cout << " hedder is1**************"<< header<< std::endl;
+			std::cout << " hedder is**************"<< header<< std::endl;
 
 		}
 		else if ((header_end = clientobj[clientFd].CGIPostBody.find("\n\n")) != std::string::npos )
@@ -592,16 +625,7 @@ std::cout << "body cgiiiiiiiiiiiii ::"<< clientobj[clientFd].CGIPostBody<< std::
 			header = clientobj[clientFd].CGIPostBody.substr(0, header_end + 2);
 			clientobj[clientFd].CGIPostBody = clientobj[clientFd].CGIPostBody.substr(header.size());
 
-			std::cout << " hedder is2**************"<< header<< std::endl;
-		}
-		else if(header_end == std::string::npos)
-		{
-		std::cout << " anaayaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n\n\n";
-		clients[clientFd].response= Response::buildResponse(r, 400, "Bad Request",_configs[clients[clientFd].conf_i].ErrorPages[400], clientFd, clientobj);
-		out.close();
-		if(remove(clients[clientFd].filename.c_str()))
-			return;
-		return ;
+			std::cout << " hedder is1**************"<< header<< std::endl;
 		}
 		std::map<std::string , std::string>map_h;
 		size_t i ;
@@ -615,47 +639,37 @@ std::cout << "body cgiiiiiiiiiiiii ::"<< clientobj[clientFd].CGIPostBody<< std::
 			value = trim1(value);
 			size_t i1 = value.find(";");
 			value = value.substr(0,i1);
-			std::cout << "key^^^^^^^^^^^^^"<< key << std::endl;
+			//std::cout << "key^^^^^^^^^^^^^"<< key << std::endl;
 			map_h[key] = value;
-			std::cout << "value^^^^^^^^^^^^^"<< value << std::endl;
+			//std::cout << "value^^^^^^^^^^^^^"<< value << std::endl;
 			header = header.substr(i +1);
 		}
-		std::map<std::string,std::string> contentTypeToExt;
-		contentTypeToExt["text/html"] = "html";
-		contentTypeToExt["text/plain"] = "txt";
-		contentTypeToExt["image/png"] = "png";
-		contentTypeToExt["image/jpeg"] = "jpg";
-		contentTypeToExt["video/mp4"] = "mp4";
-		contentTypeToExt["application/pdf"] = "pdf";
-		//exit(1);
-		std::string save = clientobj[clientFd].filename;
+		 std::string save = clientobj[clientFd].filename;
  		size_t i2 = clientobj[clientFd].filename.find(".");
-		std::string ex_final = "";
-		 ex_final = contentTypeToExt[map_h["Content-Type"]];
-		 std::cout << " contenet ty  isssssssssss ::: "<<map_h["Content-Type"]<< std::endl;
-		if(ex_final.empty())
+		std::map<std::string , std::string>::iterator a = map_h.find("Content-Type");
+		std::string str = "";
+		size_t b = 0;
+		if(a != map_h.end())
 		{
-			std::cout << " ############################a\n\n\n";
-		clients[clientFd].response= Response::buildResponse(r, 400, "Bad Request",_configs[clients[clientFd].conf_i].ErrorPages[400], clientFd, clientobj);
-		out.close();
-		if(remove(clients[clientFd].filename.c_str()))
-			return;
-		return;
+			str = a->second;
+			b = str.find("/");
+			str = str.substr(b+1);
+			clientobj[clientFd].filename = clientobj[clientFd].filename.substr(0,i2+1) + str;
 		}
-		clientobj[clientFd].filename = clientobj[clientFd].filename.substr(0,i2+1) + contentTypeToExt[map_h["Content-Type"]];
-		//std::cout << " fil nameeeeeeeeeeeee newwwwww############## " << clientobj[clientFd].filename<< std::endl;
+	else
+		clientobj[clientFd].filename = clientobj[clientFd].filename.substr(0,i2+1) + "plain";
+	std::cout << " fil nameeeeeeeeeeeee newwwwww############## " << clientobj[clientFd].filename<< std::endl;
 		out.flush();
 		if (std::rename(save.c_str(), clientobj[clientFd].filename.c_str()) == 0) {
 			std::cout << "File renamed successfully!\n";
 		} 
 		else {
 		std::cerr << "❌ Failed to rename file: " << clientobj[clientFd].filename << std::endl;
-		clients[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clients[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
+		clients[clientFd].response= Response::buildResponse(r, 404, "Not Found",_configs[clients[clientFd].conf_i].ErrorPages[404], clientFd, clientobj);
 		out.close();
 		if(remove(clients[clientFd].filename.c_str()))
 			return;
 		return ;
-			return;
 		}
 		std::map<std::string, std::string>::iterator it = map_h.find("Content-Length");
 		if (it != map_h.end())
@@ -695,7 +709,7 @@ std::cout << "body cgiiiiiiiiiiiii ::"<< clientobj[clientFd].CGIPostBody<< std::
 	std::ostringstream filename;
     std::string fullpath = map.begin()->second;
 	std::cout << "join ****************uploading path for post is:" << fullpath << std::endl;
-	std::string abstract_fil =  abstract_file(r.get_path());
+	std::string abstract_fil =  abstract_file(clientobj[clientFd].path);
 	size_t b = abstract_fil.find_last_of('.');
 	std::string extt;
 	std::string inter = "";
@@ -780,10 +794,10 @@ std::cout << "body cgiiiiiiiiiiiii ::"<< clientobj[clientFd].CGIPostBody<< std::
 		// 	clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", _configs[clients[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
 		// 	return;
 		// }
+		
+		execute_cgi(clientFd,clientobj,filename.str(), inter,epollManager);
 		out.flush();
 		out.close();
-
-		execute_cgi(clientFd,clientobj,filename.str(), inter,epollManager);
 
 				// Read from the pipe directly
 		// char buffer[4096];
@@ -813,6 +827,7 @@ std::cout << "body cgiiiiiiiiiiiii ::"<< clientobj[clientFd].CGIPostBody<< std::
 		clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);
 
 }
+
 
 
 
