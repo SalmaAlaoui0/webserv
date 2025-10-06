@@ -264,6 +264,9 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 		args.push_back(const_cast<char*>(path.c_str()));
 		args.push_back(NULL);
 		execve(interpreter.c_str(), &args[0], environ);
+		exit (1);
+		// If execve returns, an error occurred
+		std::cerr << "Failed to execute CGI script: " << strerror(errno) << std::endl;
 		const char *err =
 			"Status: 500\r\n"
 			"Content-Type: text/html\r\n\r\n"
