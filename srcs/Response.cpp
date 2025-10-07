@@ -80,6 +80,12 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
     return rep;
 }
 
+static std::string intToString(int num)
+{
+    std::ostringstream ss;
+    ss << num;
+    return ss.str();
+}
 
 std::string generateId(size_t length = 16) 
 {
@@ -96,18 +102,25 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 {
     std::ostringstream response;
     ssize_t sent = 0;
-    if (clientobj[clientFd].statusCode == 302)
+
+    if (clientobj[clientFd].statusCode == 301 || clientobj[clientFd].statusCode == 302)
     {
+        std::string statusStr = intToString(clientobj[clientFd].statusCode); 
+        std::string reasonPhrase = (clientobj[clientFd].statusCode == 301)
+                                    ? "Moved Permanently"
+                                    : "Found";
+
         std::string body =
             "<html>\n"
-            "<head><title>302 Found</title></head>\n"
+            "<head><title>" + statusStr + " " + reasonPhrase + "</title></head>\n"
             "<body>\n"
-            "<p>Resource moved to <a href=\"" + clientobj[clientFd].ReturnLocation + "\">" + clientobj[clientFd].ReturnLocation + "</a></p>\n"
+            "<p>Resource moved to <a href=\"" + clientobj[clientFd].ReturnLocation + "\">" +
+            clientobj[clientFd].ReturnLocation + "</a></p>\n"
             "</body>\n"
             "</html>";
 
         std::ostringstream headers;
-        headers << "HTTP/1.1 302 Found\r\n"
+        headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << " " << reasonPhrase << "\r\n"
                 << "Location: " << clientobj[clientFd].ReturnLocation << "\r\n"
                 << "Content-Type: text/html\r\n"
                 << "Content-Length: " << body.size() << "\r\n"
@@ -117,11 +130,16 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         std::string response = headers.str();
         send(clientFd, response.c_str(), response.size(), MSG_NOSIGNAL);
 
-        std::cout << "it's 302 \n";
-        std::cout << "the data location should be served is: " << clientobj[clientFd].ReturnLocation << std::endl;
+        std::cout << "✅ Redirect response sent to FD: " << clientFd << " with the return code is: " << statusStr << std::endl;
+        clientobj[clientFd].send_complete = 1;
     }
-    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read)
-    { 
+// <<<<<<< HEAD
+//     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read)
+//     { 
+// =======
+
+    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read && clientobj[clientFd].statusCode != 204)
+    {
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
             srand(time(NULL));
@@ -182,7 +200,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         clientobj[clientFd].Sending = 1;
     }
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
-        && !clientobj[clientFd].send_complete && clientobj[clientFd].Read)
+        && !clientobj[clientFd].send_complete && clientobj[clientFd].Read && clientobj[clientFd].statusCode != 204)
     {
         ssize_t sendbytes = send(clientFd, clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size(), MSG_NOSIGNAL);
         if (sendbytes != -1)
@@ -213,8 +231,23 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
         sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
     }
+    else if (clientobj[clientFd].statusCode == 204)
+    {
+        response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
+                << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
+                if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+                {
+                    response << "Set-Cookie: session_id=" << clientobj[clientFd].response.sessionId <<"\r\n";
+                    clientobj[clientFd].has_cookie = 1;
+                }
+                response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
+                << clientobj[clientFd].response.body;
+
+        sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
+    }
     else 
     {
+
          response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)
@@ -226,7 +259,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
                 << clientobj[clientFd].response.body;
 
         sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
-
         return;
     }
     if (sent < 0)
