@@ -220,6 +220,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].start_sending = 0;
         clients[clientFd].create_file = 0;
         clients[clientFd].Sending = 0;
+        clients[clientFd].CgiSend = 0;
         clients[clientFd].autoindex = 0;
         clients[clientFd].header_complete = 0;
         clients[clientFd].ResponseChunked = 0;
@@ -275,7 +276,7 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
 }
 
 
-void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& clientobj, int fd)
+void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& clientobj, int fd, std::vector<ServerConfig> _configs, request &a)
 {
      int pid = clientobj[fd].cgiMap[fd].pid;
      int wstatus;
@@ -328,6 +329,8 @@ if (result == pid) {
             std::cerr << "CGI exited with error code " << exitCode << std::endl;
             clientobj[fd].cgiMap[fd].flag_rep = true;
             std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
+            clientobj[fd].response = Response::buildResponse(a, 500, "No Content", _configs[clientobj[fd]. conf_i].ErrorPages[500], fd, clientobj);
+
 
         }
     } else if (WIFSIGNALED(wstatus)) {
@@ -383,17 +386,27 @@ void Server::run()
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE - 1);
                 // clients[fd].ResponseChunked = 0;
-                std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                // std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                 // exit (18);
+                if (!clients[fd].CgiSend && bytesRead == 0)
+                {
+                    std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
+                    clients[fd].response = Response::buildResponse(a, 204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients);
+                    clients[fd].statusCode = 204;
+                    clients[fd].statusMsg = "No Content";
+                    WaitChildAndClean(epollManager, clients, fd, _configs, a);
+                    // exit(13);
+                }
                 if (bytesRead > 0)
                 {
+                    clients[fd].CgiSend = 1;
                     buffer[bytesRead] = '\0';
                     // std::cout << "The Body Is Being Appended. " << std::endl;
                     if (clients[fd].method == "GET")
                     {
                         clients[fd].CgiBody.assign(buffer, bytesRead);
                         clients[fd].Read = 1;
-                        std::cout << "hereere READINNG IS: 1\n";
+                        // std::cout << "hereere READINNG IS: 1\n";
                     }
                     else if (clients[fd].method == "POST")
                     {
@@ -403,13 +416,13 @@ void Server::run()
                     }
                     clients[fd].bytesRead = bytesRead;
                 }
-                else if (bytesRead == 0)//add timeout
+                else if (bytesRead == 0 && clients[fd].statusCode != 204)//add timeout
                 {
                     std::cout << "bytesRead is : 0" << std::endl;
                     // clients[fd].CgiBody.append(buffer, bytesRead);
                     clients[fd].statusCode = 200;
                     clients[fd].statusMsg = "OK";
-                    WaitChildAndClean(epollManager, clients, fd);
+                    WaitChildAndClean(epollManager, clients, fd, _configs, a);
                     std::cout << "finish reading cgi\n";
                     // clients[fd].send_complete = 1;
                 }
@@ -421,7 +434,7 @@ void Server::run()
                     }
                     else
                     {
-                        WaitChildAndClean(epollManager, clients, fd);
+                        WaitChildAndClean(epollManager, clients, fd, _configs, a);
                         clients[fd].send_complete = 1;
                         // make an error html response
                         perror("REad");
@@ -432,7 +445,7 @@ void Server::run()
                 if (difftime(now, clients[fd].CgiStartActivity) > 3)
                 {
                     std::cout << "CGI timeout\n";
-                    WaitChildAndClean(epollManager, clients, fd);
+                    WaitChildAndClean(epollManager, clients, fd, _configs, a);
                     // closePipeAndCleanup(fd);
                 }
                 // clients[fd].has_cgi = 0;

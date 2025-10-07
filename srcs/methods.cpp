@@ -318,8 +318,6 @@ else
     clientobj[clientFd].cgiMap[clientFd] = info;
 }
 
-
-
 }
 
 

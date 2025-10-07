@@ -33,6 +33,7 @@ class Client
         bool chnked;
         std::string body_chunked;
         bool start_sending;
+        bool CgiSend;
         bool cgi_has_problem;
         bool send_complete;
         bool Sending;
