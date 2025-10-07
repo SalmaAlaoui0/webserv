@@ -96,7 +96,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 {
     std::ostringstream response;
     ssize_t sent = 0;
-//std::cout << " wafaaaa%%%%%%%%%% "<< clientobj[clientFd].statusCode<< std::endl;
     if (clientobj[clientFd].statusCode == 302)
     {
         std::string body =
@@ -122,7 +121,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         std::cout << "the data location should be served is: " << clientobj[clientFd].ReturnLocation << std::endl;
     }
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read)
-    {
+    { 
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
             srand(time(NULL));
@@ -202,9 +201,9 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (((!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST") && clientobj[clientFd].ResponseChunked) || 
         clientobj[clientFd].method.empty())
     {
-        response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
+        response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
-                if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+                if(clientobj[clientFd].has_cookie == 0)
                 {
                     response << "Set-Cookie: session_id=" << clientobj[clientFd].response.sessionId <<"\r\n";
                     clientobj[clientFd].has_cookie = 1;
@@ -216,6 +215,18 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     else 
     {
+         response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
+                << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
+                if(clientobj[clientFd].has_cookie == 0)
+                {
+                    response << "Set-Cookie: session_id=" << clientobj[clientFd].response.sessionId <<"\r\n";
+                    clientobj[clientFd].has_cookie = 1;
+                }
+                response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
+                << clientobj[clientFd].response.body;
+
+        sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
+
         return;
     }
     if (sent < 0)
@@ -232,17 +243,17 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
         //maybe we should close the connection if send failed
     }
-    else
-    {
-        // std::cout << "✅ File response sent to FD: " << clientFd << std::endl;
-        return ;
-    }
+    // else
+    // {
+    //     // std::cout << "✅ File response sent to FD: " << clientFd << std::endl;
+    //     return ;
+    // }
     return;
 }
 
 Response Response::buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &clientobj)
 {
-//(void)r;
+(void)r;
     Response rep;
     Server s;
     if (code == 400 && filePath.empty())
@@ -309,13 +320,13 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
             send_bigsize(clientobj, clientFd, filePath, rep);
         }
     }
-    if ((r.get_method()== "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
-    {
+    // if ((r.get_method()== "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
+    // {
         // std::cout << "helllllllllllllo\n";
         std::ostringstream ss; // to put file content in it ;)
         ss << file.rdbuf();
         rep.body = ss.str();
         // std::cout << "THE BODY OF UR FILE IS: " << rep.body << std::endl;
-    }
+    //}
     return rep;
 }
