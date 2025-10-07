@@ -493,7 +493,7 @@ void Server::run()
                             }
                             else
                             {
-                                // std::cout << "Hrererere is the leakkk for fd: " << fd << std::endl;
+                                 std::cout << "______________________Hrererere is the leakkk for fd: " << fd << std::endl;
                                 handleRequest(fd, a, clients, epollManager);
                                         // Read from the pipe directly
                                 // char buffer[4096];
@@ -521,7 +521,12 @@ void Server::run()
                 else if (events[i].events & EPOLLOUT)
                     {
                         if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
+                        {
+                            std::cout<<"+++++++++++++++++++maart ach kandir hna f handle req 2\n\n";
+
                             handleRequest(fd, a, clients, epollManager);
+
+                        }
                         if (!clients[fd].no_data)
                             clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                         if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
