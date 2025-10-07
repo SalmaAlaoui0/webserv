@@ -226,15 +226,24 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].ResponseChunked = 0;
         clients[clientFd].PostBody.clear();
         clients[clientFd].CgiBody.clear();
+        clients[clientFd].body_chunked.clear();
         clients[clientFd].has_cookie = 0;
         clients[clientFd].has_cgi = 0;
         clients[clientFd].cgiMap[clientFd].pipefd = -1;
         clients[clientFd].cgiMap[clientFd].flag_rep = false;
+        clients[clientFd].cgiMap[clientFd].exit_code_cgi = 0;
+        clients[clientFd].HeaderEnd  = 0;
+        clients[clientFd].chnked =0;
      //   clients[clientFd].cgiMap[clientFd].start = time(NULL);
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
         clients[clientFd].conf_i = 0;
+        clients[clientFd].method.clear();
+        clients[clientFd].path.clear();
+        clients[clientFd].version.clear();
+        clients[clientFd].autoIndexBody.clear();
+        
         req.slash = 0;
         std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl; 
     
@@ -300,7 +309,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
 if (result == 0) {
     std::cout << "2222222222222222hiiiiii\n\n";
     double elapsed = difftime(time(NULL), clientobj[fd].cgiMap[fd].start);
-    if (elapsed > 3) {
+    if (elapsed > 2) {
         std::cerr << "[CGI] Timeout exceeded, killing process " << pid << std::endl;
         kill(pid, SIGKILL);
         waitpid(pid, &wstatus, 0);
@@ -313,6 +322,8 @@ if (result == pid) {
     std::cout << " 11111111111hiiiiii\n\n";
     if (WIFEXITED(wstatus)) {
         int exitCode = WEXITSTATUS(wstatus);
+             clientobj[fd].cgiMap[fd].exit_code_cgi = exitCode;
+
         if (exitCode == 0)
         {
             std::cout << "CGI terminé avec succès ✅\n";
@@ -323,7 +334,9 @@ if (result == pid) {
         {
             std::cerr << "CGI exited with error code " << exitCode << std::endl;
             clientobj[fd].cgiMap[fd].flag_rep = true;
+            std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
             clientobj[fd].response = Response::buildResponse(a, 500, "No Content", _configs[clientobj[fd]. conf_i].ErrorPages[500], fd, clientobj);
+
 
         }
     } else if (WIFSIGNALED(wstatus)) {
@@ -379,9 +392,9 @@ void Server::run()
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE - 1);
                 // clients[fd].ResponseChunked = 0;
-                // std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                 //std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                 // exit (18);
-                if (!clients[fd].CgiSend && bytesRead == 0)
+                if (  bytesRead == 0)//!clients[fd].CgiSend
                 {
                     std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
                     clients[fd].response = Response::buildResponse(a, 204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients);
@@ -404,7 +417,7 @@ void Server::run()
                     else if (clients[fd].method == "POST")
                     {
                         clients[fd].CGIPostBody.append(buffer, bytesRead);
-                     //   std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                        //std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                         // exit (19);
                     }
                     clients[fd].bytesRead = bytesRead;
@@ -423,7 +436,6 @@ void Server::run()
                 {
                     if (errno == EAGAIN)
                     {
-                        // std::cout << " Heeeeeeeere\n\n";
                         clients[fd].no_data = 1;
                     }
                     else
@@ -494,6 +506,9 @@ void Server::run()
                             else
                             {
                                  std::cout << "______________________Hrererere is the leakkk for fd: " << fd << std::endl;
+
+                                // std::cout << "Hrererere is the leakkk for fd: handle " << fd << std::endl;
+
                                 handleRequest(fd, a, clients, epollManager);
                                         // Read from the pipe directly
                                 // char buffer[4096];
@@ -516,6 +531,9 @@ void Server::run()
                     catch(std::exception &e)
                     {
                         std::cout << e.what() << std::endl;
+                        std::cout << " heloooooo|\n\n\n\n";
+
+                            clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                     }
                 }
                 else if (events[i].events & EPOLLOUT)

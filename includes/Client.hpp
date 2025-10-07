@@ -11,6 +11,7 @@ struct CgiInfo {
     int pipefd;
     int start;// initailiserrr 
     bool flag_rep;/// initailiserrrrr 
+    int exit_code_cgi;
     pid_t pid;
 };
 
@@ -57,7 +58,7 @@ class Client
         size_t size_send;
         size_t conf_i ;
         size_t bytesRead;
-
+ size_t HeaderEnd;
         std::map<int, CgiInfo> cgiMap;///// in this map add cgi exit status code and do not send cgi response until code status is 200 
         std::map<int, std::string> GetpathMap;
         
@@ -88,3 +89,4 @@ class Client
 int get_final_port();
 
 };
+bool is_valid_content_length(const std::string &value);

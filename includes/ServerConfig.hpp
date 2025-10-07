@@ -14,7 +14,7 @@ struct	ServerConfig
 	std::string root;
 	std::string server_name;
 	std::string index;
-	long client_max_body_size;
+	size_t client_max_body_size;
 
 	std::map<int, std::string> ErrorPages;
 	std::vector<LocationConfig> locations;
