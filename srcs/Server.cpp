@@ -213,6 +213,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         epollManager.addSocket(clientFd, EPOLLIN);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
         req.ContentLength = 0;
+        clients[clientFd].statusCode = 200;
         clients[clientFd].cgi_active = 0;
         clients[clientFd].body_complete = 0;
         clients[clientFd].send_complete = 0;
@@ -228,6 +229,9 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].has_cgi = 0;
         clients[clientFd].cgiMap[clientFd].pipefd = -1;
         clients[clientFd].cgiMap[clientFd].flag_rep = false;
+        clients[clientFd].cgiMap[clientFd].exit_code_cgi = 0;
+        clients[clientFd].HeaderEnd  = 0;
+
      //   clients[clientFd].cgiMap[clientFd].start = time(NULL);
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
@@ -311,6 +315,8 @@ if (result == pid) {
     std::cout << " 11111111111hiiiiii\n\n";
     if (WIFEXITED(wstatus)) {
         int exitCode = WEXITSTATUS(wstatus);
+             clientobj[fd].cgiMap[fd].exit_code_cgi = exitCode;
+
         if (exitCode == 0)
         {
             std::cout << "CGI terminé avec succès ✅\n";
@@ -321,6 +327,7 @@ if (result == pid) {
         {
             std::cerr << "CGI exited with error code " << exitCode << std::endl;
             clientobj[fd].cgiMap[fd].flag_rep = true;
+            std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
 
         }
     } else if (WIFSIGNALED(wstatus)) {
@@ -410,7 +417,6 @@ void Server::run()
                 {
                     if (errno == EAGAIN)
                     {
-                        std::cout << " Heeeeeeeere\n\n";
                         clients[fd].no_data = 1;
                     }
                     else
@@ -480,7 +486,7 @@ void Server::run()
                             }
                             else
                             {
-                                // std::cout << "Hrererere is the leakkk for fd: " << fd << std::endl;
+                                // std::cout << "Hrererere is the leakkk for fd: handle " << fd << std::endl;
                                 handleRequest(fd, a, clients, epollManager);
                                         // Read from the pipe directly
                                 // char buffer[4096];
@@ -503,6 +509,9 @@ void Server::run()
                     catch(std::exception &e)
                     {
                         std::cout << e.what() << std::endl;
+                        std::cout << " heloooooo|\n\n\n\n";
+
+                            clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                     }
                 }
                 else if (events[i].events & EPOLLOUT)

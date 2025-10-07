@@ -33,60 +33,49 @@ request::request(request const &ref)
     *this = ref;
 }
 
+
+bool is_valid_content_length(const std::string &value)
+{
+    if (value.empty())
+        return false;
+    std::stringstream ss(value);
+    long long number;
+    char c;
+    if (!(ss >> number))
+        return false;
+    if (ss >> c)
+        return false;
+    if (number < 0)
+        return false;
+    return true;
+}
+
 bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd , ServerConfig& config)
 {
-    std::cout  << " jittttttttttt\n\n";
     std::map<std::string , std::string>headers = clients[clientFd].get_header();
-    if(clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
+    size_t pos = 0;
+    pos = clients[clientFd].path.find("..");
+    if(clients[clientFd].HeaderEnd  > 8000)
     {
-        
-        std::cout << "Method is: " << r.get_method() << std::endl; /// telnet 127.0.0.1 8080 there is a problem here the get method does not return the method but the path if we're using telnet as a client try it!
-        clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed", config.ErrorPages[405], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(r, 431, "Request Header Fields Too Large", config.ErrorPages[431], clientFd, clients);
         return 0;
     }
-    if(clients[clientFd].method == "POST")/// 5ass n3awd les error dyl post 
+    if(pos  != std::string::npos)
     {
-        //std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
-        // if(ptr != headers.end() || ptr ->second.empty())
-        // {
-        //     std::cout << " hanai hnaaaaaaaaaaaaaaa\n\n";
-        //     clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
-		// 	std::string a = ptr->second;
-		// 	unsigned long b = std::atoi(a.c_str());
-		// 	if(b < 0 || (b != r.get_body().size()))
-        //     {
-        //         std::cout << "b is: " << b << " and r.getbodysize is: " << r.get_body().size() << std::endl;
-        //         //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
-
-        //         return 0;
-        //     }
-        // }
-        
-        // else
-        // {
-        //     //send_response(clientfd, 400, "Bad Request", load_html_file("www/400.html"));
-        //     std::cout << " khrjattttttt4\n";
-        //     clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error", config.ErrorPages[500], clientFd, clients);
-
-        //     return 0;
-        // }
+         clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
+        return 0;
     }
-	if(clients[clientFd].version != "HTTP/1.1")
+    if(clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
     {
-        std::cout << "here internalllll in version\n";
+        clients[clientFd].response = Response::buildResponse(r, 501, "Not Implemented", config.ErrorPages[501], clientFd, clients);
+        return 0;
+    }
+    if(clients[clientFd].version != "HTTP/1.1" && clients[clientFd].version != "HTTP/1.0" )
+    {
         clients[clientFd].response = Response::buildResponse(r, 505, "HTTP Version Not Supported", config.ErrorPages[505], clientFd, clients);
         return 0;
     }
-    // // debug
-    // std::cerr << "DEBUG: clientFd=" << clientFd << " config addr=" << &config
-    //       << " ErrorPages.size=" << config.ErrorPages.size() << std::endl;
-
-    // for (std::map<int, std::string>::const_iterator it = config.ErrorPages.begin(); it != config.ErrorPages.end(); ++it)
-    // {
-    //     std::cerr << "  page: " << it->first << " => " << it->second << std::endl;
-    // }
-    // //
-	if(headers.find("Host") == headers.end())	
+    if(headers.find("Host") == headers.end())	
     {
         std::cerr << "inside if statement of post\n";
 
@@ -98,13 +87,34 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
         clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
         return 0;
     }
-    // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
-    // if (r.get_body().size() > max_body_size)
-    // {
-    //     std::cout << "In some conditions waiting for the faith and the error page is:" << config.ErrorPages[413] << " and the clientFd is: " << clientFd << " \n";
-    //     clients[clientFd].response = Response::buildResponse(r, 413, "Payload Too Large", config.ErrorPages[413], clientFd, clients);
-    //     return 0;
-    // }
+    if(clients[clientFd].method == "POST")
+    {
+        std::map<std::string , std::string>::iterator ptr = headers.find("Content-Length"); 
+        if(ptr == headers.end() && headers["Transfer-Encoding"] != "chunked" && clients[clientFd].method == "POST")
+        {
+            clients[clientFd].response = Response::buildResponse(r, 411,  "Length Required", config.ErrorPages[411], clientFd, clients);
+            return 0;
+        }
+        if(ptr != headers.end())
+        {
+            if(!is_valid_content_length(ptr->second))
+            {
+                clients[clientFd].response = Response::buildResponse(r, 411,  "Length Required", config.ErrorPages[411], clientFd, clients);
+                return 0;
+            }
+        }
+        // if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>(config[clients[clientFd].conf_i].client_max_body_size ) )
+	    // {
+		// clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
+		// return ;
+	    // }
+	    // if (clients[clientFd].PostBody.size() >static_cast<size_t>( config[clients[clientFd].conf_i].client_max_body_size ) && !client[clientFd].chnked)
+	    // {
+		// //send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+		//     clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clientobj);
+		//     return ;
+	    // }
+        }
     return 1;
 }
 
@@ -217,9 +227,9 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
     //std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0 )
     {
-        size_t HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
-        std::string headers = clientobj[clientFd].PostBody.substr(0, HeaderEnd);
-        clientobj[clientFd].PostBody = clientobj[clientFd].PostBody.substr(HeaderEnd + 4);
+        clientobj[clientFd].HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
+        std::string headers = clientobj[clientFd].PostBody.substr(0, clientobj[clientFd].HeaderEnd );
+        clientobj[clientFd].PostBody = clientobj[clientFd].PostBody.substr(clientobj[clientFd].HeaderEnd  + 4);
         std::istringstream iss(headers);
         std::string methode , path ,version, line;
         std::getline(iss, line,  '\r');
@@ -235,11 +245,6 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         }
         clientobj[clientFd].method = methode;
         size_t pos1;
-        size_t pos;
-        if( ( pos = path.find("cgi-bin")) != std::string::npos)
-        {
-             clientobj[clientFd].cgi_active = true;
-        }
         if((pos1 = path.find("?") )!= std::string::npos)
         {
             clientobj[clientFd].path = path.substr(0, pos1);
