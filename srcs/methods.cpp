@@ -46,7 +46,7 @@ std::string getFileExtension(std::string& path)
 
     std::string filename = (lastSlash == std::string::npos) ? path : path.substr(lastSlash + 1);
 
-    if (filename.empty())
+	if (filename.empty())
         return "";
 
     std::size_t dotPos = filename.find_last_of('.');
@@ -277,14 +277,15 @@ if (pid == 0)
 }
 else
 {
-    close(input_pipe[0]);
-    close(pipeFD[1]);
-    if (clientobj[clientFd].method == "POST" && !clientobj[clientFd].PostBody.empty())
+    close(input_pipe[0]); 
+    close(pipeFD[1]);   
+    if (clientobj[clientFd].method == "POST")
     {
-		//std::cerr << " kayktab fe ipie33333333333333\n\n";
-        ssize_t written = write(input_pipe[1],
-            clientobj[clientFd].PostBody.c_str(),
-            clientobj[clientFd].PostBody.size());
+		ssize_t written;
+		if(clientobj[clientFd].chnked)
+			 written = write(input_pipe[1],clientobj[clientFd].body_chunked.c_str(),clientobj[clientFd].body_chunked.size());
+		else
+         	written = write(input_pipe[1],clientobj[clientFd].PostBody.c_str(),clientobj[clientFd].PostBody.size());
         if (written == -1)
             perror("write to CGI stdin");
     }
@@ -304,11 +305,14 @@ std::string find_matching_inter(std::string ext, std::vector<ServerConfig> confi
 {
 	std::map<std::string, std::string> CgiMap = config[i].locations[key].cgi_pass;
 	std::map<std::string, std::string>::iterator it = CgiMap.begin();
-	while (it != CgiMap.end())
+	if (ext != "")
 	{
-		if (it->first == ext)
-			return(it->second);
-		it++;
+		while (it != CgiMap.end())
+		{
+			if (it->first == ext)
+				return(it->second);
+			it++;
+		}
 	}
 	return "";
 }
@@ -323,8 +327,16 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
 		{
-			ext = requested_path.substr(requested_path.find_last_of('.'));
-			interpreter = find_matching_inter(ext, config, i, key);
+			size_t dot_pos = requested_path.find_last_of('.');
+
+			if (dot_pos != std::string::npos)
+			{
+				ext = requested_path.substr(dot_pos);
+				interpreter = find_matching_inter(ext, config, i, key);
+				ext = requested_path.substr(requested_path.find_last_of('.'));
+			}
+			else
+				ext = "";
 			if (!interpreter.empty())
 				execute_cgi(clientFd, clientobj, requested_path, interpreter, epoll);
 			else
@@ -357,7 +369,10 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			else
 			{
 				clientobj[clientFd].ResponseChunked = 1;
-				clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden",config[i].ErrorPages[403], clientFd, clientobj);
+				if (!clientobj[clientFd].has_cookie)
+					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "/home/salaoui/Desktop/webserv/www/new_client.html", clientFd, clientobj);
+				else
+					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "/home/salaoui/Desktop/webserv/www/returning_client.html", clientFd, clientobj);
 			}
         }
 		else // If we did attach the file but still it's not found
@@ -660,7 +675,7 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 	//std::cout <<  "cgi bodyyyyyyyy********************** " << clientobj[clientFd].CGIPostBody<< std::endl;
 		if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
 		{
-				clientobj[clientFd].response= Response::buildResponse(r, 502, "Created",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(r, 502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);
 				if(remove(clientobj[clientFd].filename.c_str()))
 				return 0;
 		}
@@ -737,6 +752,7 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 }
 void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj,EpollManager &epollManager)
 {
+	std::cout << " in post%%%%%%%%%\n";
 	std::map<int, std::string> map;
 	struct stat statbuf;
     map = getMatchingRootPath(r, _configs[conf_i]);
@@ -770,13 +786,23 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	//std::cout << " matchinggggggggggg interprettttttttt ::::  "<< inter << std::endl;
 	}
 	fullpath = join_path(r, fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;
+
 	if(inter.empty())
 	{
-		//std::cout << "\nContent Type is: " << clientobj[clientFd].ContentType << std::endl;
-		int ext = clientobj[clientFd].ContentType.find('/');
-		clientobj[clientFd].ContentType = clientobj[clientFd].ContentType.substr(ext + 1);
+		std::cout << " no cgiiiiiiiiiiiiiiiiiiiiiiiin \n"; 
+		std::map<std::string, std::string> header_ = clientobj[clientFd].map;
+		std::map<std::string, std::string>::iterator it_ = header_.find("Content-Type");
+		std::string type = "";
+		if(it_ != header_.end())
+		{
+			size_t ext = clientobj[clientFd].ContentType.find('/');
+			type = clientobj[clientFd].ContentType.substr(ext + 1);
+		}
+		else
+			type = "plain";
 		srand(time(NULL));
-		filename << fullpath << "/" << generateId1() << "." <<clientobj[clientFd].ContentType  ;
+		filename << fullpath << "/" << generateId1() << "." << type  ;
 		std::cout << "\nfile is uploaded in: " << filename.str() << std::endl;
 		std::ofstream out(filename.str().c_str(),std::ios::binary);
 		if(!out)
@@ -793,9 +819,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			return;
 		}
 		if(clientobj[clientFd].chnked ==1 && clientobj[clientFd].body_complete == 1)
-		{
 			out.write(clientobj[clientFd].body_chunked.c_str(), clientobj[clientFd].body_chunked.size());
-		}
 		else 
 			out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
 		out.flush();
@@ -805,7 +829,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	{
 		srand(time(NULL));
 		filename << fullpath << "/" << generateId1()  << extt;/////hereee
-		//std::cout << "\nfile@@@@@@@@@@@@ is uploaded in: " << filename.str() << std::endl;
+		std::cout << "\nfile@@@@@@@@@@@@ is uploaded in: " << filename.str() << std::endl;
 		clientobj[clientFd].filename = filename.str();
 		std::ofstream out(filename.str().c_str(),std::ios::binary);
 		if(!out)

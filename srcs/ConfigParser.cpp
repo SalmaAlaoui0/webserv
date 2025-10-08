@@ -34,10 +34,8 @@ int isKey(std::string line, std::string target)
 	std::istringstream iss(line);
 	std::string word;
 	int i = 0;
-	int j;
 	while (line[i] == ' ' || line[i] == '\t')
 		i++;
-	j = i;
 	while (line[i] && line[i] != ' ' && line[i] != '\t')
 		i++;
 	if (line[i] == ' ' || line[i] == '\t')

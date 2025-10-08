@@ -202,7 +202,7 @@ std::string findCookies(const std::string &cookieHeader)
 
 request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &epollManager, request &r, int clientFd)
 {
-    Server s;
+    Server s; 
     if (clientobj[clientFd].cgiMap[clientFd].pipefd != -1)
     {
         // std::cout << "should not be parsed it's a pipe event client\n";
@@ -224,7 +224,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         }
     }
     clientobj[clientFd].PostBody.append(buffer, bytes_received);
-    // std::cout << "Postbody is: " << clientobj[clientFd].PostBody << "*************<<<\n\n";
+    //std::cout << "Postbody is sizzzzzzzzz: " << clientobj[clientFd].PostBody.size() << "*************<<<\n\n";
     // std::cout << "body complete is: " << clientobj[clientFd].body_complete << "[[[[[[]]]]]]\n\n";
     //std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0 )
@@ -275,6 +275,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         }
         std::map<std::string, std::string>::iterator iterator;
         iterator = clientobj[clientFd].get_header().begin();
+        int count = 0;
         while (iterator != clientobj[clientFd].get_header().end())
         {
             if(iterator->first == "Transfer-Encoding" && iterator->second == "chunked")
@@ -284,7 +285,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
             else  if (iterator->first == "Content-Length")
             {
                 //   std::cout << "welommmmmmmmmmm\n";
-                
+                count++;
                 std::stringstream ss(iterator->second);
                 ss >> clientobj[clientFd].ContentLength;
                 // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
@@ -297,19 +298,18 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
                     // }
             }
             if (iterator->first == "Content-Type")
-            {
                 clientobj[clientFd].ContentType = iterator->second;
-            }
-            if (iterator->first == "Cookie")  //zadt cookies 
+            if (iterator->first == "Cookie")
             {
                 clientobj[clientFd].cookies = iterator->second;
                 std::string id = findCookies(clientobj[clientFd].cookies);
-                //if (s.getSession().find(id) != s.getSession().end())
                 std::cout << "Session ID: " << id << std::endl;
                 clientobj[clientFd].has_cookie = 1;
             }
             iterator++;
         }
+        if(count == 0 && !clientobj[clientFd].chnked)
+            clientobj[clientFd].body_complete = 1;
         clientobj[clientFd].header_complete = 1;
     }
     if (clientobj[clientFd].header_complete)
