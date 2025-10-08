@@ -417,7 +417,7 @@ void Server::run()
                     else if (clients[fd].method == "POST")
                     {
                         clients[fd].CGIPostBody.append(buffer, bytesRead);
-                        //std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                        std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                         // exit (19);
                     }
                     clients[fd].bytesRead = bytesRead;

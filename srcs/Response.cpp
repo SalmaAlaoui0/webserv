@@ -318,6 +318,7 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
     rep.statusCode = code;
     rep.statusMsg = msg;
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
+    std::cout << " fil repone %%%%%%% "<<filePath<< std::endl;
     if (!file)
     {
         std::cerr << "❌❌ Failed to open file: " << filePath << std::endl;
