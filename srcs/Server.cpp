@@ -178,7 +178,7 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
         return;
     }
 	if (clientobj[clientFd].method == "GET")
-    handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
+        handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
     else if(clientobj[clientFd].method== "POST")
     {
         std::cout << " hiiiiiiiiiiiiii222222\n\n";
@@ -339,9 +339,7 @@ if (result == pid) {
             std::cerr << "CGI exited with error code " << exitCode << std::endl;
             clientobj[fd].cgiMap[fd].flag_rep = true;
             std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
-            clientobj[fd].response = Response::buildResponse(a, 500, "No Content", _configs[clientobj[fd]. conf_i].ErrorPages[500], fd, clientobj);
-
-
+			clientobj[fd].response = Response::buildResponse(a, 502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj);
         }
     } else if (WIFSIGNALED(wstatus)) {
         std::cerr << "CGI killed by signal " << WTERMSIG(wstatus) << std::endl;

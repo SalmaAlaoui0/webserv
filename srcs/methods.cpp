@@ -694,7 +694,7 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 	//std::cout <<  "cgi bodyyyyyyyy********************** " << clientobj[clientFd].CGIPostBody<< std::endl;
 		if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
 		{
-				clientobj[clientFd].response= Response::buildResponse(r, 502, "Created",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(r, 502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);
 				if(remove(clientobj[clientFd].filename.c_str()))
 				return 0;
 		}
