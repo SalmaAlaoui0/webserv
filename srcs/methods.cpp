@@ -599,21 +599,21 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
         return 0;
     }
 	//std::cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<< static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) <<std::endl;
-	// if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) )
-	// {
-	// 	clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
-	// 	return 0;
-	// }
-	// if (clients[clientFd].PostBody.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) && !clients[clientFd].chnked)
-	// {
-	// 	clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
-	// 	return 0;
-	// }
-	// if (_configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store.empty())
-	// {
-	// 	clients[clientFd].response= Response::buildResponse(r, 403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients);
-	// 	return 0;
-	// }
+	if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) )
+	{
+		clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
+		return 0;
+	}
+	if (clients[clientFd].PostBody.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) && !clients[clientFd].chnked)
+	{
+		clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
+		return 0;
+	}
+	if (_configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store.empty())
+	{
+		clients[clientFd].response= Response::buildResponse(r, 403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients);
+		return 0;
+	 }
 	// if (!_configs[conf_i].locations[key].Return.empty())
 	// {
 	// 	clientobj[clientFd].statusCode = _configs[conf_i].locations[key].Return.begin()->first;
@@ -675,7 +675,7 @@ int get_code_status_cgi(std::map<std::string, std::string> map_h)
 bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int clientFd, std::map<int, Client> &clientobj)
 {
 	struct stat statbuf;
-	std::cout <<  "cgi bodyyyyyyyy********************** " << clientobj[clientFd].CGIPostBody<< std::endl;
+	//std::cout <<  "cgi bodyyyyyyyy********************** " << clientobj[clientFd].CGIPostBody<< std::endl;
 		if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
 		{
 				clientobj[clientFd].response= Response::buildResponse(r, 502, "Created",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);

@@ -230,6 +230,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].has_cookie = 0;
         clients[clientFd].has_cgi = 0;
         clients[clientFd].cgiMap[clientFd].pipefd = -1;
+        clients[clientFd].cgiMap[clientFd].pid = 0;
         clients[clientFd].cgiMap[clientFd].flag_rep = false;
         clients[clientFd].cgiMap[clientFd].exit_code_cgi = 0;
         clients[clientFd].HeaderEnd  = 0;
@@ -239,7 +240,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
         clients[clientFd].conf_i = 0;
-        clients[clientFd].method.clear();
+        clients[clientFd].method = "";
         clients[clientFd].path.clear();
         clients[clientFd].version.clear();
         clients[clientFd].autoIndexBody.clear();
@@ -285,7 +286,7 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
 void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& clientobj, int fd, std::vector<ServerConfig> _configs, request &a)
 {
      int pid = clientobj[fd].cgiMap[fd].pid;
-     int wstatus;
+     int wstatus = 0;
     // pid_t result = waitpid(pid, &wstatus, WNOHANG);
     // clientobj[fd].send_complete = 1;
     // if (result == 0)
@@ -417,7 +418,7 @@ void Server::run()
                     else if (clients[fd].method == "POST")
                     {
                         clients[fd].CGIPostBody.append(buffer, bytesRead);
-                        std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
+                     //   std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                         // exit (19);
                     }
                     clients[fd].bytesRead = bytesRead;
@@ -459,6 +460,7 @@ void Server::run()
             }
             else
             {
+               // std::cout<<"❌❌❌❌❌" << clients[fd].send_complete  << "  header  : "<< this->clients[fd].header_complete <<"  methode  : "<<  this->clients[fd].method<<std::endl;
                 clients[fd].no_data = 0;
                 if (events[i].events & EPOLLIN) 
                 {
