@@ -46,7 +46,7 @@ std::string getFileExtension(std::string& path)
 
     std::string filename = (lastSlash == std::string::npos) ? path : path.substr(lastSlash + 1);
 
-    if (filename.empty())
+	if (filename.empty())
         return "";
 
     std::size_t dotPos = filename.find_last_of('.');
@@ -326,11 +326,14 @@ std::string find_matching_inter(std::string ext, std::vector<ServerConfig> confi
 {
 	std::map<std::string, std::string> CgiMap = config[i].locations[key].cgi_pass;
 	std::map<std::string, std::string>::iterator it = CgiMap.begin();
-	while (it != CgiMap.end())
+	if (ext != "")
 	{
-		if (it->first == ext)
-			return(it->second);
-		it++;
+		while (it != CgiMap.end())
+		{
+			if (it->first == ext)
+				return(it->second);
+			it++;
+		}
 	}
 	return "";
 }
@@ -345,8 +348,16 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
 		{
-			ext = requested_path.substr(requested_path.find_last_of('.'));
-			interpreter = find_matching_inter(ext, config, i, key);
+			size_t dot_pos = requested_path.find_last_of('.');
+
+			if (dot_pos != std::string::npos)
+			{
+				ext = requested_path.substr(dot_pos);
+				interpreter = find_matching_inter(ext, config, i, key);
+				ext = requested_path.substr(requested_path.find_last_of('.'));
+			}
+			else
+				ext = "";
 			if (!interpreter.empty())
 				execute_cgi(clientFd, clientobj, requested_path, interpreter, epoll);
 			else
@@ -379,7 +390,10 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			else
 			{
 				clientobj[clientFd].ResponseChunked = 1;
-				clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden",config[i].ErrorPages[403], clientFd, clientobj);
+				if (!clientobj[clientFd].has_cookie)
+					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "/home/salaoui/Desktop/webserv/www/new_client.html", clientFd, clientobj);
+				else
+					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "/home/salaoui/Desktop/webserv/www/returning_client.html", clientFd, clientobj);
 			}
         }
 		else // If we did attach the file but still it's not found
