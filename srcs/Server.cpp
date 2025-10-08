@@ -22,11 +22,11 @@
 #define CYAN    "\033[36m"
 #define WHITE   "\033[37m"
 
-bool g_running = 1; 
+static bool running = 1; 
 
 void handle_sigint(int)
 {
-    g_running = 0;  
+    running = 0;  
     std::cout << "\n🛑 SIGINT received, shutting down..." << std::endl;
 }
 // int Server::creatServerSocket(const std::string &ip, int port)
@@ -244,8 +244,6 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].path.clear();
         clients[clientFd].version.clear();
         clients[clientFd].autoIndexBody.clear();
-        
-        req.slash = 0;
         std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl; 
     
 }
@@ -270,7 +268,7 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
         now = it->second.getLastActivity();
         if (now - it->second.getLastActivity() > 10)
         {
-            std::cout << "⏱️ Client timed out: " << it->first << std::endl;
+            std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
             epoll_ctl(epoll.getEpollFd(), EPOLL_CTL_DEL, it->first, NULL);
             close(it->first);
             std::map<int, Client>::iterator tmp = it;
@@ -366,7 +364,7 @@ void Server::run()
         epollManager.addSocket(serverSockets[i], EPOLLIN);
         std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
     }
-	while (g_running) 
+	while (running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
         checkTimeout(clients, epollManager);

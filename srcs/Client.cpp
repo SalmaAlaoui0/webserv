@@ -55,7 +55,7 @@ Client::Client()
   response(),
   CgiStartActivity(0)
 {
-        updateActivity();
+    updateActivity();
     body_complete = false;
 }
 
