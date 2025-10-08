@@ -771,6 +771,7 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 }
 void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj,EpollManager &epollManager)
 {
+	std::cout << " in post%%%%%%%%%\n";
 	std::map<int, std::string> map;
 	struct stat statbuf;
     map = getMatchingRootPath(r, _configs[conf_i]);
@@ -804,8 +805,11 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	//std::cout << " matchinggggggggggg interprettttttttt ::::  "<< inter << std::endl;
 	}
 	fullpath = join_path(r, fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;
+
 	if(inter.empty())
 	{
+		std::cout << " no cgiiiiiiiiiiiiiiiiiiiiiiiin \n"; 
 		std::map<std::string, std::string> header_ = clientobj[clientFd].map;
 		std::map<std::string, std::string>::iterator it_ = header_.find("Content-Type");
 		std::string type = "";
@@ -844,7 +848,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	{
 		srand(time(NULL));
 		filename << fullpath << "/" << generateId1()  << extt;/////hereee
-		//std::cout << "\nfile@@@@@@@@@@@@ is uploaded in: " << filename.str() << std::endl;
+		std::cout << "\nfile@@@@@@@@@@@@ is uploaded in: " << filename.str() << std::endl;
 		clientobj[clientFd].filename = filename.str();
 		std::ofstream out(filename.str().c_str(),std::ios::binary);
 		if(!out)

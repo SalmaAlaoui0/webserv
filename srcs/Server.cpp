@@ -166,7 +166,6 @@ std::vector<ServerConfig> Server::getConfig() const
 
 void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
-    std::cout << " hiiiiiiiiiiiiii\n\n";
     if (this->clients[clientFd]. conf_i == _configs.size()) 
     {
         clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error (no matching server)",_configs[this->clients[clientFd]. conf_i].ErrorPages[500], clientFd, clients);
@@ -179,9 +178,13 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
         return;
     }
 	if (clientobj[clientFd].method == "GET")
-		handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
+    handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
     else if(clientobj[clientFd].method== "POST")
+    {
+        std::cout << " hiiiiiiiiiiiiii222222\n\n";
         handle_post_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
+
+    }
     else if (clientobj[clientFd].method  == "DELETE")
 		handle_delete_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else
