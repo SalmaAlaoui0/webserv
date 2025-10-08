@@ -294,12 +294,14 @@ else
 
     // Si POST, écrire le body dans stdin de l’enfant
 	//////////////// chneked
-    if (clientobj[clientFd].method == "POST" && !clientobj[clientFd].PostBody.empty())
+    if (clientobj[clientFd].method == "POST") //&& (!clientobj[clientFd].PostBody.empty() || !clientobj[clientFd].body_chunked.empty()))
     {
 		std::cerr << " kayktab fe ipie33333333333333\n\n";
-        ssize_t written = write(input_pipe[1],
-            clientobj[clientFd].PostBody.c_str(),
-            clientobj[clientFd].PostBody.size());
+		ssize_t written;
+		if(clientobj[clientFd].chnked)
+			 written = write(input_pipe[1],clientobj[clientFd].body_chunked.c_str(),clientobj[clientFd].body_chunked.size());
+		else
+         	written = write(input_pipe[1],clientobj[clientFd].PostBody.c_str(),clientobj[clientFd].PostBody.size());
         if (written == -1)
             perror("write to CGI stdin");
     }
@@ -804,11 +806,18 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	fullpath = join_path(r, fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
 	if(inter.empty())
 	{
-		//std::cout << "\nContent Type is: " << clientobj[clientFd].ContentType << std::endl;
-		int ext = clientobj[clientFd].ContentType.find('/');
-		clientobj[clientFd].ContentType = clientobj[clientFd].ContentType.substr(ext + 1);
+		std::map<std::string, std::string> header_ = clientobj[clientFd].map;
+		std::map<std::string, std::string>::iterator it_ = header_.find("Content-Type");
+		std::string type = "";
+		if(it_ != header_.end())
+		{
+			size_t ext = clientobj[clientFd].ContentType.find('/');
+			type = clientobj[clientFd].ContentType.substr(ext + 1);
+		}
+		else
+			type = "plain";
 		srand(time(NULL));
-		filename << fullpath << "/" << generateId1() << "." <<clientobj[clientFd].ContentType  ;
+		filename << fullpath << "/" << generateId1() << "." << type  ;
 		std::cout << "\nfile is uploaded in: " << filename.str() << std::endl;
 		std::ofstream out(filename.str().c_str(),std::ios::binary);
 		if(!out)
@@ -825,9 +834,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			return;
 		}
 		if(clientobj[clientFd].chnked ==1 && clientobj[clientFd].body_complete == 1)
-		{
 			out.write(clientobj[clientFd].body_chunked.c_str(), clientobj[clientFd].body_chunked.size());
-		}
 		else 
 			out.write(clientobj[clientFd].PostBody.c_str(), clientobj[clientFd].PostBody.size());
 		out.flush();
