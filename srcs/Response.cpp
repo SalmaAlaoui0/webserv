@@ -46,9 +46,8 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         ssize_t Readbyte;
         char buffer[8000];
         Readbyte = read(clientobj[clientFd]._fd, buffer, sizeof(buffer));
-
-
-        if (Readbyte == -1) {
+        if (Readbyte == -1)
+        {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
                 clientobj[clientFd].no_data = 1;
@@ -353,13 +352,13 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
             send_bigsize(clientobj, clientFd, filePath, rep);
         }
     }
-    // if ((r.get_method()== "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
-    // {
+    if ((r.get_method()== "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
+    {
         // std::cout << "helllllllllllllo\n";
         std::ostringstream ss; // to put file content in it ;)
         ss << file.rdbuf();
         rep.body = ss.str();
         // std::cout << "THE BODY OF UR FILE IS: " << rep.body << std::endl;
-    //}
+    }
     return rep;
 }
