@@ -15,6 +15,7 @@
     //    
 
 #include "../includes/Request.hpp"
+
 request& request::operator=(const request& other)
 {
      if (this != &other) {
@@ -127,7 +128,8 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
         return "";
     return s.substr(start, end - start + 1);
 }
- request::request() {
+ request::request() 
+ {
     reponse_status = 0;
     body = "";
     method = "" ;

@@ -79,8 +79,9 @@ std::string join_path(request &r, std::string root, std::string suffix)
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
-	if (requestedPath[requestedPath.size() - 1] == '/')
-		r.slash = 1;
+	std::cout << "request path------------->>> "  << requestedPath <<std::endl;
+	// if (requestedPath[requestedPath.size() - 1] == '/')
+	// 	r.slash = 1;
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
@@ -238,24 +239,16 @@ if (pid == -1)
 
 if (pid == 0)
 {
-    // ──────────────── ENFANT (CGI) ────────────────
-    // Rediriger stdin / stdout
     dup2(input_pipe[0], STDIN_FILENO);
     dup2(pipeFD[1], STDOUT_FILENO);
-
-    // Fermer les extrémités inutiles
     //close(input_pipe[0]);
    	close(input_pipe[1]);
     close(pipeFD[0]);
     //close(pipeFD[1]);
-
-    // Arguments (ex : python3 script.py)
     std::vector<char *> args;
-    args.push_back(const_cast<char*>(interpreter.c_str())); // /usr/bin/python3
-    args.push_back(const_cast<char*>(path.c_str()));        // script
+    args.push_back(const_cast<char*>(interpreter.c_str()));
+    args.push_back(const_cast<char*>(path.c_str()));
     args.push_back(NULL);
-
-    // Variables d’environnement CGI
     if (clientobj[clientFd].method == "POST")
     {
         setenv("REQUEST_METHOD", "POST", 1);
@@ -278,47 +271,32 @@ if (pid == 0)
     setenv("QUERY_STRING", clientobj[clientFd].QUERY_STRING.c_str(), 1);
     setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
     setenv("REDIRECT_STATUS", "200", 1);
-
-    // Exécuter le script CGI
     execve(interpreter.c_str(), &args[0], environ);
-
-    // Si execve échoue
     perror("execve");
     exit(1);
 }
 else
 {
-    // ──────────────── PARENT (Serveur) ────────────────
-    close(input_pipe[0]); // inutile au parent
-    close(pipeFD[1]);     // inutile au parent
-
-    // Si POST, écrire le body dans stdin de l’enfant
-	//////////////// chneked
+    close(input_pipe[0]);
+    close(pipeFD[1]);
     if (clientobj[clientFd].method == "POST" && !clientobj[clientFd].PostBody.empty())
     {
-		std::cerr << " kayktab fe ipie33333333333333\n\n";
+		//std::cerr << " kayktab fe ipie33333333333333\n\n";
         ssize_t written = write(input_pipe[1],
             clientobj[clientFd].PostBody.c_str(),
             clientobj[clientFd].PostBody.size());
         if (written == -1)
             perror("write to CGI stdin");
     }
-
-    // Très important : fermer le stdin du CGI pour signaler EOF
     close(input_pipe[1]);
-
-    // Lecture du stdout du CGI en mode non-bloquant
     fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
     epollManager.addSocket(pipeFD[0], EPOLLIN);
-
-    // Stocker les infos CGI pour suivi
     CgiInfo info;
     info.pipefd = pipeFD[0];
     info.pid = pid;
     info.start = time(NULL);
     clientobj[clientFd].cgiMap[clientFd] = info;
 }
-
 }
 
 
@@ -476,8 +454,7 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 	struct stat st;
 	if(stat(fullpath.c_str() , &st) != 0)
 	{
-		std::cout << "-------------------->>>>>>fuulpath"<<fullpath<<std::endl;
-
+		//std::cout << "-------------------->>>>>>fuulpath"<<fullpath<<std::endl;
         clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",config.ErrorPages[404], clientFd, clientobj);
 		return ;
 	}
@@ -573,19 +550,24 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 405, "Method Not Allowed", _configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
-	// if (!_configs[conf_i].locations[key].Return.empty())
-	// {
-	// 	clientobj[clientFd].statusCode = _configs[conf_i].locations[key].Return.begin()->first;
-	// 	clientobj[clientFd].statusMsg = "Found";
-	// 	clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
-	// 	return;
-	// }
-
-	std::string fullpath = map.begin()->second ;
-	if (r.slash)
+	std::string fullpath = map.begin()->second;
+	std::string save = fullpath;
+    size_t pos1 = save.find_last_of('/');
+    size_t pos = fullpath.find_last_of('/');
+    std::string file = "";
+	 //std::cout<< "********** path  9baaaaal   get_path" << r.get_path()<< std::endl;
+    if(pos != std::string::npos && pos1 != std::string::npos)
+    {
+        file = save.substr(pos);
+        fullpath = fullpath.substr(0, pos);
+        std::cout<< "********** path" << fullpath << "********** file" <<file <<std::endl;
+    }
+    fullpath = join_path(r, fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+    if (!file.empty())
+		fullpath += file;
+	if (r.get_path()[r.get_path().size() - 1] == '/')
 		fullpath += '/';
 	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<<fullpath <<std::endl;
-    // std::cout << "\nFull path is:" << fullpath << std::endl;
     dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj);
 }
 bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<ServerConfig> _configs,request & r, size_t conf_i)
