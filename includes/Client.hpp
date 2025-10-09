@@ -20,12 +20,12 @@ class Client
     private:
         std::time_t lastActivity;
     public :
-    int cgi_active;
-    std::string QUERY_STRING;
-  size_t  chunk_size;
- int recived;
- std::string litter_chunk;
- bool reading_size;
+        int cgi_active;
+        std::string QUERY_STRING;
+        size_t  chunk_size;
+        int recived;
+        std::string litter_chunk;
+        bool reading_size;
         int _fd;
         int statusCode;
         bool body_complete;
@@ -58,11 +58,9 @@ class Client
         size_t size_send;
         size_t conf_i ;
         size_t bytesRead;
- size_t HeaderEnd;
+        size_t HeaderEnd;
         std::map<int, CgiInfo> cgiMap;///// in this map add cgi exit status code and do not send cgi response until code status is 200 
         std::map<int, std::string> GetpathMap;
-        
-        
         std::map<std::string, std::string> map;
         std::string ContentType;
         size_t ContentLength;
@@ -77,6 +75,7 @@ class Client
         Client();
         Client(int fd);
         ~Client();
+
         void set_header(std::string key, std::string value);
         std::map<std::string,std::string>& get_header();
         std::vector<std::string> getSession() const;
@@ -84,9 +83,6 @@ class Client
         int getLastActivity() const;
         time_t CgiStartActivity;
         void updateActivity();
-        void receiveRequest();
-        void sendResponse();
-int get_final_port();
-
+        int get_final_port();
 };
 bool is_valid_content_length(const std::string &value);
