@@ -396,7 +396,7 @@ void Server::run()
                 // clients[fd].ResponseChunked = 0;
                  //std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
                 // exit (18);
-                if (  bytesRead == 0)//!clients[fd].CgiSend
+                if (  bytesRead == 0 && !clients[fd].CgiSend)
                 {
                     std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
                     clients[fd].response = Response::buildResponse(a, 204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients);
@@ -427,7 +427,7 @@ void Server::run()
                 else if (bytesRead == 0 && clients[fd].statusCode != 204)//add timeout
                 {
                     std::cout << "bytesRead is : 0" << std::endl;
-                    // clients[fd].CgiBody.append(buffer, bytesRead);
+                    clients[fd].CgiBody.append(buffer, bytesRead);
                     clients[fd].statusCode = 200;
                     clients[fd].statusMsg = "OK";
                     WaitChildAndClean(epollManager, clients, fd, _configs, a);
