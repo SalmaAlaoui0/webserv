@@ -90,8 +90,11 @@ std::string mergePaths(std::string root, std::string request) {
     std::vector<std::string> merged = rootParts;
     merged.insert(merged.end(), reqParts.begin(), reqParts.end());
 
-	std::cout << "\n\nResponse path is: =========>" << joinPath(merged) << "<============\n\n";
-    return joinPath(merged);
+	std::string result = joinPath(merged);
+	if (result[0] == '/')
+		result = result.substr(1);
+	std::cout << "\n\nResponse path is: =========>" << result << "<============\n\n";
+	return result;
 }
 
 // std::string join_path(request &r, std::string root, std::string suffix)
@@ -405,9 +408,9 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			{
 				clientobj[clientFd].ResponseChunked = 1;
 				if (!clientobj[clientFd].has_cookie)
-					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "/home/salaoui/Desktop/webserv/www/new_client.html", clientFd, clientobj);
+					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "www/new_client.html", clientFd, clientobj);
 				else
-					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "/home/salaoui/Desktop/webserv/www/returning_client.html", clientFd, clientobj);
+					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "www/returning_client.html", clientFd, clientobj);
 			}
         }
 		else // If we did attach the file but still it's not found
