@@ -102,6 +102,9 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     std::ostringstream response;
     ssize_t sent = 0;
 
+    // (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
+    //     && !clientobj[clientFd].send_complete && clientobj[clientFd].Read && clientobj[clientFd].statusCode != 204)
+    // std::cout << "has cgi is: " << clientobj[clientFd].has_cgi << ", and sending is; " << clientobj[clientFd].Sending  << ", send complete is; " << clientobj[clientFd].send_complete << ", the read is; " << clientobj[clientFd].Read << "last status code is: " << clientobj[clientFd].statusCode << std::endl;
     if (clientobj[clientFd].statusCode == 301 || clientobj[clientFd].statusCode == 302)
     {
         std::string statusStr = intToString(clientobj[clientFd].statusCode); 
@@ -147,7 +150,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";
             std::cout << "Hello, new user! Data saved on server.\n\n";
         }
-        clientobj[clientFd].ContentType = "text/html";
+        clientobj[clientFd].ContentType = "text/plain";
         size_t HeaderEnd = clientobj[clientFd].CgiBody.find("\r\n\r\n");
         size_t sepLength = 4; // default CRLF
 
@@ -159,9 +162,11 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         if (HeaderEnd != std::string::npos)
         {
             std::string headers = clientobj[clientFd].CgiBody.substr(0, HeaderEnd);
+            // std::cout << "\n\n\n-------> header:" << headers << "<---" << std::endl;
             clientobj[clientFd].ContentType = ft_content_type(headers);
             clientobj[clientFd].statusCode = ft_code_status(headers);
             clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(HeaderEnd + sepLength);
+            // std::cout << "\n\n\n-------> Body:" << clientobj[clientFd].CgiBody << "<---" << std::endl;
         }
         if (clientobj[clientFd].ContentType == "video/mp4" || clientobj[clientFd].ContentType == "image/png" || 
             clientobj[clientFd].ContentType == "image/jpg" || clientobj[clientFd].ContentType == "image/jpeg")
@@ -177,6 +182,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             heaaad << "Connection: keep-alive\r\n\r\n";
 
         std::string headerStr = heaaad.str();
+        std::cout << "the headersssssss sennnnnding: " << headerStr << std::endl;
         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
@@ -200,6 +206,17 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
         && !clientobj[clientFd].send_complete && clientobj[clientFd].Read && clientobj[clientFd].statusCode != 204)
+    {
+        ssize_t sendbytes = send(clientFd, clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size(), MSG_NOSIGNAL);
+        if (sendbytes != -1)
+        {
+            clientobj[clientFd].CgiBody = "";
+            clientobj[clientFd].Read = 0;
+            clientobj[clientFd].size_send += sendbytes;
+        }
+    }
+    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
+        && clientobj[clientFd].send_complete && clientobj[clientFd].statusCode != 204)
     {
         ssize_t sendbytes = send(clientFd, clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size(), MSG_NOSIGNAL);
         if (sendbytes != -1)
@@ -244,9 +261,9 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
         sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
     }
-    else 
+    else
     {
-
+        std::cout << "hooooona has cgi is; " << "\n";
          response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)

@@ -38,7 +38,7 @@ class Response
         static Response buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &objclient);    
 };
 
-std::string join_path(request &r, std::string root, std::string suffix);
+std::string mergePaths(std::string root, std::string suffix);
 void send_dir_list(int clientFd, std::string requested_path);
 
 #endif
