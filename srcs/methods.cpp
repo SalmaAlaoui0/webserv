@@ -236,7 +236,6 @@ if (pid == -1)
     perror("fork");
     return;
 }
-
 if (pid == 0)
 {
     dup2(input_pipe[0], STDIN_FILENO);
@@ -587,6 +586,8 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 }
 bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<ServerConfig> _configs,request & r, size_t conf_i)
 {
+	std::cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~max siz "<< static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) <<std::endl;
+	std::cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~siz  issssssssssssss siz "<< clients[clientFd].body_chunked.size() <<std::endl;
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
@@ -595,7 +596,7 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 		clients[clientFd].response= Response::buildResponse(r, 405, "Method Not Allowed",_configs[clients[clientFd].conf_i].ErrorPages[405], clientFd, clients);
         return 0;
     }
-	//std::cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"<< static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) <<std::endl;
+
 	if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) )
 	{
 		clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
@@ -673,10 +674,18 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 {
 	struct stat statbuf;
 	//std::cout <<  "cgi bodyyyyyyyy********************** " << clientobj[clientFd].CGIPostBody<< std::endl;
+		if(clientobj[clientFd].cgiMap[clientFd].signal || clientobj[clientFd].cgiMap[clientFd].Timeout)
+		{
+			if(remove(clientobj[clientFd].filename.c_str()))
+				return 0;
+			return 0;
+		}
 		if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
 		{
+			//std::cout << "error in scripteeeeeeeeeee\n\n";
 				clientobj[clientFd].response= Response::buildResponse(r, 502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);
 				if(remove(clientobj[clientFd].filename.c_str()))
+					return 0;
 				return 0;
 		}
 		std::ofstream out(clientobj[clientFd].filename.c_str(),std::ios::binary | std::ios::trunc);
@@ -752,19 +761,19 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 }
 void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj,EpollManager &epollManager)
 {
-	std::cout << " in post%%%%%%%%%\n";
-	std::map<int, std::string> map;
-	struct stat statbuf;
-    map = getMatchingRootPath(r, _configs[conf_i]);
-	int key = map.begin()->first;
-	if(!error_post( clients,clientFd,  _configs,r, conf_i))
-		return ;
 	if (clientobj[clientFd].has_cgi)
 	{
 		if(!handel_cgi_post(r,_configs, clientFd,  clientobj))
 			return;
 		return ;
 	}
+	if(!error_post( clients,clientFd,  _configs,r, conf_i))
+		return ;
+	std::cout << " in post%%%%%%%%%\n";
+	std::map<int, std::string> map;
+	struct stat statbuf;
+    map = getMatchingRootPath(r, _configs[conf_i]);
+	int key = map.begin()->first;
 	std::ostringstream filename;
     std::string fullpath = map.begin()->second;
 	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;
@@ -790,7 +799,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 
 	if(inter.empty())
 	{
-		std::cout << " no cgiiiiiiiiiiiiiiiiiiiiiiiin \n"; 
+		std::cout << " no cgiiiiiiiiiiiiiiiiiiiiiiiin sizz de bodyyyyyyyyyyy << " <<clientobj[clientFd].PostBody.size()  <<std::endl;; 
 		std::map<std::string, std::string> header_ = clientobj[clientFd].map;
 		std::map<std::string, std::string>::iterator it_ = header_.find("Content-Type");
 		std::string type = "";
