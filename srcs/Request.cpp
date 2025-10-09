@@ -115,7 +115,7 @@ bool request::error_set(std::map<int, Client>& clients, request &r, int clientFd
 		//     clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clientobj);
 		//     return ;
 	    // }
-        }
+         }
     return 1;
 }
 
@@ -320,7 +320,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
         if(clientobj[clientFd].chnked == 1)
         {
              while(1) { 
-                
+                std::cout<< " bodyy :::: "<<  clientobj[clientFd].PostBody<< std::endl;
                  std::string chunk_string; 
                 size_t pos2 =0;
                 pos2 = clientobj[clientFd].PostBody.find("\r\n");
@@ -332,6 +332,7 @@ request& request::parseRequest(std::map<int, Client>& clientobj, EpollManager &e
                 clientobj[clientFd].chunk_size = std::strtol(a.c_str(),NULL,16);
                 if(clientobj[clientFd].chunk_size==0)
                 {
+                    std::cout << " yesssssssssssssss completeeeeeeeee\n\n";
                    clientobj[clientFd].body_complete = 1;
                    break;
                 }
