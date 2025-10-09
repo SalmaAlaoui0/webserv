@@ -404,7 +404,7 @@ void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, 
 		clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
 	}
     std::string value = clientobj[clientFd].GetpathMap.begin()->second;
-	// std::cout << "====>>>>" << value << std::endl;
+	 std::cout << "====>>>>" << value << std::endl;
     if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
     {
         clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);
