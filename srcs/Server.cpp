@@ -319,7 +319,10 @@ if (result == pid) {
             clientobj[fd].cgiMap[fd].flag_rep = true;
             std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
 			clientobj[fd].response = Response::buildResponse(a, 502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj);
-            
+            kill(pid, SIGKILL);
+        waitpid(pid, &wstatus, 0);
+         close(clientobj[fd].cgiMap[fd].pipefd);
+        clientobj[fd].cgiMap[fd].pipefd = -1;
         }
     } 
     else if (WIFSIGNALED(wstatus)) {
@@ -328,8 +331,8 @@ if (result == pid) {
          close(clientobj[fd].cgiMap[fd].pipefd);
         clientobj[fd].cgiMap[fd].pipefd = -1;
         std::cerr << "CGI killed by signal " << WTERMSIG(wstatus)  << "   pid    "<<clientobj[fd].cgiMap[fd].pid << std::endl;
-        //kill(pid, SIGKILL);
-        //waitpid(pid, &wstatus, 0);
+        kill(pid, SIGKILL);
+        waitpid(pid, &wstatus, 0);
     }
 }
 int pipefd = clientobj[fd].cgiMap[fd].pipefd;
