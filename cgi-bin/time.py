@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
 
-# print("Content-Type: text/plain")
-# print("Status: 404 OK")  
-# print()  # <- obligatoire pour séparer les headers du corps
-# print("Hello, CGI works!")
-
-#!/usr/bin/env python3
 
 import os
 import cgi

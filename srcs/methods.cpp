@@ -57,23 +57,59 @@ std::string getFileExtension(std::string& path)
     return filename.substr(dotPos + 1);
 }
 
-std::string join_path(request &r, std::string root, std::string suffix)
-{
-	std::string fixedRoot = root;
-	std::string fixedSuffix = suffix;
-
-	if (!fixedRoot.empty() && fixedRoot[fixedRoot.length() - 1] == '/' && r.get_method() != "DELETE")
-		fixedRoot.erase(fixedRoot.length() - 1);
-
-	if (!fixedSuffix.empty() && fixedSuffix[0] == '/' && r.get_method() != "DELETE")
-		fixedSuffix = fixedSuffix.substr(1);
-
-	if (r.get_method() != "DELETE")
-		return fixedRoot + "/" + fixedSuffix;
-	else 
-		return fixedRoot + fixedSuffix;
+std::vector<std::string> splitPath(const std::string &path) {
+    std::vector<std::string> parts;
+    std::stringstream ss(path);
+    std::string part;
+    while (std::getline(ss, part, '/')) {
+        if (!part.empty()) parts.push_back(part);
+    }
+    return parts;
 }
 
+std::string joinPath(const std::vector<std::string> &parts) {
+    std::string result;
+    for (std::vector<std::string>::const_iterator it = parts.begin(); it != parts.end(); ++it) {
+        result += "/" + *it;
+    }
+    return result.empty() ? "/" : result;
+}
+
+std::string mergePaths(std::string root, std::string request) {
+    std::vector<std::string> rootParts = splitPath(root);
+    std::vector<std::string> reqParts = splitPath(request);
+
+    // Remove the overlapping folders from end of root and start of request
+    while (!rootParts.empty() && !reqParts.empty() && 
+           rootParts.back() == reqParts.front())
+	{
+        rootParts.pop_back();
+        reqParts.erase(reqParts.begin());
+    }
+
+    std::vector<std::string> merged = rootParts;
+    merged.insert(merged.end(), reqParts.begin(), reqParts.end());
+
+	std::cout << "\n\nResponse path is: =========>" << joinPath(merged) << "<============\n\n";
+    return joinPath(merged);
+}
+
+// std::string join_path(request &r, std::string root, std::string suffix)
+// {
+// 	std::string fixedRoot = root;
+// 	std::string fixedSuffix = suffix;
+
+// 	if (!fixedRoot.empty() && fixedRoot[fixedRoot.length() - 1] == '/' && r.get_method() != "DELETE")
+// 		fixedRoot.erase(fixedRoot.length() - 1);
+
+// 	if (!fixedSuffix.empty() && fixedSuffix[0] == '/' && r.get_method() != "DELETE")
+// 		fixedSuffix = fixedSuffix.substr(1);
+
+// 	if (r.get_method() != "DELETE")
+// 		return fixedRoot + "/" + fixedSuffix;
+// 	else 
+// 		return fixedRoot + fixedSuffix;
+// }
 
 
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
@@ -138,7 +174,7 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 					root = config.root;
 				else
 					root = config.locations[i].root;
-				matchedRoot = join_path(r, root, requestedPath.substr(locPath.length()));
+				matchedRoot = mergePaths(root, requestedPath);
 				result[i] = matchedRoot;
 				return result;
 			}
@@ -150,7 +186,7 @@ std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 			else
 				root = config.locations[i].root;
 			maxMatchLength = locPath.length();
-			matchedRoot = join_path(r, root, requestedPath.substr(locPath.length()));
+			matchedRoot = mergePaths(root, requestedPath);
 			coorLoc = i;
 		}
 		i++;
@@ -349,7 +385,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 				file = config[i].locations[key].index;
 			else
 				file = config[i].index;
-			index_file = join_path(r, requested_path, file);
+			index_file = mergePaths(requested_path, file);
 			// std::cout << "firstly this hole path is: " << index_file << std::endl;
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
@@ -576,7 +612,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
         fullpath = fullpath.substr(0, pos);
         std::cout<< "********** path" << fullpath << "********** file" <<file <<std::endl;
     }
-    fullpath = join_path(r, fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+    fullpath = mergePaths(fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
     if (!file.empty())
 		fullpath += file;
 	if (r.get_path()[r.get_path().size() - 1] == '/')
@@ -794,7 +830,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	 inter = find_matching_inter(extt, _configs, conf_i , key);
 	//std::cout << " matchinggggggggggg interprettttttttt ::::  "<< inter << std::endl;
 	}
-	fullpath = join_path(r, fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+	fullpath = mergePaths(fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
 	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;
 
 	if(inter.empty())
