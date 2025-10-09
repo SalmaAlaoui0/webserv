@@ -613,7 +613,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
         fullpath = fullpath.substr(0, pos);
         std::cout<< "********** path" << fullpath << "********** file" <<file <<std::endl;
     }
-    fullpath = join_path(r, fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+    fullpath = mergePaths(fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
     if (!file.empty())
 		fullpath += file;
 	if (r.get_path()[r.get_path().size() - 1] == '/')
