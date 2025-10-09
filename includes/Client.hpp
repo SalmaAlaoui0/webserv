@@ -8,10 +8,13 @@
 #include "Response.hpp"
 
 struct CgiInfo {
+    
     int pipefd;
+    int signal;
     int start;// initailiserrr 
     bool flag_rep;/// initailiserrrrr 
     int exit_code_cgi;
+    int Timeout;
     pid_t pid;
 };
 
