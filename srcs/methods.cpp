@@ -601,24 +601,24 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
         return;
     }
 	std::string fullpath = map.begin()->second;
-	std::string save = fullpath;
-    size_t pos1 = save.find_last_of('/');
-    size_t pos = fullpath.find_last_of('/');
-    std::string file = "";
+	// std::string save = fullpath;
+    // size_t pos1 = save.find_last_of('/');
+    // size_t pos = fullpath.find_last_of('/');
+    // std::string file = "";
 	 //std::cout<< "********** path  9baaaaal   get_path" << r.get_path()<< std::endl;
-    if(pos != std::string::npos && pos1 != std::string::npos)
-    {
-        file = save.substr(pos);
-        fullpath = fullpath.substr(0, pos);
-        std::cout<< "********** path" << fullpath << "********** file" <<file <<std::endl;
-    }
+    // if(pos != std::string::npos && pos1 != std::string::npos)
+    // {
+    //     file = save.substr(pos);
+    //     fullpath = fullpath.substr(0, pos);
+    //     std::cout<< "********** path" << fullpath << "********** file" <<file <<std::endl;
+    // }
     fullpath = mergePaths(fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
-    if (!file.empty())
-		fullpath += file;
+    // if (!file.empty())
+	// 	fullpath += file;
 	if (r.get_path()[r.get_path().size() - 1] == '/')
 		fullpath += '/';
-	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<<fullpath <<std::endl;
-    dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj);
+	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<< fullpath <<std::endl;
+    dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj); 
 }
 bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<ServerConfig> _configs,request & r, size_t conf_i)
 {
@@ -873,7 +873,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	else if(!inter.empty() )
 	{
 		srand(time(NULL));
-		filename << fullpath << "/" << generateId1()  << extt;/////hereee
+		filename << "/home/wzahir/1webserv/www/upload" << "/" << generateId1()  << extt;/////hereee
 		std::cout << "\nfile@@@@@@@@@@@@ is uploaded in: " << filename.str() << std::endl;
 		clientobj[clientFd].filename = filename.str();
 		std::ofstream out(filename.str().c_str(),std::ios::binary);
