@@ -270,10 +270,10 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
     std::map<int, Client>::iterator it = clients.begin();
     while (it != clients.end())
     {
-        now = it->second.getLastActivity();
         if (now - it->second.getLastActivity() > 10)
         {
             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
+           // clientobj[fd].response = Response::buildResponse(a, 502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj);
             epoll_ctl(epoll.getEpollFd(), EPOLL_CTL_DEL, it->first, NULL);
             close(it->first);
             std::map<int, Client>::iterator tmp = it;
@@ -482,7 +482,7 @@ void Server::run()
                             for (size_t i = 0; i < this->_configs.size(); ++i)
                             {
                              //   std::cout << "the port in config is: " << this->_configs[i].port << " and the final port is: " << clients[fd].get_final_port() << std::endl;
-                                if (!clients[fd].get_final_port())
+                                if (!clients[fd].get_final_port()) // CHEKK WITH IP AND PORT AND IF LOCALHOST-->CONVERT 127.0.0.1
                                 {
                                     std::cout << "BBBad request msgg and methode is: " << clients[fd].method.empty() << "\n\n";
                                     clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);

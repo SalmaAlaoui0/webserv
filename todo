@@ -1,0 +1,10 @@
+// CHEKK WITH IP AND PORT AND IF LOCALHOST-->CONVERT 127.0.0.1   ---> dima katmchi lawal server f 7alat kano 2 serverat de meme port 
+// path mam9adch
+//repond with page httml if error time out 
+//fixed delete
+
+
+
+//Mouna ::
+//chekr aprs recev si il retourn < 0 chek si contenet leght jani kamal ila maklash bad request 
+// errno forbidennnnnnn
