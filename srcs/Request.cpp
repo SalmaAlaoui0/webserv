@@ -56,7 +56,7 @@ bool request::error_set(std::map<int, Client> &clients, request &r, int clientFd
     std::map<std::string, std::string> headers = clients[clientFd].get_header();
     size_t pos = 0;
     pos = clients[clientFd].path.find("..");
-    if (clients[clientFd].PostBody.size() != (size_t)std::atoi(clients[clientFd].get_header()["Content-Length"].c_str()))
+    if (clients[clientFd].PostBody.size() != (size_t)std::atoi(clients[clientFd].get_header()["Content-Length"].c_str()) && clients[clientFd].method == "POST")
     {
         clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
         return 0;
@@ -221,7 +221,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
     // std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
     // usleep(10000);
     
-    std::cout << "ssssssssssssssssssssssssssouuuuuuuuuuuuuuuuuuuuuuuuunnnnnnnnnnnnnnnnnnnnnnnnnnaya\n"<< bytes_received <<std::endl;
+    //std::cout << "ssssssssssssssssssssssssssouuuuuuuuuuuuuuuuuuuuuuuuunnnnnnnnnnnnnnnnnnnnnnnnnnaya\n"<< bytes_received <<std::endl;
     if (bytes_received <= 0)
     {
         if (clientobj[clientFd].PostBody.size() !=  (size_t)std::atoi(clientobj[clientFd].get_header()["Content-Length"].c_str()))

@@ -266,19 +266,15 @@ bool Server::isServerSocket(int fd) const
 
 void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
 {
-    time_t now = std::time(NULL);
     std::map<int, Client>::iterator it = clients.begin();
     while (it != clients.end())
     {
-        if (now - it->second.getLastActivity() > 10)
+        if (difftime(time(NULL),it->second.getLastActivity()) > 5)
         {
             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
-           // clientobj[fd].response = Response::buildResponse(a, 502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj);
             epoll_ctl(epoll.getEpollFd(), EPOLL_CTL_DEL, it->first, NULL);
             close(it->first);
-            std::map<int, Client>::iterator tmp = it;
-            ++it;
-            clients.erase(tmp);
+            clients.erase(it++);
         }
         else
             ++it;
@@ -292,15 +288,17 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
      int wstatus = 0;
     pid_t result = waitpid(pid, &wstatus, WNOHANG);
     clientobj[fd].send_complete = 1;
-if (result == 0) {
+if (result == 0) 
+{
     double elapsed = difftime(time(NULL), clientobj[fd].cgiMap[fd].start);
-    if (elapsed > 3) {
+    if (elapsed > 3) 
+    {
         clientobj[fd].cgiMap[fd].Timeout = true;
         std::cerr << "[CGI] Timeout exceeded, killing process " << pid << std::endl;
-        clientobj[fd].response = Response::buildResponse(a, 502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj);
+        clientobj[fd].response = Response::buildResponse(a, 504, "Gateway Timeout", _configs[clientobj[fd]. conf_i].ErrorPages[504], fd, clientobj);
         kill(pid, SIGKILL);
         waitpid(pid, &wstatus, 0);
-         close(clientobj[fd].cgiMap[fd].pipefd);
+        close(clientobj[fd].cgiMap[fd].pipefd);
         clientobj[fd].cgiMap[fd].pipefd = -1;
     }
     return;
@@ -550,7 +548,7 @@ void Server::run()
                             handleRequest(fd, a, clients, epollManager);
 
                         }
-                        if (!clients[fd].no_data)
+                        if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout)
                             clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                         if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
                         || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
