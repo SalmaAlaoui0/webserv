@@ -872,7 +872,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	else if(!inter.empty() )
 	{
 		srand(time(NULL));
-		filename << "fullpath" << "/" << generateId1()  << extt;/////hereee
+		filename << fullpath << "/" << generateId1()  << extt;/////hereee
 		std::cout << "\nfile@@@@@@@@@@@@ is uploaded in: " << filename.str() << std::endl;
 		clientobj[clientFd].filename = filename.str();
 		std::ofstream out(filename.str().c_str(),std::ios::binary);
