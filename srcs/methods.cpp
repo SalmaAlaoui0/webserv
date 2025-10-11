@@ -83,7 +83,6 @@ std::string mergePaths(std::string root, std::string request) {
     while (!rootParts.empty() && !reqParts.empty() && 
            rootParts.back() == reqParts.front())
 	{
-        rootParts.pop_back();
         reqParts.erase(reqParts.begin());
     }
 
@@ -833,7 +832,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	 inter = find_matching_inter(extt, _configs, conf_i , key);
 	//std::cout << " matchinggggggggggg interprettttttttt ::::  "<< inter << std::endl;
 	}
-	fullpath = mergePaths(fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+	fullpath = mergePaths(_configs[clients[clientFd].conf_i].locations[map.begin()->first].root, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
 	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;
 
 	if(inter.empty())
