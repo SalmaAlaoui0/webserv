@@ -74,12 +74,12 @@ int Server::creatServerSocket(const std::string &ip, int port)
     if (server_fd < 0)
         throw socketException("❌ Socket creation failed");
     // 2. Make socket non-blocking
-    int flags = fcntl(server_fd, F_GETFL, 0);
-    if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0) 
-    {
-        close(server_fd);
-        throw socketException("❌ Failed to set non-blocking mode on socket");
-    }
+    // int flags = fcntl(server_fd, F_GETFL, 0);
+    // if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0) 
+    // {
+    //     close(server_fd);
+    //     throw socketException("❌ Failed to set non-blocking mode on socket");
+    // }
     // 3. Allow address reuse
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) 
@@ -467,7 +467,13 @@ void Server::run()
                     try
                     {
                         if (clients[fd].send_complete == 0)
+                        {
                             a = a.parseRequest(this->clients, epollManager, a, fd);
+                            std::map<int, Client>::iterator it = clients.find(fd);
+                            if (it != clients.end())
+                                it->second.updateActivity();
+                            std::cout << "timeeeeeeee is: " << clients[fd].getLastActivity() << "<==========\n\n0";
+                        }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
                         {
                             std::cout << "\nMaking the event EPOLLOUT \n";
@@ -524,9 +530,7 @@ void Server::run()
                                 // std::cout << "DEBUG: CGI output from pipe:\n" << pipeOutput << std::endl;
                             }
                         
-                        std::map<int, Client>::iterator it = clients.find(fd);
-                        if (it != clients.end())
-                            it->second.updateActivity();
+
                 }
                     }
                     catch(std::exception &e)
