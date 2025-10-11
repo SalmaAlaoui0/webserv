@@ -594,26 +594,15 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
+	std::string fullpath = mergePaths(_configs[clients[clientFd].conf_i].locations[map.begin()->first].root, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
+	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 11111 "<< fullpath <<std::endl;
+    fullpath = mergePaths(fullpath, r.get_path());
+	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 2222 "<< fullpath <<std::endl;
     if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
     {
 		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 405, "Method Not Allowed", _configs[conf_i].ErrorPages[405], clientFd, clientobj);
         return;
     }
-	std::string fullpath = map.begin()->second;
-	// std::string save = fullpath;
-    // size_t pos1 = save.find_last_of('/');
-    // size_t pos = fullpath.find_last_of('/');
-    // std::string file = "";
-	 //std::cout<< "********** path  9baaaaal   get_path" << r.get_path()<< std::endl;
-    // if(pos != std::string::npos && pos1 != std::string::npos)
-    // {
-    //     file = save.substr(pos);
-    //     fullpath = fullpath.substr(0, pos);
-    //     std::cout<< "********** path" << fullpath << "********** file" <<file <<std::endl;
-    // }
-    fullpath = mergePaths(fullpath, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
-    // if (!file.empty())
-	// 	fullpath += file;
 	if (r.get_path()[r.get_path().size() - 1] == '/')
 		fullpath += '/';
 	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<< fullpath <<std::endl;
@@ -717,7 +706,6 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 		}
 		if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
 		{
-			//std::cout << "error in scripteeeeeeeeeee\n\n";
 				clientobj[clientFd].response= Response::buildResponse(r, 502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);
 				if(remove(clientobj[clientFd].filename.c_str()))
 					return 0;

@@ -87,5 +87,6 @@ class Client
         time_t CgiStartActivity;
         void updateActivity();
         int get_final_port();
+        std::string get_final_ip();
 };
 bool is_valid_content_length(const std::string &value);

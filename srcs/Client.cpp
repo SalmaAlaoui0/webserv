@@ -139,6 +139,24 @@ int Client::get_final_port()
     return 0;
 }
 
+std::string Client::get_final_ip()
+{
+    std::map<std::string, std::string> map = this->map;
+	std::map<std::string, std::string>::iterator it;
+	for(it = map.begin() ; it != map.end(); it++)
+	{
+		if(it->first == "Host")
+		{
+			int pos = it->second.find(":");
+			std::string ip = it->second.substr(0, pos);
+            if(ip == "localhost")
+                ip = "127.0.0.1";
+            return ip;
+		}
+	}
+    return 0;
+}
+
 void Client::set_header(std::string key, std::string value){
     map[key] = value;}
 
