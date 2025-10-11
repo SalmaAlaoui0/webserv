@@ -350,6 +350,7 @@ int pipefd = clientobj[fd].cgiMap[fd].pipefd;
         clients[fd].cgiMap[fd].start = 0;
         clients[fd].cgiMap[fd].exit_code_cgi = 0;
  }
+
 void Server::run()
 {
    std::signal(SIGINT, handle_sigint);
@@ -470,7 +471,7 @@ void Server::run()
                             std::map<int, Client>::iterator it = clients.find(fd);
                             if (it != clients.end())
                                 it->second.updateActivity();
-                            std::cout << "timeeeeeeee is: " << clients[fd].getLastActivity() << "<==========\n\n0";
+                            std::cout << "timeeeeeeee is: " << clients[fd].getLastActivity() << "<==========\n\n";
                         }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
                         {
@@ -491,7 +492,7 @@ void Server::run()
                                     std::cout << "BBBad request msgg and methode is: " << clients[fd].method.empty() << "\n\n";
                                     clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);
                                 }
-                                if (this->_configs[i].port == 8080)
+                                if (this->_configs[i].port == clients[fd].get_final_port() && this->_configs[i].host == clients[fd].get_final_ip())
                                 { 
                                     this->clients[fd].conf_i = i; 
                                     break;
@@ -544,9 +545,7 @@ void Server::run()
                         if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
                         {
                             std::cout<<"+++++++++++++++++++maart ach kandir hna f handle req 2\n\n";
-
                             handleRequest(fd, a, clients, epollManager);
-
                         }
                         if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout)
                             clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
@@ -556,11 +555,8 @@ void Server::run()
                             std::cout << " closeeeeeeeeeeeeeeeee\n\n";
                             closeConnection(fd, epollManager);
                             // close(fd);
-                            // std::cout << "✅ client: " << fd << " is disconnected\n";
                         }
                     }
-                else
-                    std::cout<<"maart ach kandir hna\n\n";
             }
         }
     }
@@ -585,9 +581,7 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
         perror("epoll_ctl DEL fd");
     close(fd);
     clients.erase(fd);
-  // clients[fd].~Client();
     std::cout << "✅ client: " << fd << " is disconnected\n";
-    // std::cout << "🚪 Closed client fd: " << fd << std::endl;
 }
 
 Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
