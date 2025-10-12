@@ -168,13 +168,13 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
 {
     if (this->clients[clientFd]. conf_i == _configs.size()) 
     {
-        clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error (no matching server)",_configs[this->clients[clientFd]. conf_i].ErrorPages[500], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(500, "Internal Server Error (no matching server)",_configs[this->clients[clientFd]. conf_i].ErrorPages[500], clientFd, clients, _configs);
         return;
     }
     if (clientobj[clientFd].method  == "/favicon.ico")
     {
         std::cout << "hereeee: the favicon thing\n";
-        clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(404, "Not Found",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients, _configs);
         return;
     }
 	if (clientobj[clientFd].method == "GET")
@@ -189,7 +189,7 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
 		handle_delete_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else
     {
-        clients[clientFd].response = Response::buildResponse(r, 404, "invalid method",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(404, "invalid method",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients, _configs);
 		return;
     }
 }
@@ -264,25 +264,24 @@ bool Server::isServerSocket(int fd) const
     return false;
 }
 
-void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll)
+void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, std::vector<ServerConfig> _configs)
 {
     std::map<int, Client>::iterator it = clients.begin();
     while (it != clients.end())
     {
-        if (difftime(time(NULL),it->second.getLastActivity()) > 5)
+        if (difftime(time(NULL),it->second.getLastActivity()) > 5 && !clients[it->first].timeout)
         {
             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
-            epoll_ctl(epoll.getEpollFd(), EPOLL_CTL_DEL, it->first, NULL);
-            close(it->first);
-            clients.erase(it++);
+            clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
+            clients[it->first].timeout = true;
+            epoll.modSocket(it->first, EPOLLOUT);
         }
         else
             ++it;
     }
 }
 
-
-void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& clientobj, int fd, std::vector<ServerConfig> _configs, request &a)
+void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& clientobj, int fd, std::vector<ServerConfig> _configs)
 {
      int pid = clientobj[fd].cgiMap[fd].pid;
      int wstatus = 0;
@@ -295,7 +294,7 @@ if (result == 0)
     {
         clientobj[fd].cgiMap[fd].Timeout = true;
         std::cerr << "[CGI] Timeout exceeded, killing process " << pid << std::endl;
-        clientobj[fd].response = Response::buildResponse(a, 504, "Gateway Timeout", _configs[clientobj[fd]. conf_i].ErrorPages[504], fd, clientobj);
+        clientobj[fd].response = Response::buildResponse(504, "Gateway Timeout", _configs[clientobj[fd]. conf_i].ErrorPages[504], fd, clientobj ,_configs);
         kill(pid, SIGKILL);
         waitpid(pid, &wstatus, 0);
         close(clientobj[fd].cgiMap[fd].pipefd);
@@ -316,16 +315,16 @@ if (result == pid) {
             std::cerr << "CGI exited with error code " << exitCode << std::endl;
             clientobj[fd].cgiMap[fd].flag_rep = true;
             std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
-			clientobj[fd].response = Response::buildResponse(a, 502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj);
+			clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
             kill(pid, SIGKILL);
-        waitpid(pid, &wstatus, 0);
+            waitpid(pid, &wstatus, 0);
          close(clientobj[fd].cgiMap[fd].pipefd);
         clientobj[fd].cgiMap[fd].pipefd = -1;
         }
     } 
     else if (WIFSIGNALED(wstatus)) {
         clientobj[fd].cgiMap[fd].signal = true;
-		clientobj[fd].response = Response::buildResponse(a, 502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj);
+		clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
          close(clientobj[fd].cgiMap[fd].pipefd);
         clientobj[fd].cgiMap[fd].pipefd = -1;
         std::cerr << "CGI killed by signal " << WTERMSIG(wstatus)  << "   pid    "<<clientobj[fd].cgiMap[fd].pid << std::endl;
@@ -364,7 +363,7 @@ void Server::run()
 	while (running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
-        checkTimeout(clients, epollManager);
+        checkTimeout(clients, epollManager, _configs);
         for(size_t i = 0; i < events.size(); i++)
         {
             int fd = events[i].data.fd;
@@ -396,10 +395,10 @@ void Server::run()
                 if (  bytesRead == 0 && !clients[fd].CgiSend)
                 {
                     std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
-                    clients[fd].response = Response::buildResponse(a, 204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients);
+                    clients[fd].response = Response::buildResponse(204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients ,_configs);
                     clients[fd].statusCode = 204;
                     clients[fd].statusMsg = "No Content";
-                    WaitChildAndClean(epollManager, clients, fd, _configs, a);
+                    WaitChildAndClean(epollManager, clients, fd, _configs);
                     // exit(13);
                 }
                 if (bytesRead > 0)
@@ -427,7 +426,7 @@ void Server::run()
                     clients[fd].CgiBody.append(buffer, bytesRead);
                     clients[fd].statusCode = 200;
                     clients[fd].statusMsg = "OK";
-                    WaitChildAndClean(epollManager, clients, fd, _configs, a);
+                    WaitChildAndClean(epollManager, clients, fd, _configs);
                     std::cout << "finish reading cgi\n";
                     // clients[fd].send_complete = 1;
                 }
@@ -439,7 +438,7 @@ void Server::run()
                     }
                     else
                     {
-                        WaitChildAndClean(epollManager, clients, fd, _configs, a);
+                        WaitChildAndClean(epollManager, clients, fd, _configs);
                         clients[fd].send_complete = 1;
                         // make an error html response
                         perror("REad");
@@ -450,7 +449,7 @@ void Server::run()
                 if (difftime(now, clients[fd].CgiStartActivity) > 3)
                 {
                     std::cout << "CGI timeout\n";
-                    WaitChildAndClean(epollManager, clients, fd, _configs, a);
+                    WaitChildAndClean(epollManager, clients, fd, _configs);
                     // closePipeAndCleanup(fd);
                 }
                 // clients[fd].has_cgi = 0;
@@ -487,11 +486,8 @@ void Server::run()
                             for (size_t i = 0; i < this->_configs.size(); ++i)
                             {
                              //   std::cout << "the port in config is: " << this->_configs[i].port << " and the final port is: " << clients[fd].get_final_port() << std::endl;
-                                if (!clients[fd].get_final_port()) // CHEKK WITH IP AND PORT AND IF LOCALHOST-->CONVERT 127.0.0.1
-                                {
-                                    std::cout << "BBBad request msgg and methode is: " << clients[fd].method.empty() << "\n\n";
-                                    clients[fd].response = Response::buildResponse(a, 400, "Bad Request", "", fd, clients);
-                                }
+                                if (!clients[fd].get_final_port() || clients[fd].get_final_ip().empty())
+                                    clients[fd].response = Response::buildResponse(400, "Bad Request", _configs[this->clients[fd]. conf_i].ErrorPages[400], fd, clients ,_configs);
                                 if (this->_configs[i].port == clients[fd].get_final_port() && this->_configs[i].host == clients[fd].get_final_ip())
                                 { 
                                     this->clients[fd].conf_i = i; 
@@ -504,7 +500,7 @@ void Server::run()
                         {
                             std::cout << "hereee is\n\n";
 
-                            if (!a.error_set(this->clients, a, fd, this->_configs[this->clients[fd].conf_i]))
+                            if (!a.error_set(this->clients, fd, this->_configs[this->clients[fd].conf_i], _configs))
                             {
                                 std::cout << "error_._set is: equal to zero\n";
                                 throw socketException("❌ error detected  in error set");
@@ -547,10 +543,10 @@ void Server::run()
                             std::cout<<"+++++++++++++++++++maart ach kandir hna f handle req 2\n\n";
                             handleRequest(fd, a, clients, epollManager);
                         }
-                        if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout)
+                        if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
                             clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                         if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
-                        || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1)
+                        || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1 || clients[fd].timeout)
                         {
                             std::cout << " closeeeeeeeeeeeeeeeee\n\n";
                             closeConnection(fd, epollManager);
