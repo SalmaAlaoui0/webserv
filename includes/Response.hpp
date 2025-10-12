@@ -35,7 +35,7 @@ class Response
         std::string contentType;
         std::string sessionId;
         void RequestResponse(int clientFd, Response &response, std::map<int, Client> &clientobj);
-        static Response buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &objclient);    
+        static Response buildResponse(int code, const std::string msg, std::string filePath, int clientFd, std::map<int, Client> &objclient , std::vector<ServerConfig> &_configs);    
 };
 
 std::string mergePaths(std::string root, std::string suffix);

@@ -66,7 +66,7 @@ class Server
         bool isServerSocket(int fd) const;
         void acceptNewClient(request & r, int listenFd, EpollManager &epollManager);
        // void handleClient(int clientFd, EpollManager &epollManager, std::vector<epoll_event> &events);
-        void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll);
+        void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll , std::vector<ServerConfig> _configs);
         //std::string readRequest(int clientFd, EpollManager &epollManager);
         void handleRequest(int clientFd, request &r, std::map<int, Client> &clientob, EpollManager &epoll);
         
@@ -85,7 +85,7 @@ class Server
         void handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj);
         void dir_or_file(std::string &fullpath, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj);
         bool delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj);
-        void CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> &clientobj, EpollManager &epoll);
+        void CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, std::map<int, Client> &clientobj, EpollManager &epoll);
 };
 
 

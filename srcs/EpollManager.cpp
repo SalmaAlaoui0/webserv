@@ -31,7 +31,6 @@ void EpollManager::addSocket(int fd, uint32_t event)
 {
     struct epoll_event ev;
     memset(&ev, 0, sizeof(ev));
-    // ev.events = EPOLLIN;
     ev.events = event;
     ev.data.fd = fd;
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)
@@ -44,7 +43,6 @@ void EpollManager::addSocket(int fd, uint32_t event)
         std::cerr << "epoll_ctl failed for FD " << fd << ": " << strerror(errno) << std::endl;
         throw epollException("❌epoll_ctl ADD failed");
     }
-    // std::cout<<"fd added by eppol: "<< fd<<std::endl;
 }
 
 void EpollManager::modSocket(int fd, uint32_t event)
@@ -52,8 +50,9 @@ void EpollManager::modSocket(int fd, uint32_t event)
     struct epoll_event ev;
     ev.events = event;
     ev.data.fd = fd;
-    if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)
-        throw epollException("❌ epoll_ctl MOD failed");
+    if (epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &ev) == -1)
+        std::cerr << "epoll_ctl failed for FD " << fd << ": " << strerror(errno) << std::endl;
+     //   throw epollException("❌ epoll_ctl MOD failed");
 }
 
 void EpollManager::delSocket(int fd)

@@ -2,7 +2,7 @@
 import sys
 
 # --- CGI Headers ---
-print("Status: 403")
+print("Status: 200")
 print("Content-Type: text/plain")
 print()  # <--- Blank line to separate headers from body
 

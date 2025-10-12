@@ -299,29 +299,27 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     return;
 }
 
-Response Response::buildResponse(request &r, int code, const std::string &msg, const std::string &filePath, int clientFd, std::map<int, Client> &clientobj)
+Response Response::buildResponse(int code, const std::string msg, std::string filePath, int clientFd, std::map<int, Client> &clientobj, std::vector<ServerConfig> &_configs)
 {
-(void)r;
     Response rep;
     Server s;
     if (code == 400 && filePath.empty())
     {
         rep.statusCode = 400;
-        rep.statusMsg  = msg;
-        rep.body       = "<h1>400 Bad Request</h1>";
+        rep.statusMsg  = "Bad Request";
+        filePath      = _configs[clientobj[clientFd]. conf_i].ErrorPages[400];
         rep.contentType = "text/html";
         clientobj[clientFd].Sending = 1;
         clientobj[clientFd].send_complete = 1;
         return (rep);
     }
-    if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+    if(clientobj[clientFd].has_cookie == 0)
     {
         srand(time(NULL));
         rep.sessionId = generateId(16);
         s.getSession() .push_back(rep.sessionId);
         std::cout << "Set-Cookie: session_id=" << rep.sessionId << "\n";
         std::cout << "Hello, new user! Data saved on server.\n\n";
-        // exit(7); if I have a cgi script
     }
     if (clientobj[clientFd].autoindex)
     {
@@ -338,9 +336,9 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
     if (!file)
     {
         std::cerr << "❌❌ Failed to open file: " << filePath << std::endl;
-        rep.statusCode = 404;
-        rep.statusMsg  = "Not Found";
-        rep.body       = "<h1>404 Not Found</h1>";
+        rep.statusCode = 500;
+        rep.statusMsg  = "Internal Server Error";
+        filePath      = _configs[clientobj[clientFd]. conf_i].ErrorPages[500];
         rep.contentType = "text/html";
         clientobj[clientFd].Sending = 1;
         clientobj[clientFd].send_complete = 1;
@@ -369,9 +367,9 @@ Response Response::buildResponse(request &r, int code, const std::string &msg, c
             send_bigsize(clientobj, clientFd, filePath, rep);
         }
     }
-    if ((r.get_method()== "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || r.get_method() != "GET")
+    if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || clientobj[clientFd].method != "GET")
     {
-        // std::cout << "helllllllllllllo\n";
+         std::cout << "helllllllllllllo------------------>>>>>>>>"<<clientobj[clientFd].method<<std::endl;
         std::ostringstream ss; // to put file content in it ;)
         ss << file.rdbuf();
         rep.body = ss.str();

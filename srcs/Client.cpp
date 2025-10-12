@@ -53,6 +53,7 @@ Client::Client()
   path(""),
   version(""),
   response(),
+  timeout(false),
   CgiStartActivity(0)
 {
     updateActivity();
@@ -112,6 +113,7 @@ Client::Client(int fd)
   path(""),
   version(""),
   response(),
+  timeout(false),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();
@@ -154,7 +156,7 @@ std::string Client::get_final_ip()
             return ip;
 		}
 	}
-    return 0;
+    return "";
 }
 
 void Client::set_header(std::string key, std::string value){
@@ -167,15 +169,6 @@ return map;
  std::vector<std::string> Client::getSession() const  {
 return sessions;
 }
-
-
-// void Client::set_header(std::string key, std::string value){
-//     map[key] = value;}
-
-
-// std::map<std::string,std::string>& Client::get_header()   {
-//     return map;
-//    }
 
 int Client::getFd() const
 {

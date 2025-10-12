@@ -51,7 +51,7 @@ bool is_valid_content_length(const std::string &value)
     return true;
 }
 
-bool request::error_set(std::map<int, Client> &clients, request &r, int clientFd, ServerConfig &config)
+bool request::error_set(std::map<int, Client> &clients, int clientFd, ServerConfig &config, std::vector<ServerConfig> &_configs)
 {
     std::map<std::string, std::string> headers = clients[clientFd].get_header();
     size_t pos = 0;
@@ -64,34 +64,34 @@ bool request::error_set(std::map<int, Client> &clients, request &r, int clientFd
     // }
     if (clients[clientFd].HeaderEnd > 8000)
     {
-        clients[clientFd].response = Response::buildResponse(r, 431, "Request Header Fields Too Large", config.ErrorPages[431], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(431, "Request Header Fields Too Large", config.ErrorPages[431], clientFd, clients ,_configs);
         return 0;
     }
     if (pos != std::string::npos)
     {
-        clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients ,_configs);
         return 0;
     }
     if (clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
     {
-        clients[clientFd].response = Response::buildResponse(r, 501, "Not Implemented", config.ErrorPages[501], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(501, "Not Implemented", config.ErrorPages[501], clientFd, clients ,_configs);
         return 0;
     }
     if (clients[clientFd].version != "HTTP/1.1" && clients[clientFd].version != "HTTP/1.0")
     {
-        clients[clientFd].response = Response::buildResponse(r, 505, "HTTP Version Not Supported", config.ErrorPages[505], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(505, "HTTP Version Not Supported", config.ErrorPages[505], clientFd, clients ,_configs);
         return 0;
     }
     if (headers.find("Host") == headers.end())
     {
         std::cerr << "inside if statement of post\n";
 
-        clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients ,_configs);
         return 0;
     }
     if (clients[clientFd].method.empty() || clients[clientFd].path.empty())
     {
-        clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
+        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients ,_configs);
         return 0;
     }
     if (clients[clientFd].method == "POST")
@@ -99,26 +99,26 @@ bool request::error_set(std::map<int, Client> &clients, request &r, int clientFd
         std::map<std::string, std::string>::iterator ptr = headers.find("Content-Length");
         if (ptr == headers.end() && headers["Transfer-Encoding"] != "chunked" && clients[clientFd].method == "POST")
         {
-            clients[clientFd].response = Response::buildResponse(r, 411, "Length Required", config.ErrorPages[411], clientFd, clients);
+            clients[clientFd].response = Response::buildResponse(411, "Length Required", config.ErrorPages[411], clientFd, clients ,_configs);
             return 0;
         }
         if (ptr != headers.end())
         {
             if (!is_valid_content_length(ptr->second))
             {
-                clients[clientFd].response = Response::buildResponse(r, 411, "Length Required", config.ErrorPages[411], clientFd, clients);
+                clients[clientFd].response = Response::buildResponse(411, "Length Required", config.ErrorPages[411], clientFd, clients ,_configs);
                 return 0;
             }
         }
         // if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>(config[clients[clientFd].conf_i].client_max_body_size ) )
         // {
-        //     clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
+        //     clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
         //     return 0;
         // }
         // if (clients[clientFd].PostBody.size() >static_cast<size_t>( config[clients[clientFd].conf_i].client_max_body_size ) && !client[clientFd].chnked)
         // {
         // //send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
-        //     clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clientobj);
+        //     clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clientobj);
         //     return ;
         // }
     }

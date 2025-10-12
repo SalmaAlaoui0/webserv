@@ -74,6 +74,7 @@ class Client
         std::string path;
         std::string version;
         Response response;
+        bool timeout;
 
         Client();
         Client(int fd);

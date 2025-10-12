@@ -352,7 +352,7 @@ std::string find_matching_inter(std::string ext, std::vector<ServerConfig> confi
 }
 
 
-void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, request &r, std::map<int, Client> &clientobj, EpollManager &epoll)
+void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
 	struct stat statbuf;
 	std::string ext;
@@ -374,7 +374,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			if (!interpreter.empty())
 				execute_cgi(clientFd, clientobj, requested_path, interpreter, epoll);
 			else
-				clients[clientFd].response  = clients[clientFd].response.buildResponse(r, 200, "OK", requested_path, clientFd, clientobj);
+				clients[clientFd].response  = clients[clientFd].response.buildResponse(200, "OK", requested_path, clientFd, clientobj, _configs);
 		}
 		else if (S_ISDIR(statbuf.st_mode)) // if it is a dir attache the index file then serve it
 		{
@@ -393,32 +393,32 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 				if (!interpreter.empty())
 					execute_cgi(clientFd, clientobj, index_file, interpreter, epoll);
 				else
-					clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
+					clients[clientFd].response = clients[clientFd].response.buildResponse(200, "OK", index_file, clientFd, clientobj, _configs);
 			}
 			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
 			{
 				send_dir_list(clientFd, requested_path, clientobj);// using requested path only !
-			 	clients[clientFd].response = clients[clientFd].response.buildResponse(r, 200, "OK", index_file, clientFd, clientobj);
+			 	clients[clientFd].response = clients[clientFd].response.buildResponse(200, "OK", index_file, clientFd, clientobj, _configs);
             }
 			else
 			{
 				clientobj[clientFd].ResponseChunked = 1;
 				if (!clientobj[clientFd].has_cookie)
-					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "/home/salaoui/Desktop/webserv/www/new_client.html", clientFd, clientobj);
+					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "/home/wzahir/1webserv/www/new_client.html", clientFd, clientobj, _configs);
 				else
-					clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden", "/home/salaoui/Desktop/webserv/www/returning_client.html", clientFd, clientobj);
+					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "/home/wzahir/1webserv/www/returning_client.html", clientFd, clientobj, _configs);
 			}
         }
 		else // If we did attach the file but still it's not found
 		{
 			clientobj[clientFd].ResponseChunked = 1;
-			clients[clientFd].response = Response::buildResponse(r, 403, "Forbidden",config[i].ErrorPages[403], clientFd, clientobj);
+			clients[clientFd].response = Response::buildResponse(403, "Forbidden",config[i].ErrorPages[403], clientFd, clientobj, _configs);
 		}
     }
 	else
 	{
 		clientobj[clientFd].ResponseChunked = 1;
-		clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",config[i].ErrorPages[404], clientFd, clientobj);
+		clients[clientFd].response = Response::buildResponse(404, "Not Found",config[i].ErrorPages[404], clientFd, clientobj, _configs);
 	}
 }
 
@@ -441,11 +441,11 @@ void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, 
 	 std::cout << "====>>>>" << value << std::endl;
     if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
     {
-        clients[clientFd].response = Response::buildResponse(r, 405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj);
+        clients[clientFd].response = Response::buildResponse(405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj, _configs);
         return;
     }
     if (_configs[conf_i].locations[key].Return.empty())
-		CheckDirOrFile(value, clientFd, _configs, conf_i, key, r, clientobj, epoll);
+		CheckDirOrFile(value, clientFd, _configs, conf_i, key, clientobj, epoll);
 }
 
 bool Server::delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj)
@@ -469,7 +469,7 @@ bool Server::delete_dir_recursive(std::string &path, int clientFd, ServerConfig 
 				remove(fullpath.c_str());
 		}
 		else
-			clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",config.ErrorPages[404], clientFd, clientobj);
+			clients[clientFd].response = Response::buildResponse(404, "Not Found",config.ErrorPages[404], clientFd, clientobj, _configs);
 	}
 	closedir(dir);
 	return remove(path.c_str()) == 0;
@@ -504,34 +504,34 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 	if(stat(fullpath.c_str() , &st) != 0)
 	{
 		//std::cout << "-------------------->>>>>>fuulpath"<<fullpath<<std::endl;
-        clients[clientFd].response = Response::buildResponse(r, 404, "Not Found",config.ErrorPages[404], clientFd, clientobj);
+        clients[clientFd].response = Response::buildResponse(404, "Not Found",config.ErrorPages[404], clientFd, clientobj, _configs);
 		return ;
 	}
 	if(S_ISDIR(st.st_mode))
 	{
 		if (fullpath[fullpath.size() - 1] != '/')
 		{
-        	clients[clientFd].response = Response::buildResponse(r, 409, "conflict",config.ErrorPages[409], clientFd, clientobj);
+        	clients[clientFd].response = Response::buildResponse(409, "conflict",config.ErrorPages[409], clientFd, clientobj, _configs);
 			return ;
 		}
 		if(!is_directory_empty(fullpath))
 		{
 			if (!delete_dir_recursive(fullpath, clientFd, config, r, clientobj))
 			{
-				clients[clientFd].response = Response::buildResponse(r, 500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj);
+				clients[clientFd].response = Response::buildResponse(500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj, _configs);
 				return;
 			}
-			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 204, "No Content",config.ErrorPages[204], clientFd, clientobj);
+			clients[clientFd].response= clients[clientFd].response.buildResponse(204, "No Content",config.ErrorPages[204], clientFd, clientobj, _configs);
 			return ;
 		}
 		if(remove(fullpath.c_str()) == 0) //dir empty remove it 
 		{
-			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 204, "No Content",config.ErrorPages[204], clientFd, clientobj);
+			clients[clientFd].response= clients[clientFd].response.buildResponse(204, "No Content",config.ErrorPages[204], clientFd, clientobj, _configs);
 			return ;
 		}
 		else  // Failed to remove directory
 		{
-			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj);
+			clients[clientFd].response= clients[clientFd].response.buildResponse(500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj, _configs);
 			return ;
 		}
 	}
@@ -539,24 +539,24 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 	{
 		if(access(fullpath.c_str(), W_OK) != 0)  // doesn't have permission for delete
 		{
-			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 403, "Forbidden",config.ErrorPages[403], clientFd, clientobj);
+			clients[clientFd].response= clients[clientFd].response.buildResponse(403, "Forbidden",config.ErrorPages[403], clientFd, clientobj, _configs);
 			return;
 		}
 		if (std::remove(fullpath.c_str()) == 0)
 		{
-			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 204, "No Content",config.ErrorPages[204], clientFd, clientobj);
+			clients[clientFd].response= clients[clientFd].response.buildResponse(204, "No Content",config.ErrorPages[204], clientFd, clientobj, _configs);
 			std::cout << "✅ File deleted: " << fullpath << std::endl;
 			return;
 		}
 		else
 		{
-			clients[clientFd].response= clients[clientFd].response.buildResponse(r, 500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj);
+			clients[clientFd].response= clients[clientFd].response.buildResponse(500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj, _configs);
 			return;
 		}
 	}
 	else //Unsupported file type (e.g., socket, symlink)
 	{
-		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 403, "Forbidden",config.ErrorPages[403], clientFd, clientobj);
+		clients[clientFd].response= clients[clientFd].response.buildResponse(403, "Forbidden",config.ErrorPages[403], clientFd, clientobj, _configs);
 		return;
 	}
 }
@@ -600,7 +600,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 2222 "<< fullpath <<std::endl;
     if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
     {
-		clients[clientFd].response= clients[clientFd].response.buildResponse(r, 405, "Method Not Allowed", _configs[conf_i].ErrorPages[405], clientFd, clientobj);
+		clients[clientFd].response= clients[clientFd].response.buildResponse(405, "Method Not Allowed", _configs[conf_i].ErrorPages[405], clientFd, clientobj, _configs);
         return;
     }
 	if (r.get_path()[r.get_path().size() - 1] == '/')
@@ -617,23 +617,23 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 	int key = map.begin()->first;
 	if (!CheckMethodeIsAllowed("POST", _configs, conf_i, key))
     {
-		clients[clientFd].response= Response::buildResponse(r, 405, "Method Not Allowed",_configs[clients[clientFd].conf_i].ErrorPages[405], clientFd, clients);
+		clients[clientFd].response= Response::buildResponse(405, "Method Not Allowed",_configs[clients[clientFd].conf_i].ErrorPages[405], clientFd, clients, _configs);
         return 0;
     }
 
 	if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) )
 	{
-		clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
+		clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients, _configs);
 		return 0;
 	}
 	if (clients[clientFd].PostBody.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) && !clients[clientFd].chnked)
 	{
-		clients[clientFd].response= Response::buildResponse(r, 413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
+		clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients, _configs);
 		return 0;
 	}
 	if (_configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store.empty())
 	{
-		clients[clientFd].response= Response::buildResponse(r, 403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients);
+		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
 		return 0;
 	 }
 	// if (!_configs[conf_i].locations[key].Return.empty())
@@ -694,7 +694,7 @@ int get_code_status_cgi(std::map<std::string, std::string> map_h)
 		std::cerr << "❌ Aucun header Status trouvé dans CGI" << std::endl;
 	return status_code;
 }
-bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int clientFd, std::map<int, Client> &clientobj)
+bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<int, Client> &clientobj)
 {
 	struct stat statbuf;
 	//std::cout <<  "cgi bodyyyyyyyy********************** " << clientobj[clientFd].CGIPostBody<< std::endl;
@@ -706,7 +706,7 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 		}
 		if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
 		{
-				clientobj[clientFd].response= Response::buildResponse(r, 502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj, _configs);
 				if(remove(clientobj[clientFd].filename.c_str()))
 					return 0;
 				return 0;
@@ -715,11 +715,11 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 		if(!out)
 		{
 			if(stat(clientobj[clientFd].filename.c_str(), &statbuf) == -1)
-				clientobj[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj, _configs);
 			else if(access(clientobj[clientFd].filename.c_str(), W_OK) == -1)
-				clientobj[clientFd].response= Response::buildResponse(r, 403, "Forbiden",_configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(403, "Forbiden",_configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj, _configs);
 			else
-				clientobj[clientFd].response = Response::buildResponse( r, 500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500],clientFd, clientobj);
+				clientobj[clientFd].response = Response::buildResponse(500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500],clientFd, clientobj, _configs);
 			std::cerr << "❌ Failed to open file: " << clientobj[clientFd].filename << std::endl;
 			out.close();
 			remove(clientobj[clientFd].filename.c_str());
@@ -731,13 +731,11 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 		{
 			header = clientobj[clientFd].CGIPostBody.substr(0, header_end + 4);
 			clientobj[clientFd].CGIPostBody = clientobj[clientFd].CGIPostBody.substr(header.size());
-			//std::cout << " hedder is**************"<< header<< std::endl;
 		}
 		else if ((header_end = clientobj[clientFd].CGIPostBody.find("\n\n")) != std::string::npos )
 		{
 			header = clientobj[clientFd].CGIPostBody.substr(0, header_end + 2);
 			clientobj[clientFd].CGIPostBody = clientobj[clientFd].CGIPostBody.substr(header.size());
-			//std::cout << " hedder is1**************"<< header<< std::endl;
 		}
 		std::map<std::string, std::string> map_h = parce_header_cgi(header);
 		
@@ -766,27 +764,27 @@ bool handel_cgi_post(request & r, std::vector<ServerConfig> _configs, int client
 	}
 	else
 		out.write(clientobj[clientFd].CGIPostBody.c_str(), clientobj[clientFd].CGIPostBody.size());
-	std::cout << " fil nameeeeeeeeeeeee newwwwww############## " << clientobj[clientFd].filename<< std::endl;
-		out.flush();
-		if (std::rename(save.c_str(), clientobj[clientFd].filename.c_str()) == 0)
-			std::cout << "File renamed successfully!\n";
-		else {
+	out.flush();
+	if (std::rename(save.c_str(), clientobj[clientFd].filename.c_str()) == 0)
+		std::cout << "File renamed successfully!\n";
+	else 
+	{
 		std::cerr << "❌ Failed to rename file: " << clientobj[clientFd].filename << std::endl;
-		clientobj[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
+		clientobj[clientFd].response= Response::buildResponse(500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj, _configs);
 		out.close();
 		if(remove(clientobj[clientFd].filename.c_str()))
 			return 0;
 		return 0;
-		}
-		clientobj[clientFd].response= Response::buildResponse(r, status_code, "Created",_configs[clientobj[clientFd].conf_i].ErrorPages[status_code], clientFd, clientobj);
-		out.close();
+	}
+	clientobj[clientFd].response= Response::buildResponse(status_code, "Created",_configs[clientobj[clientFd].conf_i].ErrorPages[status_code], clientFd, clientobj, _configs);
+	out.close();
 	return 0;
 }
 void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj,EpollManager &epollManager)
 {
 	if (clientobj[clientFd].has_cgi)
 	{
-		if(!handel_cgi_post(r,_configs, clientFd,  clientobj))
+		if(!handel_cgi_post(_configs, clientFd,  clientobj))
 			return;
 		return ;
 	}
@@ -840,11 +838,11 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		if(!out)
 		{
 			if(stat(clientobj[clientFd].filename.c_str(), &statbuf) == -1)
-				clientobj[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj, _configs);
 			else if(access(clientobj[clientFd].filename.c_str(), W_OK) == -1)
-				clientobj[clientFd].response= Response::buildResponse(r, 403, "Forbiden",_configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(403, "Forbiden",_configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj, _configs);
 			else
-				clientobj[clientFd].response = Response::buildResponse( r, 500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500],clientFd, clientobj);
+				clientobj[clientFd].response = Response::buildResponse(500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500],clientFd, clientobj, _configs);
 			std::cerr << "❌ Failed to open file: " << clientobj[clientFd].filename << std::endl;
 			out.close();
 			remove(clientobj[clientFd].filename.c_str());
@@ -867,11 +865,11 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		if(!out)
 		{
 			if(stat(clientobj[clientFd].filename.c_str(), &statbuf) == -1)
-				clientobj[clientFd].response= Response::buildResponse(r, 500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj, _configs);
 			else if(access(clientobj[clientFd].filename.c_str(), W_OK) == -1)
-				clientobj[clientFd].response= Response::buildResponse(r, 403, "Forbiden",_configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj);
+				clientobj[clientFd].response= Response::buildResponse(403, "Forbiden",_configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj, _configs);
 			else
-				clientobj[clientFd].response = Response::buildResponse( r, 500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500],clientFd, clientobj);
+				clientobj[clientFd].response = Response::buildResponse(500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500],clientFd, clientobj, _configs);
 			std::cerr << "❌ Failed to open file: " << clientobj[clientFd].filename << std::endl;
 			out.close();
 			remove(clientobj[clientFd].filename.c_str());
@@ -888,7 +886,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		out.close();
 	}
 	if (!clientobj[clientFd].has_cgi)
-		clients[clientFd].response= Response::buildResponse(r, 201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj);
+		clients[clientFd].response= Response::buildResponse(201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj, _configs);
 
 }
 
