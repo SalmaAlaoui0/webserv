@@ -67,10 +67,10 @@ std::vector<std::string> splitPath(const std::string &path) {
     return parts;
 }
 
-std::string joinPath(const std::vector<std::string> &parts) {
+std::string joinPath(const std::vector<std::string> &parts, bool Slashfound) {
     std::string result = "";
     for (std::vector<std::string>::const_iterator it = parts.begin(); it != parts.end(); ++it) {
-		if (result.empty())
+		if (result.empty() && !Slashfound)
         	result = *it;
 		else
         	result += "/" + *it;
@@ -81,6 +81,9 @@ std::string joinPath(const std::vector<std::string> &parts) {
 std::string mergePaths(std::string root, std::string request) {
     std::vector<std::string> rootParts = splitPath(root);
     std::vector<std::string> reqParts = splitPath(request);
+	bool slashfound = 0;
+	if (root[0] == '/')
+		slashfound = 1;
 
     // Remove the overlapping folders from end of root and start of request
     while (!rootParts.empty() && !reqParts.empty() && 
@@ -92,8 +95,8 @@ std::string mergePaths(std::string root, std::string request) {
     std::vector<std::string> merged = rootParts;
     merged.insert(merged.end(), reqParts.begin(), reqParts.end());
 
-	std::cout << "\n\nResponse path is: =========>" << joinPath(merged) << "<============\n\n";
-    return joinPath(merged);
+	std::cout << "\n\nResponse path is: =========>" << joinPath(merged, slashfound) << "<============\n\n";
+    return joinPath(merged, slashfound);
 }
 
 // std::string join_path(request &r, std::string root, std::string suffix)
