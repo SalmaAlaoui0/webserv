@@ -254,87 +254,98 @@ std::string to_string98(size_t value) {
     return oss.str();
 }
 
+
+void init_cgi_map (std::map<int, Client>& clients, int fd)
+{
+	clients[fd].cgiMap[fd].Timeout = 0;
+	clients[fd].cgiMap[fd].signal = 0;
+	clients[fd].cgiMap[fd].flag_rep = 0;
+	clients[fd].cgiMap[fd].start = time(NULL);
+	clients[fd].cgiMap[fd].exit_code_cgi = 0;
+}
+
 void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, std::string interpreter, EpollManager &epollManager)
 {
 	clientobj[clientFd].has_cgi = 1;
 	std::cout << "the cgi path is: " << path << ", and cgi interpreter is: " << interpreter << std::endl;
 
-int input_pipe[2];
-int pipeFD[2];
-if (pipe(input_pipe) == -1 || pipe(pipeFD) == -1)
-{
-    perror("pipe");
-    return;
-}
+	int input_pipe[2];
+	int pipeFD[2];
+	init_cgi_map(clientobj, clientFd);
+	if (pipe(input_pipe) == -1 || pipe(pipeFD) == -1)
+	{
+		perror("pipe");
+		return;
+	}
 
-pid_t pid = fork();
+	pid_t pid = fork();
 
-if (pid == -1)
-{
-    perror("fork");
-    return;
-}
-if (pid == 0)
-{
-    dup2(input_pipe[0], STDIN_FILENO);
-    dup2(pipeFD[1], STDOUT_FILENO);
-    //close(input_pipe[0]);
-   	close(input_pipe[1]);
-    close(pipeFD[0]);
-    //close(pipeFD[1]);
-    std::vector<char *> args;
-    args.push_back(const_cast<char*>(interpreter.c_str()));
-    args.push_back(const_cast<char*>(path.c_str()));
-    args.push_back(NULL);
-    if (clientobj[clientFd].method == "POST")
-    {
-        setenv("REQUEST_METHOD", "POST", 1);
-        std::string body = "";
-        if (clientobj[clientFd].chnked)
-            body = clientobj[clientFd].body_chunked;
-        else
-            body = clientobj[clientFd].PostBody;
-        std::string len = to_string98(body.size());
-        setenv("CONTENT_LENGTH", len.c_str(), 1);
-        setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
-    }
-    else
-    {
-        setenv("REQUEST_METHOD", "GET", 1);
-        setenv("CONTENT_LENGTH", "0", 1);
-    }
-	setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
-    setenv("SCRIPT_FILENAME", path.c_str(), 1);
-    setenv("QUERY_STRING", clientobj[clientFd].QUERY_STRING.c_str(), 1);
-    setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
-    setenv("REDIRECT_STATUS", "200", 1);
-    execve(interpreter.c_str(), &args[0], environ);
-    perror("execve");
-    exit(1);
-}
-else
-{
-    close(input_pipe[0]); 
-    close(pipeFD[1]);   
-    if (clientobj[clientFd].method == "POST")
-    {
-		ssize_t written;
-		if(clientobj[clientFd].chnked)
-			 written = write(input_pipe[1],clientobj[clientFd].body_chunked.c_str(),clientobj[clientFd].body_chunked.size());
+	if (pid == -1)
+	{
+		perror("fork");
+		return;
+	}
+	if (pid == 0)
+	{
+		dup2(input_pipe[0], STDIN_FILENO);
+		dup2(pipeFD[1], STDOUT_FILENO);
+		//close(input_pipe[0]);
+		close(input_pipe[1]);
+		close(pipeFD[0]);
+		//close(pipeFD[1]);
+		std::vector<char *> args;
+		args.push_back(const_cast<char*>(interpreter.c_str()));
+		args.push_back(const_cast<char*>(path.c_str()));
+		args.push_back(NULL);
+		if (clientobj[clientFd].method == "POST")
+		{
+			setenv("REQUEST_METHOD", "POST", 1);
+			std::string body = "";
+			if (clientobj[clientFd].chnked)
+				body = clientobj[clientFd].body_chunked;
+			else
+				body = clientobj[clientFd].PostBody;
+			std::string len = to_string98(body.size());
+			setenv("CONTENT_LENGTH", len.c_str(), 1);
+			setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
+		}
 		else
-         	written = write(input_pipe[1],clientobj[clientFd].PostBody.c_str(),clientobj[clientFd].PostBody.size());
-        if (written == -1)
-            perror("write to CGI stdin");
-    }
-    close(input_pipe[1]);
-    fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
-    epollManager.addSocket(pipeFD[0], EPOLLIN);
-    CgiInfo info;
-    info.pipefd = pipeFD[0];
-    info.pid = pid;
-    info.start = time(NULL);
-    clientobj[clientFd].cgiMap[clientFd] = info;
-}
+		{
+			setenv("REQUEST_METHOD", "GET", 1);
+			setenv("CONTENT_LENGTH", "0", 1);
+		}
+		setenv("CONTENT_TYPE", clientobj[clientFd].ContentType.c_str(), 1);
+		setenv("SCRIPT_FILENAME", path.c_str(), 1);
+		setenv("QUERY_STRING", clientobj[clientFd].QUERY_STRING.c_str(), 1);
+		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
+		setenv("REDIRECT_STATUS", "200", 1);
+		execve(interpreter.c_str(), &args[0], environ);
+		perror("execve");
+		exit(1);
+	}
+	else
+	{
+		close(input_pipe[0]); 
+		close(pipeFD[1]);   
+		if (clientobj[clientFd].method == "POST")
+		{
+			ssize_t written;
+			if(clientobj[clientFd].chnked)
+				written = write(input_pipe[1],clientobj[clientFd].body_chunked.c_str(),clientobj[clientFd].body_chunked.size());
+			else
+				written = write(input_pipe[1],clientobj[clientFd].PostBody.c_str(),clientobj[clientFd].PostBody.size());
+			if (written == -1)
+				perror("write to CGI stdin");
+		}
+		close(input_pipe[1]);
+		fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
+		epollManager.addSocket(pipeFD[0], EPOLLIN);
+		CgiInfo info;
+		info.pipefd = pipeFD[0];
+		info.pid = pid;
+		info.start = time(NULL);
+		clientobj[clientFd].cgiMap[clientFd] = info;
+	}
 }
 
 
