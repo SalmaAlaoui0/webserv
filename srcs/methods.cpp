@@ -421,9 +421,9 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			{
 				clientobj[clientFd].ResponseChunked = 1;
 				if (!clientobj[clientFd].has_cookie)
-					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "/home/wzahir/1webserv/www/new_client.html", clientFd, clientobj, _configs);
+					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "www/new_client.html", clientFd, clientobj, _configs);
 				else
-					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "/home/wzahir/1webserv/www/returning_client.html", clientFd, clientobj, _configs);
+					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "www/returning_client.html", clientFd, clientobj, _configs);
 			}
         }
 		else // If we did attach the file but still it's not found
