@@ -68,9 +68,12 @@ std::vector<std::string> splitPath(const std::string &path) {
 }
 
 std::string joinPath(const std::vector<std::string> &parts) {
-    std::string result;
+    std::string result = "";
     for (std::vector<std::string>::const_iterator it = parts.begin(); it != parts.end(); ++it) {
-        result += "/" + *it;
+		if (result.empty())
+        	result = *it;
+		else
+        	result += "/" + *it;
     }
     return result.empty() ? "/" : result;
 }

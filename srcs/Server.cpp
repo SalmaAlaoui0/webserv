@@ -507,7 +507,6 @@ void Server::run()
                             }
                             else
                             {
-                                 std::cout << "______________________Hrererere is the leakkk for fd: " << fd << std::endl;
 
                                 // std::cout << "Hrererere is the leakkk for fd: handle " << fd << std::endl;
 
@@ -526,7 +525,7 @@ void Server::run()
                             }
                         
 
-                }
+                        }
                     }
                     catch(std::exception &e)
                     {

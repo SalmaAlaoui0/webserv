@@ -102,9 +102,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     std::ostringstream response;
     ssize_t sent = 0;
 
-    // (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
-    //     && !clientobj[clientFd].send_complete && clientobj[clientFd].Read && clientobj[clientFd].statusCode != 204)
-    // std::cout << "has cgi is: " << clientobj[clientFd].has_cgi << ", and sending is; " << clientobj[clientFd].Sending  << ", send complete is; " << clientobj[clientFd].send_complete << ", the read is; " << clientobj[clientFd].Read << "last status code is: " << clientobj[clientFd].statusCode << std::endl;
     if (clientobj[clientFd].statusCode == 301 || clientobj[clientFd].statusCode == 302)
     {
         std::string statusStr = intToString(clientobj[clientFd].statusCode); 
@@ -135,10 +132,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         std::cout << "✅ Redirect response sent to FD: " << clientFd << " with the return code is: " << statusStr << std::endl;
         clientobj[clientFd].send_complete = 1;
     }
-// <<<<<<< HEAD
-//     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read)
-//     { 
-// =======
 
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].Read && clientobj[clientFd].statusCode != 204)
     {
@@ -216,8 +209,9 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         }
     }
     else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
-        && clientobj[clientFd].send_complete && clientobj[clientFd].statusCode != 204)
+        && clientobj[clientFd].send_complete && clientobj[clientFd].statusCode != 204 && !clientobj[clientFd].has_problem)
     {
+        std::cout << "3333333333333\n\n";
         ssize_t sendbytes = send(clientFd, clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size(), MSG_NOSIGNAL);
         if (sendbytes != -1)
         {
@@ -338,8 +332,38 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
         std::cerr << "❌❌ Failed to open file: " << filePath << std::endl;
         rep.statusCode = 500;
         rep.statusMsg  = "Internal Server Error";
-        filePath      = _configs[clientobj[clientFd]. conf_i].ErrorPages[500];
+        rep.body = "<!DOCTYPE html>\n"
+           "<html lang=\"en\">\n"
+           "<head>\n"
+           "    <meta charset=\"UTF-8\">\n"
+           "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
+           "    <title>500 Internal Server Error</title>\n"
+           "    <style>\n"
+           "        body {\n"
+           "            font-family: Arial, sans-serif;\n"
+           "            background-color: #f2f2f2;\n"
+           "            color: #333;\n"
+           "            text-align: center;\n"
+           "            padding: 50px;\n"
+           "        }\n"
+           "        h1 {\n"
+           "            color: #ff0000;\n"
+           "            font-size: 72px;\n"
+           "        }\n"
+           "        p {\n"
+           "            font-size: 24px;\n"
+           "        }\n"
+           "    </style>\n"
+           "</head>\n"
+           "<body>\n"
+           "    <h1>500</h1>\n"
+           "    <p>Internal Server Error</p>\n"
+           "    <p>Something went wrong on our server. Please try again later.</p>\n"
+           "</body>\n"
+           "</html>\n";
+        // filePath      = _configs[clientobj[clientFd]. conf_i].ErrorPages[500];
         rep.contentType = "text/html";
+        clientobj[clientFd].has_problem = 1;
         clientobj[clientFd].Sending = 1;
         clientobj[clientFd].send_complete = 1;
         return (rep);
@@ -367,7 +391,7 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
             send_bigsize(clientobj, clientFd, filePath, rep);
         }
     }
-    if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || clientobj[clientFd].method != "GET")
+    if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || clientobj[clientFd].method != "GET" || clientobj[clientFd].has_problem)
     {
          std::cout << "helllllllllllllo------------------>>>>>>>>"<<clientobj[clientFd].method<<std::endl;
         std::ostringstream ss; // to put file content in it ;)
