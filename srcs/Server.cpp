@@ -12,6 +12,7 @@
 
 
 #include "../includes/Server.hpp"
+#include "../includes/Utils.hpp"
 #include <csignal>
 #define RESET   "\033[0m"
 #define RED     "\033[31m"
@@ -286,53 +287,54 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
      int pid = clientobj[fd].cgiMap[fd].pid;
      int wstatus = 0;
     pid_t result = waitpid(pid, &wstatus, WNOHANG);
-    clientobj[fd].send_complete = 1;
-if (result == 0) 
-{
-    double elapsed = difftime(time(NULL), clientobj[fd].cgiMap[fd].start);
-    if (elapsed > 3) 
+    if (result == 0) 
     {
-        clientobj[fd].cgiMap[fd].Timeout = true;
-        std::cerr << "[CGI] Timeout exceeded, killing process " << pid << std::endl;
-        clientobj[fd].response = Response::buildResponse(504, "Gateway Timeout", _configs[clientobj[fd]. conf_i].ErrorPages[504], fd, clientobj ,_configs);
-        kill(pid, SIGKILL);
-        waitpid(pid, &wstatus, 0);
-        close(clientobj[fd].cgiMap[fd].pipefd);
-        clientobj[fd].cgiMap[fd].pipefd = -1;
-    }
-    return;
-}
-
-if (result == pid) {
-    if (WIFEXITED(wstatus)) {
-        int exitCode = WEXITSTATUS(wstatus);
-             clientobj[fd].cgiMap[fd].exit_code_cgi = exitCode;
-
-        if (exitCode == 0)
-            std::cout << "CGI terminé avec succès ✅\n"; 
-        else
+        std::cout << "diff of time si: " << difftime(time(NULL), clientobj[fd].cgiMap[fd].start) << std::endl;
+        std::cout << "entering herree and ex\n\n";
+        double elapsed = difftime(time(NULL), clientobj[fd].cgiMap[fd].start);
+        if (elapsed > 3) 
         {
-            std::cerr << "CGI exited with error code " << exitCode << std::endl;
-            clientobj[fd].cgiMap[fd].flag_rep = true;
-            std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
-			clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
+            clientobj[fd].cgiMap[fd].Timeout = true;
+            std::cerr << "[CGI] Timeout exceeded, killing process " << pid << std::endl;
+            clientobj[fd].response = Response::buildResponse(504, "Gateway Timeout", _configs[clientobj[fd]. conf_i].ErrorPages[504], fd, clientobj ,_configs);
             kill(pid, SIGKILL);
             waitpid(pid, &wstatus, 0);
-         close(clientobj[fd].cgiMap[fd].pipefd);
-        clientobj[fd].cgiMap[fd].pipefd = -1;
+            close(clientobj[fd].cgiMap[fd].pipefd);
+            clientobj[fd].cgiMap[fd].pipefd = -1;
         }
-    } 
-    else if (WIFSIGNALED(wstatus)) {
-        clientobj[fd].cgiMap[fd].signal = true;
-		clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
-         close(clientobj[fd].cgiMap[fd].pipefd);
-        clientobj[fd].cgiMap[fd].pipefd = -1;
-        std::cerr << "CGI killed by signal " << WTERMSIG(wstatus)  << "   pid    "<<clientobj[fd].cgiMap[fd].pid << std::endl;
-        kill(pid, SIGKILL);
-        waitpid(pid, &wstatus, 0);
+        return;
     }
-}
-int pipefd = clientobj[fd].cgiMap[fd].pipefd;
+
+    if (result == pid) {
+        if (WIFEXITED(wstatus)) {
+            int exitCode = WEXITSTATUS(wstatus);
+                clientobj[fd].cgiMap[fd].exit_code_cgi = exitCode;
+
+            if (exitCode == 0)
+                std::cout << "CGI terminé avec succès ✅\n"; 
+            else
+            {
+                std::cerr << "CGI exited with error code " << exitCode << std::endl;
+                clientobj[fd].cgiMap[fd].flag_rep = true;
+                std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
+                clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
+                kill(pid, SIGKILL);
+                waitpid(pid, &wstatus, 0);
+            close(clientobj[fd].cgiMap[fd].pipefd);
+            clientobj[fd].cgiMap[fd].pipefd = -1;
+            }
+        } 
+        else if (WIFSIGNALED(wstatus)) {
+            clientobj[fd].cgiMap[fd].signal = true;
+            clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
+            close(clientobj[fd].cgiMap[fd].pipefd);
+            clientobj[fd].cgiMap[fd].pipefd = -1;
+            std::cerr << "CGI killed by signal " << WTERMSIG(wstatus)  << "   pid    "<<clientobj[fd].cgiMap[fd].pid << std::endl;
+            kill(pid, SIGKILL);
+            waitpid(pid, &wstatus, 0);
+        }
+    }
+    int pipefd = clientobj[fd].cgiMap[fd].pipefd;
     if (pipefd != -1)
     {
         std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
@@ -346,7 +348,7 @@ int pipefd = clientobj[fd].cgiMap[fd].pipefd;
         clients[fd].cgiMap[fd].Timeout = 0;
         clients[fd].cgiMap[fd].signal = 0;
         clients[fd].cgiMap[fd].flag_rep = 0;
-        clients[fd].cgiMap[fd].start = 0;
+        clients[fd].cgiMap[fd].start = time(NULL);
         clients[fd].cgiMap[fd].exit_code_cgi = 0;
  }
 
@@ -378,8 +380,9 @@ void Server::run()
             }
             if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
-            else if (clients[fd].cgiMap[fd].pipefd > 0 && !clients[fd].Read) {
-                init_cgi_map(clients, fd);
+            else if (clients[fd].cgiMap[fd].pipefd > 0) {
+                // if (!clients[fd].CgiSend)
+                //     init_cgi_map(clients, fd);
        // info.pid = -1;
                 // std::cout << "Handling CGI pipe read for fd: " << fd << ", pipefd: " << clients[fd].cgiMap[fd].pipefd << std::endl;
                 // std::cout << "\n\n Here in reading cgi pipe content\n\n";
@@ -388,19 +391,12 @@ void Server::run()
                 char buffer[BUF_SIZE];
                 ssize_t bytesRead;
                 bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE - 1);
-                // clients[fd].ResponseChunked = 0;
+                clients[fd].ResponseChunked = 0;
+                std::cout << "\n\n***********the ResponseChunked var is: 0**************\n\n" << std::endl;
               //   std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << bytesRead << "<--\n\n";
                 // exit (18);
 
-                if (  bytesRead == 0 && !clients[fd].CgiSend)
-                {
-                    std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
-                    clients[fd].response = Response::buildResponse(204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients ,_configs);
-                    clients[fd].statusCode = 204;
-                    clients[fd].statusMsg = "No Content";
-                    WaitChildAndClean(epollManager, clients, fd, _configs);
-                    // exit(13);
-                }
+                
                 if (bytesRead > 0)
                 {
                     clients[fd].CgiSend = 1;
@@ -408,8 +404,8 @@ void Server::run()
                     // std::cout << "The Body Is Being Appended. " << std::endl;
                     if (clients[fd].method == "GET")
                     {
-                        clients[fd].CgiBody.assign(buffer, bytesRead);
-                        clients[fd].Read = 1;
+                        clients[fd].CgiBody.append(buffer, bytesRead);
+                        // clients[fd].Read = 1;
                         // std::cout << "hereere READINNG IS: 1\n";
                     }
                     else if (clients[fd].method == "POST")
@@ -426,6 +422,31 @@ void Server::run()
                     clients[fd].CgiBody.append(buffer, bytesRead);
                     clients[fd].statusCode = 200;
                     clients[fd].statusMsg = "OK";
+                    size_t HeaderEnd = clients[fd].CgiBody.find("\r\n\r\n");
+                    size_t sepLength = 4; // default CRLF
+
+                    if (HeaderEnd == std::string::npos) {
+                        HeaderEnd = clients[fd].CgiBody.find("\n\n");
+                        sepLength = 2; // LF only
+                    }
+                    if (HeaderEnd != std::string::npos)
+                    {
+                        std::string headers = clients[fd].CgiBody.substr(0, HeaderEnd);
+                        // std::cout << "\n\n\n-------> header:" << headers << "<---" << std::endl;
+                        clients[fd].ContentType = ft_content_type(headers);
+                        clients[fd].statusCode = ft_code_status(headers);
+                        clients[fd].CgiBody = clients[fd].CgiBody.substr(HeaderEnd + sepLength);
+                        std::cout << "\n\n\n-------> Body:" << clients[fd].CgiBody << "<---" << std::endl;
+                        std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
+                        if (clients[fd].CgiBody.empty())
+                        {
+                            clients[fd].response = Response::buildResponse(204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients ,_configs);
+                            // exit(22);
+                            clients[fd].statusCode = 204;
+                            clients[fd].statusMsg = "No Content";
+                        }
+                        // exit(13);
+                    }
                     WaitChildAndClean(epollManager, clients, fd, _configs);
                     std::cout << "finish reading cgi\n";
                     // clients[fd].send_complete = 1;
@@ -543,10 +564,15 @@ void Server::run()
                             handleRequest(fd, a, clients, epollManager);
                         }
                         if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
+                        {
+                            std::cout << "^^^^^^^^^^^^^^code status isss: " <<clients[fd].statusCode << "^^^^\n\n";
                             clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
+                        }
                         if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
                         || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1 || clients[fd].timeout)
                         {
+                            std::cout << "why I enter here before finishing sending the data I have a problem !! the send complete var is: " << clients[fd].send_complete << " and response chuncked is; " << clients[fd].ResponseChunked 
+                            << "lastely it can be because of timeout: it is : " << clients[fd].timeout << std::endl;
                             std::cout << " closeeeeeeeeeeeeeeeee\n\n";
                             closeConnection(fd, epollManager);
                             // close(fd);
