@@ -58,7 +58,6 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             // {
                 // clientobj[clientFd].send_complete = 1;
                 perror("read failed");
-                // exit (14);
             // }    
         }
         else if (Readbyte == 0)
@@ -215,15 +214,16 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         clientobj[clientFd].method.empty())
     {
         response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
-                << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
-                if(clientobj[clientFd].has_cookie == 0)
-                {
-                    response << "Set-Cookie: session_id=" << clientobj[clientFd].response.sessionId <<"\r\n";
-                    clientobj[clientFd].has_cookie = 1;
-                }
-                response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
-                << clientobj[clientFd].response.body;
-
+        << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
+        if(clientobj[clientFd].has_cookie == 0)
+        {
+            response << "Set-Cookie: session_id=" << clientobj[clientFd].response.sessionId <<"\r\n";
+            clientobj[clientFd].has_cookie = 1;
+        }
+        response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
+        << clientobj[clientFd].response.body;
+        
+        std::cout << " haniiiiiiiiiiiiiii\n\n" << " codeeeeeeeeeee "<< clientobj[clientFd].response.statusCode<<std::endl;
         sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
     }
     else if (clientobj[clientFd].statusCode == 204)
@@ -246,7 +246,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     {
         std::cout << "hooooona has no cgi is; the conditions are: has_cgi is==> " << clientobj[clientFd].has_cgi << "and sending var is==> " << clientobj[clientFd].Sending
         << "and response chunked var is==>" << clientobj[clientFd].ResponseChunked << "and lastly send_complete var is==>" << clientobj[clientFd].send_complete << "\n\n\n";
-        exit (7);
+      //  exit (7);
          response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)
@@ -315,6 +315,7 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     rep.statusCode = code;
     clientobj[clientFd].statusCode = code;
     rep.statusMsg = msg;
+    std::cout << " code : "<< rep.statusCode<<std::endl; 
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
     // std::cout << " fil repone %%%%%%% " << filePath << std::endl;
     if (!file)
@@ -387,7 +388,7 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
         std::ostringstream ss; // to put file content in it ;)
         ss << file.rdbuf();
         rep.body = ss.str();
-        // std::cout << "THE BODY OF UR FILE IS: " << rep.body << std::endl;
+        //std::cout << "THE BODY OF UR FILE IS: " << rep.body << std::endl;
     }
     return rep;
 }

@@ -258,14 +258,15 @@ std::string to_string98(size_t value) {
 }
 
 
-void init_cgi_map (std::map<int, Client>& clients, int fd)
-{
-	clients[fd].cgiMap[fd].Timeout = 0;
-	clients[fd].cgiMap[fd].signal = 0;
-	clients[fd].cgiMap[fd].flag_rep = 0;
-	clients[fd].cgiMap[fd].start = time(NULL);
-	clients[fd].cgiMap[fd].exit_code_cgi = 0;
-}
+// void init_cgi_map (std::map<int, Client>& clients, int fd)
+// {
+// 	std::cout << " initttttttttttttt\n\n\n";
+// 	clients[fd].cgiMap[fd].Timeout = 0;
+// 	clients[fd].cgiMap[fd].signal = 0;
+// 	clients[fd].cgiMap[fd].flag_rep = 0;
+// 	clients[fd].cgiMap[fd].start = time(NULL);
+// 	clients[fd].cgiMap[fd].exit_code_cgi = 0;
+// }
 
 void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, std::string interpreter, EpollManager &epollManager)
 {
@@ -274,7 +275,7 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 
 	int input_pipe[2];
 	int pipeFD[2];
-	init_cgi_map(clientobj, clientFd);/// I put it here bash mayb9ach time kaytinitializa fkola loop
+	//init_cgi_map(clientobj, clientFd);/// I put it here bash mayb9ach time kaytinitializa fkola loop
 	if (pipe(input_pipe) == -1 || pipe(pipeFD) == -1)
 	{
 		perror("pipe");
@@ -292,10 +293,10 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 	{
 		dup2(input_pipe[0], STDIN_FILENO);
 		dup2(pipeFD[1], STDOUT_FILENO);
-		//close(input_pipe[0]);
+		close(input_pipe[0]);
 		close(input_pipe[1]);
 		close(pipeFD[0]);
-		//close(pipeFD[1]);
+		close(pipeFD[1]);
 		std::vector<char *> args;
 		args.push_back(const_cast<char*>(interpreter.c_str()));
 		args.push_back(const_cast<char*>(path.c_str()));
@@ -717,19 +718,20 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 {
 	struct stat statbuf;
 	//std::cout <<  "cgi bodyyyyyyyy********************** " << clientobj[clientFd].CGIPostBody<< std::endl;
-		if(clientobj[clientFd].cgiMap[clientFd].signal || clientobj[clientFd].cgiMap[clientFd].Timeout)
-		{
-			if(remove(clientobj[clientFd].filename.c_str()))
-				return 0;
-			return 0;
-		}
-		if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
-		{
+	if(clientobj[clientFd].cgiMap[clientFd].signal || clientobj[clientFd].cgiMap[clientFd].Timeout)
+	{
+		std::cout << " helooooo\n\n";
+		std::cout << " signal : " << clientobj[clientFd].cgiMap[clientFd].signal<< " tim : "<< clientobj[clientFd].cgiMap[clientFd].Timeout<<std::endl;
+		remove(clientobj[clientFd].filename.c_str());	
+		return 0;
+	}
+	if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
+	{
 				clientobj[clientFd].response= Response::buildResponse(502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj, _configs);
 				if(remove(clientobj[clientFd].filename.c_str()))
 					return 0;
 				return 0;
-		}
+	}
 		std::ofstream out(clientobj[clientFd].filename.c_str(),std::ios::binary | std::ios::trunc);
 		if(!out)
 		{
@@ -784,6 +786,7 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 	else
 		out.write(clientobj[clientFd].CGIPostBody.c_str(), clientobj[clientFd].CGIPostBody.size());
 	out.flush();
+	std::cout<< " file is " <<clientobj[clientFd].filename << std::endl;;
 	if (std::rename(save.c_str(), clientobj[clientFd].filename.c_str()) == 0)
 		std::cout << "File renamed successfully!\n";
 	else 
@@ -795,6 +798,7 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 			return 0;
 		return 0;
 	}
+	std::cout << " yesssssssss\n\n";
 	clientobj[clientFd].response= Response::buildResponse(status_code, "Created",_configs[clientobj[clientFd].conf_i].ErrorPages[status_code], clientFd, clientobj, _configs);
 	out.close();
 	return 0;
@@ -805,7 +809,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	{
 		if(!handel_cgi_post(_configs, clientFd,  clientobj))
 			return;
-		return ;
+		//return ;
 	}
 	if(!error_post( clients,clientFd,  _configs,r, conf_i))
 		return ;
@@ -905,7 +909,10 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		out.close();
 	}
 	if (!clientobj[clientFd].has_cgi)
+	{
+		std::cout << " ouiiiiiiiiiiiiiiin\n\n";
 		clients[clientFd].response= Response::buildResponse(201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj, _configs);
+	}
 
 }
 
