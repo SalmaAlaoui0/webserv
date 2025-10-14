@@ -174,7 +174,7 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
     }
     if (clientobj[clientFd].method  == "/favicon.ico")
     {
-        std::cout << "hereeee: the favicon thing\n";
+        // std::cout << "hereeee: the favicon thing\n";
         clients[clientFd].response = Response::buildResponse(404, "Not Found",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients, _configs);
         return;
     }
@@ -367,7 +367,7 @@ void Server::run()
 	while (running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
-        checkTimeout(clients, epollManager, _configs); 
+        // checkTimeout(clients, epollManager, _configs); 
         for(size_t i = 0; i < events.size(); i++)
         {
             int fd = events[i].data.fd;
@@ -451,7 +451,6 @@ void Server::run()
                         }
                         WaitChildAndClean(epollManager, clients, fd, _configs);
                         std::cout << "finish reading cgi\n";
-                        // clients[fd].send_complete = 1;
                     }
                     else if (bytesRead < 0)
                     {
@@ -513,7 +512,7 @@ void Server::run()
                                 if (!clients[fd].get_final_port() || clients[fd].get_final_ip().empty())
                                     clients[fd].response = Response::buildResponse(400, "Bad Request", _configs[this->clients[fd]. conf_i].ErrorPages[400], fd, clients ,_configs);
                                 if (this->_configs[i].port == clients[fd].get_final_port() && this->_configs[i].host == clients[fd].get_final_ip())
-                                { 
+                                {
                                     this->clients[fd].conf_i = i; 
                                     break;
                                 }

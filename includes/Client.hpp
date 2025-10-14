@@ -28,7 +28,6 @@ class Client
         size_t  chunk_size;
         int recived;
         std::string litter_chunk;
-        bool reading_size;
         int _fd;
         int statusCode;
         bool body_complete;
