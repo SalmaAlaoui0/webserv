@@ -274,7 +274,7 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 
 	int input_pipe[2];
 	int pipeFD[2];
-	init_cgi_map(clientobj, clientFd);
+	init_cgi_map(clientobj, clientFd);/// I put it here bash mayb9ach time kaytinitializa fkola loop
 	if (pipe(input_pipe) == -1 || pipe(pipeFD) == -1)
 	{
 		perror("pipe");
@@ -374,6 +374,7 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 	struct stat statbuf;
 	std::string ext;
 	std::string interpreter;
+	bool indexNotFound = false;
     if (stat(requested_path.c_str(), &statbuf) == 0)
 	{
         if (S_ISREG(statbuf.st_mode))//Check is a valid file then serve it
@@ -401,6 +402,8 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 				file = config[i].locations[key].index;
 			else
 				file = config[i].index;
+			if (config[i].locations[key].index.empty() && config[i].index.empty())
+				indexNotFound = true;
 			index_file = mergePaths(requested_path, file);
 			// std::cout << "firstly this hole path is: " << index_file << std::endl;
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
@@ -412,10 +415,10 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 				else
 					clients[clientFd].response = clients[clientFd].response.buildResponse(200, "OK", index_file, clientFd, clientobj, _configs);
 			}
-			else if (config[i].locations[key].autoindex)// Not found pass to autoindex result
+			else if (config[i].locations[key].autoindex && indexNotFound)// Not found pass to autoindex result
 			{
 				send_dir_list(clientFd, requested_path, clientobj);// using requested path only !
-			 	clients[clientFd].response = clients[clientFd].response.buildResponse(200, "OK", index_file, clientFd, clientobj, _configs);
+				clients[clientFd].response = clients[clientFd].response.buildResponse(200, "OK", index_file, clientFd, clientobj, _configs);
             }
 			else
 			{
@@ -455,10 +458,10 @@ void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, 
 		clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
 	}
     std::string value = clientobj[clientFd].GetpathMap.begin()->second;
-	 std::cout << "====>>>>" << value << std::endl;
+	std::cout << "====>>>>" << value << "\n I want to know the bool send_complete data is: " << clientobj[clientFd].send_complete << std::endl;
     if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
     {
-        clients[clientFd].response = Response::buildResponse(405, "Method Not Allowed",_configs[conf_i].ErrorPages[405], clientFd, clientobj, _configs);
+        clients[clientFd].response = Response::buildResponse(403, "Forbidden",_configs[conf_i].ErrorPages[403], clientFd, clientobj, _configs);
         return;
     }
     if (_configs[conf_i].locations[key].Return.empty())
@@ -617,7 +620,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 2222 "<< fullpath <<std::endl;
     if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
     {
-		clients[clientFd].response= clients[clientFd].response.buildResponse(405, "Method Not Allowed", _configs[conf_i].ErrorPages[405], clientFd, clientobj, _configs);
+		clients[clientFd].response= clients[clientFd].response.buildResponse(403, "Forbidden", _configs[conf_i].ErrorPages[403], clientFd, clientobj, _configs);
         return;
     }
 	if (r.get_path()[r.get_path().size() - 1] == '/')
@@ -634,7 +637,7 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 	int key = map.begin()->first;
 	if (!CheckMethodeIsAllowed("POST", _configs, conf_i, key))
     {
-		clients[clientFd].response= Response::buildResponse(405, "Method Not Allowed",_configs[clients[clientFd].conf_i].ErrorPages[405], clientFd, clients, _configs);
+		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
         return 0;
     }
 

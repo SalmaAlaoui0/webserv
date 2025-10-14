@@ -31,7 +31,6 @@ class Response
         std::string statusMsg;
         std::string body;
         size_t filesize;
-        ssize_t Readbyte;
         std::string contentType;
         std::string sessionId;
         void RequestResponse(int clientFd, Response &response, std::map<int, Client> &clientobj);
