@@ -30,43 +30,6 @@ void handle_sigint(int)
     running = 0;  
     std::cout << "\n🛑 SIGINT received, shutting down..." << std::endl;
 }
-// int Server::creatServerSocket(const std::string &ip, int port)
-// {
-//     int server_fd  = socket(AF_INET, SOCK_STREAM, 0);  //AF_INET-->ipv4 , SOCK_STREAM-->tcp  
-//     int flags = fcntl(server_fd, F_GETFL, 0);
-//     if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0)
-//         throw socketException("❌ Failed to set non-blocking mode on socket");
-//     if (server_fd  < 0) 
-//         throw socketException("❌Socket creation failed");
-//     int option = 1;
-//     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
-//     {
-//         close(server_fd );
-//         throw socketException("❌ Socket setup failed in setsockopt()");
-//     }
-//     sockaddr_in addr;
-//     std::memset(&addr, 0,sizeof(addr));
-//     addr.sin_family = AF_INET;
-//     addr.sin_port = htons(port);
-//     if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) <= 0) 
-//     {
-//         close(server_fd );
-//         throw socketException("❌ Invalid IP address");
-//     }
-//     if(bind (server_fd, (sockaddr*)&addr, sizeof(addr)) < 0)
-//     {
-//         close(server_fd );
-//         perror("bind() failed : ");
-//         throw socketException("❌ bind() failed"); 
-//     }
-//     if(listen(server_fd , SOMAXCONN) < 0)
-//     {
-//         close(server_fd );
-//         throw socketException("❌ listen() failed");    
-//     }
-//     std::cout << "Listening on " << ip << ":" << port << std::endl;
-//     return server_fd ; 
-// }
 
 int Server::creatServerSocket(const std::string &ip, int port)
 {
@@ -75,7 +38,7 @@ int Server::creatServerSocket(const std::string &ip, int port)
     if (server_fd < 0)
         throw socketException("❌ Socket creation failed");
     // 2. Make socket non-blocking
-    // int flags = fcntl(server_fd, F_GETFL, 0);
+    // int flags = fcntl(server_fd, F_GETFL, 0);  // F_GETFL, -->forbiden
     // if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0) 
     // {
     //     close(server_fd);
@@ -202,7 +165,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         req.path.clear();
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
-        int flags = fcntl(clientFd, F_GETFL, 0);
+        int flags = fcntl(clientFd, F_GETFL, 0);  // ❌❌❌❌  F_GETFL forbiden
         if (fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 )
         {
             close(clientFd);
@@ -210,8 +173,8 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         }
         if (clientFd < 0)
         {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                return;
+            // if (errno == EAGAIN || errno == EWOULDBLOCK)
+            //     return;
             throw socketException("❌ accept failed");
         }
         epollManager.addSocket(clientFd, EPOLLIN);
@@ -367,7 +330,7 @@ void Server::run()
 	while (running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
-        // checkTimeout(clients, epollManager, _configs); 
+        checkTimeout(clients, epollManager, _configs); 
         for(size_t i = 0; i < events.size(); i++)
         {
             int fd = events[i].data.fd;
