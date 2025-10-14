@@ -27,14 +27,14 @@ html.append("<h1>🚀 Python CGI Test Script</h1>")
 html.append(f"<p><strong>Server time:</strong> {datetime.datetime.now()}</p>")
 
 # Query params
-# form = cgi.FieldStorage()
-# if form:
-#     html.append("<h2>Query Parameters</h2><ul>")
-#     for key in form.keys():
-#         html.append(f"<li>{key} = {form.getvalue(key)}</li>")
-#     html.append("</ul>")
-# else:
-#     html.append("<p><em>No query parameters received.</em></p>")
+form = cgi.FieldStorage()
+if form:
+    html.append("<h2>Query Parameters</h2><ul>")
+    for key in form.keys():
+        html.append(f"<li>{key} = {form.getvalue(key)}</li>")
+    html.append("</ul>")
+else:
+    html.append("<p><em>No query parameters received.</em></p>")
 
 # Random numbers
 numbers = [random.randint(1, 100) for _ in range(10)]
