@@ -2,11 +2,11 @@
 import sys
 
 
-with open("/home/salaoui/images/directory/3minvid.mp4", "rb") as f:
+with open("/home/salaoui/images/cat.jpg", "rb") as f:
     data = f.read()
 
 # headers first, as bytes
-sys.stdout.buffer.write(b"Content-Type: video/mp4\r\n")
+sys.stdout.buffer.write(b"Content-Type: image/jpg\r\n")
 sys.stdout.buffer.write(f"Content-Length: {len(data)}\r\n\r\n".encode())
 
 # then the video data
