@@ -313,7 +313,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
             {
                 clientobj[clientFd].cookies = iterator->second;
                 std::string id = findCookies(clientobj[clientFd].cookies);
-                std::cout << "Session ID: " << id << std::endl;
+                // std::cout << "Session ID: " << id << std::endl;
                 clientobj[clientFd].has_cookie = 1;
             }
             iterator++;
@@ -361,7 +361,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         }
         if (clientobj[clientFd].ContentLength == clientobj[clientFd].PostBody.size() || clientobj[clientFd].method == "GET")
         {
-            std::cout << "haniiiiiii------------>\n";
+            // std::cout << "haniiiiiii------------>\n";
             clientobj[clientFd].body_complete = 1;
             if (clientobj[clientFd].method == "POST")
             {
