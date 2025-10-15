@@ -630,8 +630,6 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 }
 bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<ServerConfig> _configs,request & r, size_t conf_i)
 {
-	std::cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~max siz "<< static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) <<std::endl;
-	std::cout<<"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~siz  issssssssssssss siz "<< clients[clientFd].body_chunked.size() <<std::endl;
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
@@ -640,12 +638,6 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
         return 0;
     }
-
-	if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) )
-	{
-		clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients, _configs);
-		return 0;
-	}
 	if (clients[clientFd].PostBody.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) && !clients[clientFd].chnked)
 	{
 		clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients, _configs);
@@ -655,7 +647,7 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 	{
 		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
 		return 0;
-	 }
+	}
 	// if (!_configs[conf_i].locations[key].Return.empty())
 	// {
 	// 	clientobj[clientFd].statusCode = _configs[conf_i].locations[key].Return.begin()->first;
