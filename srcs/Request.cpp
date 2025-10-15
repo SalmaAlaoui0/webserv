@@ -56,12 +56,12 @@ bool request::error_set(std::map<int, Client> &clients, int clientFd, ServerConf
     std::map<std::string, std::string> headers = clients[clientFd].get_header();
     size_t pos = 0;
     pos = clients[clientFd].path.find("..");
-    // if (clients[clientFd].PostBody.size() != (size_t)std::atoi(clients[clientFd].get_header()["Content-Length"].c_str()) && clients[clientFd].method == "POST")
-    // {
-    /////// HADA RAH MOSSIB KA7LA 30WAD MAYHAL MOUCKIL DAR LINA MACHAKIL
-    //     clients[clientFd].response = Response::buildResponse(r, 400, "Bad Request", config.ErrorPages[400], clientFd, clients);
-    //     return 0;
-    // }
+    if (clients[clientFd].PostBody.size() != (size_t)std::atoi(clients[clientFd].get_header()["Content-Length"].c_str()) && clients[clientFd].method == "POST")
+    {
+    ///// HADA RAH MOSSIB KA7LA 30WAD MAYHAL MOUCKIL DAR LINA MACHAKIL
+              clients[clientFd].response = Response::buildResponse(400, "bad request", config.ErrorPages[400], clientFd, clients ,_configs);
+        return 0;
+    }
     if (clients[clientFd].HeaderEnd > 8000)
     {
         clients[clientFd].response = Response::buildResponse(431, "Request Header Fields Too Large", config.ErrorPages[431], clientFd, clients ,_configs);
