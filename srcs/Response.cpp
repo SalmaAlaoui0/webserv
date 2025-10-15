@@ -24,15 +24,15 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             // and close connection and remove client from epoll
             // return "Failed";
         }
-        struct stat filesz;
-        if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
-        {
-            perror("fstat");
-            clientobj[clientFd].send_complete = 1;
-            // and make response page of file can't be open 
-            // and close connection and remove client from epoll
-            // return "Failed";
-        }
+    struct stat filesz;
+    if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
+    {
+        perror("fstat");
+        close(clientobj[clientFd]._fd);  // ✅ FIX: close opened fd on error
+        clientobj[clientFd]._fd = -1;
+        clientobj[clientFd].send_complete = 1;
+        return rep;
+    }
         clientobj[clientFd].filesize = filesz.st_size;
         clientobj[clientFd].size_send = 0;
 
@@ -46,25 +46,27 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         ssize_t Readbyte;
         char buffer[4000];
         Readbyte = read(clientobj[clientFd]._fd, buffer, sizeof(buffer));
-        std::cout << "###the file size is: " << clientobj[clientFd].filesize << ", and I send clientobj[clientFd].bytesRead is: " << clientobj[clientFd].bytesRead << "\n\n"; 
+        // std::cout << "###the file size is: " << clientobj[clientFd].filesize << ", and I send clientobj[clientFd].bytesRead is: " << clientobj[clientFd].bytesRead << "\n\n"; 
         if (Readbyte == -1)
         {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-            {
-                clientobj[clientFd].no_data = 1;
-                return rep;
-            }
-            else
-            {
-                clientobj[clientFd].send_complete = 1;
+            // if (errno == EAGAIN || errno == EWOULDBLOCK)
+            // {
+            //     clientobj[clientFd].no_data = 1;
+            //     return rep;
+            // }
+            // else
+            // {
                 perror("read failed");
-            }
+                close(clientobj[clientFd]._fd);
+                clientobj[clientFd].send_complete = 1;
+                // exit (14);
+            // }    
         }
         else if (Readbyte == 0)
         {
             rep.body.assign(buffer, Readbyte);
             clientobj[clientFd].bytesRead = Readbyte;
-            std::cout << "the only explanation is to see this message\n";
+            // std::cout << "the only explanation is to see this message\n";
             clientobj[clientFd].send_complete = 1;
             close(clientobj[clientFd]._fd);
         }
@@ -75,6 +77,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         }
         else
         {
+            close(clientobj[clientFd]._fd);
             perror("read failed");
         }
     }
@@ -165,7 +168,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked)
     {
-        std::cout << "coming to this condition is acceptable and true\n\n";
+        // std::cout << "coming to this condition is acceptable and true\n\n";
         std::ostringstream headers;
         headers << "HTTP/1.1 " << res.statusCode << "\r\n"
             << "Content-Type: " << res.contentType << "\r\n";
@@ -187,7 +190,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         && clientobj[clientFd].send_complete && clientobj[clientFd].statusCode != 204 && !clientobj[clientFd].has_problem))
     {
         std::string chunkmybody;
-        // std::cout << "**************booody  is: " <<  clientobj[clientFd].CgiBody << std::endl;
         if (clientobj[clientFd].CgiBody.size() > 8000)
         {
             chunkmybody = clientobj[clientFd].CgiBody.substr(0, 8000);
@@ -195,7 +197,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         }
         else
         {
-            // std::cout << "**************booody  is: " <<  clientobj[clientFd].CgiBody << std::endl;
             chunkmybody = clientobj[clientFd].CgiBody;
             clientobj[clientFd].CgiBody = "";
             clientobj[clientFd].send_complete = 1;
@@ -208,7 +209,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
         && !clientobj[clientFd].ResponseChunked)
     {
-        std::cout << "lalalla it's here\n\n";
         ssize_t sendbytes = send(clientFd, res.body.c_str(), clientobj[clientFd].bytesRead, MSG_NOSIGNAL);
         if (sendbytes != -1)
             clientobj[clientFd].size_send += sendbytes;
@@ -248,7 +248,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     {
         std::cout << "hooooona has no cgi is; the conditions are: has_cgi is==> " << clientobj[clientFd].has_cgi << "and sending var is==> " << clientobj[clientFd].Sending
         << "and response chunked var is==>" << clientobj[clientFd].ResponseChunked << "and lastly send_complete var is==>" << clientobj[clientFd].send_complete << "\n\n\n";
-        exit (7);
+        // exit (7);
          response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)
@@ -264,15 +264,15 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     if (sent < 0)
     {
-        if (errno == EPIPE)
-        { // do nothing or debugging msg because the connection is closed:) 
-            std::cout << "❌client closed connection❌\n\n";
-            close(clientobj[clientFd]._fd);
-                // or maybe remove client from epoll events or epoll fds
-        }
-        if (errno == EAGAIN || errno == EWOULDBLOCK)
-            return;
-        else
+        // if (errno == EPIPE)
+        // { // do nothing or debugging msg because the connection is closed:) 
+        //     std::cout << "❌client closed connection❌\n\n";
+        //     close(clientobj[clientFd]._fd);
+        //         // or maybe remove client from epoll events or epoll fds
+        // }
+        // if (errno == EAGAIN || errno == EWOULDBLOCK)
+        //     return;
+        // else
             std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
         //maybe we should close the connection if send failed
     }
@@ -318,7 +318,7 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     clientobj[clientFd].statusCode = code;
     rep.statusMsg = msg;
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
-    std::cout << " fil repone %%%%%%% " << filePath << std::endl;
+    // std::cout << " fil repone %%%%%%% " << filePath << std::endl;
     if (!file)
     {
         std::cerr << "❌❌ Failed to open file: " << filePath << std::endl;

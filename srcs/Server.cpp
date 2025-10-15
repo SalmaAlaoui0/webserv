@@ -214,7 +214,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].path.clear();
         clients[clientFd].version.clear();
         clients[clientFd].autoIndexBody.clear();
-        std::cout << "\n✅ New client connected on fd : " << clientFd << std::endl; 
+        std::cout << "✅ New client connected on fd : " << clientFd << std::endl; 
     
 }
 
@@ -254,8 +254,8 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
     if (result == 0) 
     {
         clientobj[fd].Read = 1;
-        std::cout << "diff of time si: " << difftime(time(NULL), clientobj[fd].cgiMap[fd].start) << std::endl;
-        std::cout << "entering herree and ex\n\n";
+        // std::cout << "diff of time si: " << difftime(time(NULL), clientobj[fd].cgiMap[fd].start) << std::endl;
+        // std::cout << "entering herree and ex\n\n";
         double elapsed = difftime(time(NULL), clientobj[fd].cgiMap[fd].start);
         if (elapsed > 3) 
         {
@@ -425,9 +425,7 @@ void Server::run()
                         {
                             WaitChildAndClean(epollManager, clients, fd, _configs);
                             clients[fd].send_complete = 1;
-                            // make an error html response
                             perror("REad");
-                            // exit (23);
                         }
                     }
                     time_t now = time(NULL);
@@ -460,7 +458,7 @@ void Server::run()
                         }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
                         {
-                            std::cout << "\nMaking the event EPOLLOUT \n";
+                            std::cout << "the requested path is: " << clients[fd].path << std::endl;
                             events[i].events = EPOLLOUT;
                             events[i].data.fd = fd;
                             if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
@@ -484,7 +482,7 @@ void Server::run()
                         
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
-                            std::cout << "hereee is\n\n";
+                            // std::cout << "hereee is\n\n";
 
                             if (!a.error_set(this->clients, fd, this->_configs[this->clients[fd].conf_i], _configs))
                             {
@@ -525,7 +523,7 @@ void Server::run()
                     {
                         if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
                         {
-                            std::cout<<"+++++++++++++++++++maart ach kandir hna f handle req 2\n\n";
+                            // std::cout<<"+++++++++++++++++++maart ach kandir hna f handle req 2\n\n";
                             handleRequest(fd, a, clients, epollManager);
                         }
                         if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
