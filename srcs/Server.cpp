@@ -228,7 +228,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].CgiSend = 0;
         clients[clientFd].autoindex = 0;
         clients[clientFd].header_complete = 0;
-        clients[clientFd].ResponseChunked = 1;
+        clients[clientFd].ResponseChunked = 0;
         clients[clientFd].PostBody.clear();
         clients[clientFd].CgiBody.clear();
         clients[clientFd].body_chunked.clear();
@@ -275,13 +275,7 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, s
         if (difftime(time(NULL),it->second.getLastActivity()) > 5 && !clients[it->first].timeout)
         {
             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
-            if (clients[it->first].method == "GET" && !clients[it->first].ResponseChunked && !clients[it->first].send_complete && clients[it->first].Sending)
-            {
-                close(clients[it->first]._fd);
-                std::cout << "🎉baam and Closed fd: " << clients[it->first]._fd << std::endl;
-            }
-            if (clients[it->first].method.empty())
-                clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
+            clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
             clients[it->first].timeout = true;
             epoll.modSocket(it->first, EPOLLOUT);
         }
@@ -324,7 +318,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             
         }
         return;
-    }                clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
+    }               // clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
 
 
     if (result == pid) {
@@ -337,16 +331,18 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             if (exitCode == 0)
             {
                 std::cout << "CGI terminé avec succès ✅\n"; 
-          pipefd = clientobj[fd].cgiMap[fd].pipefd;
+            kill(pid, SIGKILL);
+            waitpid(pid, &wstatus, 0);
+            pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
                 std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
-                epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
+                epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
+                
             }
-
             }
             else
             {
@@ -416,7 +412,7 @@ void Server::run()
 	while (running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
-        // checkTimeout(clients, epollManager, _configs); 
+        checkTimeout(clients, epollManager, _configs); 
         for(size_t i = 0; i < events.size(); i++)
         {
             int fd = events[i].data.fd;
@@ -607,14 +603,14 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                     {
-                        if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi && clients[fd].Sending) || (clients[fd].method == "POST" && clients[fd].has_cgi))
+                        if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
                         {
                             // std::cout<<"+++++++++++++++++++maart ach kandir hna f handle req 2\n\n";
                             handleRequest(fd, a, clients, epollManager);
                         }
                         if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
                         {
-                            // std::cout << " dkhlatttttttttttt\n\n";
+                            std::cout << " dkhlatttttttttttt\n\n";
                             clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                         }
                         if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"

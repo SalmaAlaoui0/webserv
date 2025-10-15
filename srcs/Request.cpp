@@ -240,6 +240,8 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0)
     {
         clientobj[clientFd].HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
+        if(clientobj[clientFd].HeaderEnd > 8000)
+            clientobj[clientFd].header_complete = 1;
         std::string headers = clientobj[clientFd].PostBody.substr(0, clientobj[clientFd].HeaderEnd);
         clientobj[clientFd].PostBody = clientobj[clientFd].PostBody.substr(clientobj[clientFd].HeaderEnd + 4);
         std::istringstream iss(headers);
