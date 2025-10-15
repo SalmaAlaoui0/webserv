@@ -13,6 +13,7 @@ Response::~Response() {}
 
 Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::string filePath, Response &rep, std::vector<ServerConfig> &_configs)
 {
+    (void)_configs;
     if (clientobj[clientFd].Sending == 0)
     {
         if (!clientobj[clientFd].FileOpened)
