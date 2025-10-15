@@ -275,6 +275,11 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, s
         if (difftime(time(NULL),it->second.getLastActivity()) > 5 && !clients[it->first].timeout)
         {
             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
+            if (clients[it->first].method == "GET" && !clients[it->first].ResponseChunked && !clients[it->first].send_complete && clients[it->first].Sending)
+            {
+                close(clients[it->first]._fd);
+                std::cout << "🎉baam and Closed fd: " << clients[it->first]._fd << std::endl;
+            }
             clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
             clients[it->first].timeout = true;
             epoll.modSocket(it->first, EPOLLOUT);
