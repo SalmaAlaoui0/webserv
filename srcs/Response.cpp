@@ -16,6 +16,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
     if (clientobj[clientFd].Sending == 0)
     {
         clientobj[clientFd]._fd = open(filePath.c_str(), O_RDONLY);
+        std::cout << "🎉Opened fd: " << clientobj[clientFd]._fd << std::endl;
         if (clientobj[clientFd]._fd < 0)
         {
             std::cerr << "❌ Failed to open file\n"; // or make it perror("open file")
@@ -67,6 +68,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             // std::cout << "the only explanation is to see this message\n";
             clientobj[clientFd].send_complete = 1;
             close(clientobj[clientFd]._fd);
+            std::cout << "🎉Closed fd: " << clientobj[clientFd]._fd << std::endl;
         }
         else if (Readbyte > 0)
         {
@@ -166,7 +168,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked)
     {
-        // std::cout << "coming to this condition is acceptable and true\n\n";
+        std::cout << "coming to this condition is acceptable and true\n\n";
         std::ostringstream headers;
         headers << "HTTP/1.1 " << res.statusCode << "\r\n"
             << "Content-Type: " << res.contentType << "\r\n";
@@ -272,6 +274,12 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         //     return;
         // else
             std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+            // std::cout << "and data is: " << clientobj[clientFd].send_complete << ", and the other sending is: " << clientobj[clientFd].Sending << "\n and lastly we need to see chunked: " << clientobj[clientFd].ResponseChunked << "- -" << clientobj[clientFd].ContentType << std::endl;
+            // if (clientobj[clientFd].method == "GET" && clientobj[clientFd].ContentType == "video/mp4" && !clientobj[clientFd].send_complete && clientobj[clientFd].Sending)
+            // {
+            //     close(clientobj[clientFd]._fd);
+            //     std::cout << "🎉baam and Closed fd: " << clientobj[clientFd]._fd << std::endl;
+            // }
         //maybe we should close the connection if send failed
     }
     // else
@@ -315,7 +323,7 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     rep.statusCode = code;
     clientobj[clientFd].statusCode = code;
     rep.statusMsg = msg;
-    std::cout << " code : "<< rep.statusCode<<std::endl; 
+    // std::cout << " code : "<< rep.statusCode<<std::endl; 
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
     // std::cout << " fil repone %%%%%%% " << filePath << std::endl;
     if (!file)
