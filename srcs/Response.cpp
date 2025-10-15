@@ -25,15 +25,15 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             // and close connection and remove client from epoll
             // return "Failed";
         }
-        struct stat filesz;
-        if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
-        {
-            perror("fstat");
-            clientobj[clientFd].send_complete = 1;
-            // and make response page of file can't be open 
-            // and close connection and remove client from epoll
-            // return "Failed";
-        }
+    struct stat filesz;
+    if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
+    {
+        perror("fstat");
+        close(clientobj[clientFd]._fd);  // ✅ FIX: close opened fd on error
+        clientobj[clientFd]._fd = -1;
+        clientobj[clientFd].send_complete = 1;
+        return rep;
+    }
         clientobj[clientFd].filesize = filesz.st_size;
         clientobj[clientFd].size_send = 0;
 
@@ -57,9 +57,9 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             // }
             // else
             // {
-                // clientobj[clientFd].send_complete = 1;
                 perror("read failed");
-            // }    
+                close(clientobj[clientFd]._fd);
+                clientobj[clientFd].send_complete = 1;   
         }
         else if (Readbyte == 0)
         {
@@ -77,6 +77,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         }
         else
         {
+            close(clientobj[clientFd]._fd);
             perror("read failed");
         }
     }
@@ -248,7 +249,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     {
         std::cout << "hooooona has no cgi is; the conditions are: has_cgi is==> " << clientobj[clientFd].has_cgi << "and sending var is==> " << clientobj[clientFd].Sending
         << "and response chunked var is==>" << clientobj[clientFd].ResponseChunked << "and lastly send_complete var is==>" << clientobj[clientFd].send_complete << "\n\n\n";
-      //  exit (7);
          response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)

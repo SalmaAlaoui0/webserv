@@ -35,11 +35,6 @@ void EpollManager::addSocket(int fd, uint32_t event)
     ev.data.fd = fd;
     if (epoll_ctl(epollFd, EPOLL_CTL_ADD, fd, &ev) == -1)
     {
-        if (errno == EEXIST)
-        {
-            std::cerr << "fd already added: " << fd << std::endl;
-            return;
-        }
         std::cerr << "epoll_ctl failed for FD " << fd << ": " << strerror(errno) << std::endl;
         throw epollException("❌epoll_ctl ADD failed");
     }
@@ -51,8 +46,7 @@ void EpollManager::modSocket(int fd, uint32_t event)
     ev.events = event;
     ev.data.fd = fd;
     if (epoll_ctl(epollFd, EPOLL_CTL_MOD, fd, &ev) == -1)
-        std::cerr << "epoll_ctl failed for FD " << fd << ": " << strerror(errno) << std::endl;
-     //   throw epollException("❌ epoll_ctl MOD failed");
+            std::cerr << "epoll_ctl failed for FD " << fd << ": " << strerror(errno) << std::endl;
 }
 
 void EpollManager::delSocket(int fd)

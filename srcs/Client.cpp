@@ -53,7 +53,7 @@ Client::Client()
   version(""),
   response(),
   timeout(false),
-  CgiStartActivity(0)
+  CgiStartActivity(std::time(NULL))
 {
     updateActivity();
     body_complete = false;

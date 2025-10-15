@@ -30,43 +30,6 @@ void handle_sigint(int)
     running = 0;  
     std::cout << "\n🛑 SIGINT received, shutting down..." << std::endl;
 }
-// int Server::creatServerSocket(const std::string &ip, int port)
-// {
-//     int server_fd  = socket(AF_INET, SOCK_STREAM, 0);  //AF_INET-->ipv4 , SOCK_STREAM-->tcp  
-//     int flags = fcntl(server_fd, F_GETFL, 0);
-//     if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0)
-//         throw socketException("❌ Failed to set non-blocking mode on socket");
-//     if (server_fd  < 0) 
-//         throw socketException("❌Socket creation failed");
-//     int option = 1;
-//     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &option, sizeof(option)) < 0)
-//     {
-//         close(server_fd );
-//         throw socketException("❌ Socket setup failed in setsockopt()");
-//     }
-//     sockaddr_in addr;
-//     std::memset(&addr, 0,sizeof(addr));
-//     addr.sin_family = AF_INET;
-//     addr.sin_port = htons(port);
-//     if (inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) <= 0) 
-//     {
-//         close(server_fd );
-//         throw socketException("❌ Invalid IP address");
-//     }
-//     if(bind (server_fd, (sockaddr*)&addr, sizeof(addr)) < 0)
-//     {
-//         close(server_fd );
-//         perror("bind() failed : ");
-//         throw socketException("❌ bind() failed"); 
-//     }
-//     if(listen(server_fd , SOMAXCONN) < 0)
-//     {
-//         close(server_fd );
-//         throw socketException("❌ listen() failed");    
-//     }
-//     std::cout << "Listening on " << ip << ":" << port << std::endl;
-//     return server_fd ; 
-// }
 
 int Server::creatServerSocket(const std::string &ip, int port)
 {
@@ -75,7 +38,7 @@ int Server::creatServerSocket(const std::string &ip, int port)
     if (server_fd < 0)
         throw socketException("❌ Socket creation failed");
     // 2. Make socket non-blocking
-    // int flags = fcntl(server_fd, F_GETFL, 0);
+    // int flags = fcntl(server_fd, F_GETFL, 0);  // F_GETFL, -->forbiden
     // if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0) 
     // {
     //     close(server_fd);
@@ -202,7 +165,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         req.path.clear();
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
-        int flags = fcntl(clientFd, F_GETFL, 0);
+        int flags = fcntl(clientFd, F_GETFL, 0);  // ❌❌❌❌  F_GETFL forbiden
         if (fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 )
         {
             close(clientFd);
@@ -210,8 +173,8 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         }
         if (clientFd < 0)
         {
-            if (errno == EAGAIN || errno == EWOULDBLOCK)
-                return;
+            // if (errno == EAGAIN || errno == EWOULDBLOCK)
+            //     return;
             throw socketException("❌ accept failed");
         }
         epollManager.addSocket(clientFd, EPOLLIN);
@@ -271,11 +234,10 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, s
     std::map<int, Client>::iterator it = clients.begin();
     while (it != clients.end())
     {
-      //  std::cout<<"fffffffffffffffffff  " <<it->first<<std::endl;
-        if (difftime(time(NULL),it->second.getLastActivity()) > 5 && !clients[it->first].timeout)
+        if (difftime(time(NULL),it->second.getLastActivity()) > 5 && !clients[it->first].timeout && clients[it->first].cgiMap[it->first].pipefd == -1)
         {
             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
-            if (clients[it->first].method == "GET" && !clients[it->first].ResponseChunked && !clients[it->first].send_complete && clients[it->first].Sending)
+             if (clients[it->first].method == "GET" && !clients[it->first].ResponseChunked && !clients[it->first].send_complete && clients[it->first].Sending)
             {
                 close(clients[it->first]._fd);
                 std::cout << "🎉baam and Closed fd: " << clients[it->first]._fd << std::endl;
@@ -313,18 +275,14 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
-                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
+                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << clientobj[fd].cgiMap[fd].pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
                 close(clientobj[fd].cgiMap[fd].pipefd);
-                clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
-                
             }
-            
         }
         return;
-    }               // clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
-
+    }               
 
     if (result == pid) {
         std::cout << " ttttttttttttttttt\n\n";
@@ -346,9 +304,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
                 close(clientobj[fd].cgiMap[fd].pipefd);
-                clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
-                
             }
             }
             else
@@ -359,13 +315,12 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
                 clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
                 kill(pid, SIGKILL);
                 waitpid(pid, &wstatus, 0);
-             pipefd = clientobj[fd].cgiMap[fd].pipefd;
+                pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
                 std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
                 close(clientobj[fd].cgiMap[fd].pipefd);
-                clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
             }
             }
@@ -383,7 +338,6 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
                 std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
                 close(clientobj[fd].cgiMap[fd].pipefd);
-                clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
             }
         }
@@ -632,29 +586,48 @@ void Server::run()
         }
     }
 }
-
-
 void Server::closeConnection(int fd, EpollManager &epollManager)
 {
-    // if (clients[fd].has_cgi)
-    // {
-    //     std::cout << " ouiiiiiiiiiiiiiii\n\n"<< clients[fd].has_cgi << std::endl;
-    //     int pipefd = clients[fd].cgiMap[fd].pipefd;
-    //     if (pipefd != -1)
-    //     {
-    //         std::cout << "Closing CGI pipefd#############: " << pipefd << "\n";
-    //         if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, pipefd, NULL) == -1)
-    //                 perror("epoll_ctl DEL pipefd");
-    //         close(pipefd);
-    //         clients[fd].cgiMap[fd].pipefd = -1;
-    //     }
-    // }
-    if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL) == -1)
-        perror("epoll_ctl DEL fd");
+    std::map<int, Client>::iterator it = clients.find(fd);
+    if (it == clients.end())
+        return;
+    if (it->second.cgiMap.count(fd) && it->second.cgiMap[fd].pipefd != -1)
+    {
+        int pipefd = it->second.cgiMap[fd].pipefd;
+        std::cout << "🔸 Closing CGI pipefd: " << pipefd << std::endl;
+        epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, pipefd, NULL);
+        close(pipefd);
+        it->second.cgiMap[fd].pipefd = -1;
+    }
+    std::cout << "✅ Closing client fd: " << fd << std::endl;
+    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
     close(fd);
-    clients.erase(fd);
-    std::cout << "✅ client: " << fd << " is disconnected\n";
+    clients.erase(it);
 }
+
+
+
+// void Server::closeConnection(int fd, EpollManager &epollManager)
+// {
+//     // if (clients[fd].has_cgi)
+//     // {
+//     //     std::cout << " ouiiiiiiiiiiiiiii\n\n"<< clients[fd].has_cgi << std::endl;
+//     //     int pipefd = clients[fd].cgiMap[fd].pipefd;
+//     //     if (pipefd != -1)
+//     //     {
+//     //         std::cout << "Closing CGI pipefd#############: " << pipefd << "\n";
+//     //         if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, pipefd, NULL) == -1)
+//     //                 perror("epoll_ctl DEL pipefd");
+//     //         close(pipefd);
+//     //         clients[fd].cgiMap[fd].pipefd = -1;
+//     //     }
+//     // }
+//     if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL) == -1)
+//         perror("epoll_ctl DEL fd");
+//     close(fd);
+//     clients.erase(fd);
+//     std::cout << "✅ client: " << fd << " is disconnected\n";
+// }
 
 Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
 
