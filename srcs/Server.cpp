@@ -561,25 +561,15 @@ void Server::run()
                     }
                 }
                 else if (events[i].events & EPOLLOUT)
-                    {
-                        if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
-                        {
-                            // std::cout<<"+++++++++++++++++++maart ach kandir hna f handle req 2\n\n";
-                            handleRequest(fd, a, clients, epollManager);
-                        }
-                        if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
-                        {
-                            std::cout << " dkhlatttttttttttt\n\n";
-                            clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
-                        }
-                        if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
-                        || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1 || clients[fd].timeout)
-                        {
-                            std::cout << " closeeeeeeeeeeeeeeeee\n\n";
-                            closeConnection(fd, epollManager);
-                            // close(fd);
-                        }
-                    }
+                {
+                    if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
+                        handleRequest(fd, a, clients, epollManager);
+                    if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
+                        clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
+                    if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
+                    || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1 || clients[fd].timeout)
+                        closeConnection(fd, epollManager);
+                }
             }
         }
     }
