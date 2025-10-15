@@ -492,9 +492,9 @@ void Server::run()
                         if (clients[fd].send_complete == 0)
                         {
                             a = a.parseRequest(this->clients, epollManager, a, fd, _configs);
-                            std::map<int, Client>::iterator it = clients.find(fd);
-                            if (it != clients.end())
-                                it->second.updateActivity();
+                            // std::map<int, Client>::iterator it = clients.find(fd);
+                            // if (it != clients.end())
+                            //     it->second.updateActivity();
                             // std::cout << "timeeeeeeee is: " << clients[fd].getLastActivity() << "<==========\n\n";
                         }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
@@ -562,6 +562,9 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
+                    std::map<int, Client>::iterator it = clients.find(fd);
+                    if (it != clients.end())
+                        it->second.updateActivity();
                     if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
                         handleRequest(fd, a, clients, epollManager);
                     if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)

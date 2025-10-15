@@ -215,11 +215,11 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         // std::cout << "should not be parsed it's a pipe event client\n";
         return r;
     }
-    char buffer[1024] = {0};
+    char buffer[640000] = {0};
     // std::cout << "\n\n\n-----Content in the buffer is: " << buffer << "-------\n\n";
     int bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
     // std::cout << "\n\n\n-----Content in the buffer is: " << buffer << "-------\n\n";
-    // std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
+     std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
     // usleep(10000);
     
     //std::cout << "ssssssssssssssssssssssssssouuuuuuuuuuuuuuuuuuuuuuuuunnnnnnnnnnnnnnnnnnnnnnnnnnaya\n"<< bytes_received <<std::endl;
@@ -232,9 +232,10 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         }
             s.closeConnection(clientFd, epollManager);
             throw requetetException("❌ recv failed: ");
+            // eres the client 
     }
     clientobj[clientFd].PostBody.append(buffer, bytes_received);
-    // std::cout << "Postbody is sizzzzzzzzz: " << clientobj[clientFd].PostBody.size() << "*************<<<\n\n";
+     std::cout << "Postbody is sizzzzzzzzz: " << clientobj[clientFd].PostBody.size() << "*************<<<\n\n";
     //  std::cout << "body complete is: " << clientobj[clientFd].body_complete << "[[[[[[]]]]]]\n\n";
     // std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0)
