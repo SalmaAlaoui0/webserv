@@ -86,6 +86,8 @@ class Server
         void dir_or_file(std::string &fullpath, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj);
         bool delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj);
         void CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, std::map<int, Client> &clientobj, EpollManager &epoll);
+        //bool isPipeFd(int fd);
+        bool isClientSocket(int fd) const;
 };
 
 
