@@ -645,6 +645,7 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 	}
 	if (_configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store.empty())
 	{
+		std::cout << " haniiiii hnaaa \n\n";
 		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
 		return 0;
 	}
