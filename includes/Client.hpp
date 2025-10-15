@@ -39,12 +39,12 @@ class Client
         bool has_problem;
         bool send_complete;
         bool Sending;
-        bool file_opened;
         bool no_data;
         bool ResponseChunked;
         bool autoindex;
         bool has_cookie;
         bool Read;
+        bool FileOpened;
         bool has_cgi;
         std::string cookies;
         std::string autoIndexBody;

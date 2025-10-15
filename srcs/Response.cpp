@@ -11,29 +11,35 @@ Response::Response() : statusCode(0), statusMsg(""), body(""), contentType("text
 
 Response::~Response() {}
 
-Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::string filePath, Response &rep)
+Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::string filePath, Response &rep, std::vector<ServerConfig> &_configs)
 {
     if (clientobj[clientFd].Sending == 0)
     {
-        clientobj[clientFd]._fd = open(filePath.c_str(), O_RDONLY);
-        std::cout << "🎉Opened fd: " << clientobj[clientFd]._fd << std::endl;
+        if (!clientobj[clientFd].FileOpened)
+        {
+            clientobj[clientFd]._fd = open(filePath.c_str(), O_RDONLY);
+            clientobj[clientFd].FileOpened = 1;
+            std::cout << "🎉Opened fd: " << clientobj[clientFd]._fd << std::endl;
+        }
         if (clientobj[clientFd]._fd < 0)
         {
             std::cerr << "❌ Failed to open file\n"; // or make it perror("open file")
+			// clientobj[clientFd].response = Response::buildResponse(403, "Forbidden", _configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj, _configs);
             clientobj[clientFd].send_complete = 1;
+            // return rep;
             // and make response page of file can't be open 
             // and close connection and remove client from epoll
             // return "Failed";
         }
-    struct stat filesz;
-    if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
-    {
-        perror("fstat");
-        close(clientobj[clientFd]._fd);  // ✅ FIX: close opened fd on error
-        clientobj[clientFd]._fd = -1;
-        clientobj[clientFd].send_complete = 1;
-        return rep;
-    }
+        struct stat filesz;
+        if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
+        {
+            perror("fstat");
+            close(clientobj[clientFd]._fd);  // ✅ FIX: close opened fd on error
+            clientobj[clientFd]._fd = -1;
+            clientobj[clientFd].send_complete = 1;
+            return rep;
+        }
         clientobj[clientFd].filesize = filesz.st_size;
         clientobj[clientFd].size_send = 0;
 
@@ -247,8 +253,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     else
     {
-        std::cout << "hooooona has no cgi is; the conditions are: has_cgi is==> " << clientobj[clientFd].has_cgi << "and sending var is==> " << clientobj[clientFd].Sending
-        << "and response chunked var is==>" << clientobj[clientFd].ResponseChunked << "and lastly send_complete var is==>" << clientobj[clientFd].send_complete << "\n\n\n";
          response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)
@@ -274,12 +278,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         //     return;
         // else
             std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-            // std::cout << "and data is: " << clientobj[clientFd].send_complete << ", and the other sending is: " << clientobj[clientFd].Sending << "\n and lastly we need to see chunked: " << clientobj[clientFd].ResponseChunked << "- -" << clientobj[clientFd].ContentType << std::endl;
-            // if (clientobj[clientFd].method == "GET" && clientobj[clientFd].ContentType == "video/mp4" && !clientobj[clientFd].send_complete && clientobj[clientFd].Sending)
-            // {
-            //     close(clientobj[clientFd]._fd);
-            //     std::cout << "🎉baam and Closed fd: " << clientobj[clientFd]._fd << std::endl;
-            // }
         //maybe we should close the connection if send failed
     }
     // else
@@ -387,7 +385,7 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
             filePath.find(".jpg") != std::string::npos || filePath.find(".jpeg") != std::string::npos)
         {
             clientobj[clientFd].ResponseChunked = 0;
-            send_bigsize(clientobj, clientFd, filePath, rep);
+            send_bigsize(clientobj, clientFd, filePath, rep, _configs);
         }
     }
     if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || clientobj[clientFd].method != "GET" || clientobj[clientFd].has_problem)
