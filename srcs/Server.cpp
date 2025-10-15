@@ -280,8 +280,7 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, s
                 close(clients[it->first]._fd);
                 std::cout << "🎉baam and Closed fd: " << clients[it->first]._fd << std::endl;
             }
-            if (clients[it->first].method.empty())
-                clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
+            clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
             clients[it->first].timeout = true;
             epoll.modSocket(it->first, EPOLLOUT);
         }
@@ -416,7 +415,7 @@ void Server::run()
 	while (running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
-        // checkTimeout(clients, epollManager, _configs); 
+        checkTimeout(clients, epollManager, _configs); 
         for(size_t i = 0; i < events.size(); i++)
         {
             int fd = events[i].data.fd;
