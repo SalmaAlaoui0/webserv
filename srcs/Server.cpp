@@ -229,103 +229,27 @@ bool Server::isServerSocket(int fd) const
     return false;
 }
 
-// void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, std::vector<ServerConfig> _configs)
-// {
-//     std::map<int, Client>::iterator it = clients.begin();
-//     while (it != clients.end())
-//     {
-//       //  std::cout<<"fffffffffffffffffff  " <<it->first<<std::endl;
-//         if (difftime(time(NULL),it->second.getLastActivity()) > 5 && !clients[it->first].timeout)
-//         {
-//             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
-//             clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
-//             clients[it->first].timeout = true;
-//             epoll.modSocket(it->first, EPOLLOUT);
-//         }
-//         else
-//             ++it;
-//     }
-// }
-
-// bool Server::isPipeFd(int fd)
-// {
-//     for (std::map<int, Client>::iterator it = clients.begin(); it != clients.end(); ++it)
-//     {
-//         if (it->second.cgiMap.count(it->first))
-//         {
-//             if (it->second.cgiMap[it->first].pipefd == fd)
-//                 return true;
-//         }
-//     }
-//     return false;
-// }
-
-// void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, std::vector<ServerConfig> _configs)
-// {
-//     std::map<int, Client>::iterator it = clients.begin();
-//     while (it != clients.end())
-//     {
-//         if (isPipeFd(it->first)) {
-//             ++it;
-//             continue;
-//         }
-
-//         if (difftime(time(NULL), it->second.getLastActivity()) > 5 && !it->second.timeout)
-//         {
-//             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
-//             it->second.response = Response::buildResponse(
-//                 408,
-//                 "Request Timeout",
-//                 _configs[it->second.conf_i].ErrorPages[408],
-//                 it->first,
-//                 clients,
-//                 _configs
-//             );
-//             it->second.timeout = true;
-//             epoll.modSocket(it->first, EPOLLOUT);
-//         }
-//         else
-//             ++it;
-//     }
-// }
-bool Server::isClientSocket(int fd) const {
-    return clients.find(fd) != clients.end();
-}
 void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, std::vector<ServerConfig> _configs)
 {
     std::map<int, Client>::iterator it = clients.begin();
     while (it != clients.end())
     {
-        int fd = it->first;
-
-        // ✅ Skip if this fd is not a real client socket (e.g. CGI pipes)
-        if (!isClientSocket(fd)) {
-            ++it;
-            continue;
-        }
-
-        double elapsed = difftime(time(NULL), it->second.getLastActivity());
-        if (elapsed > 5 && !it->second.timeout)
+        if (difftime(time(NULL),it->second.getLastActivity()) > 5 && !clients[it->first].timeout && clients[it->first].cgiMap[it->first].pipefd == -1)
         {
-            std::cerr << "⏱️ Client timed out: " << fd << std::endl;
-            it->second.response = Response::buildResponse(
-                408,
-                "Request Timeout",
-                _configs[it->second.conf_i].ErrorPages[408],
-                fd,
-                clients,
-                _configs
-            );
-            it->second.timeout = true;
-            epoll.modSocket(fd, EPOLLOUT);
+            std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
+             if (clients[it->first].method == "GET" && !clients[it->first].ResponseChunked && !clients[it->first].send_complete && clients[it->first].Sending)
+            {
+                close(clients[it->first]._fd);
+                std::cout << "🎉baam and Closed fd: " << clients[it->first]._fd << std::endl;
+            }
+            clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
+            clients[it->first].timeout = true;
+            epoll.modSocket(it->first, EPOLLOUT);
         }
         else
-        {
             ++it;
-        }
     }
 }
-
 
 void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& clientobj, int fd, std::vector<ServerConfig> _configs)
 {
@@ -351,11 +275,10 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
-                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
+                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << clientobj[fd].cgiMap[fd].pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
-                clientobj.erase(clientobj[fd].cgiMap[fd].pipefd);
             }
         }
         return;
@@ -380,7 +303,6 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
-                
             }
             }
             else
@@ -391,7 +313,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
                 clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
                 kill(pid, SIGKILL);
                 waitpid(pid, &wstatus, 0);
-             pipefd = clientobj[fd].cgiMap[fd].pipefd;
+                pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
                 std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
@@ -667,8 +589,6 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
     std::map<int, Client>::iterator it = clients.find(fd);
     if (it == clients.end())
         return;
-
-    // 👇 Fermer d'abord le pipe CGI si il existe
     if (it->second.cgiMap.count(fd) && it->second.cgiMap[fd].pipefd != -1)
     {
         int pipefd = it->second.cgiMap[fd].pipefd;
@@ -677,8 +597,6 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
         close(pipefd);
         it->second.cgiMap[fd].pipefd = -1;
     }
-
-    // 👇 Puis le fd du client
     std::cout << "✅ Closing client fd: " << fd << std::endl;
     epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
     close(fd);
