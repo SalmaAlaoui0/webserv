@@ -95,7 +95,7 @@ std::string mergePaths(std::string root, std::string request) {
     std::vector<std::string> merged = rootParts;
     merged.insert(merged.end(), reqParts.begin(), reqParts.end());
 
-	std::cout << "\n\nResponse path is: =========>" << joinPath(merged, slashfound) << "<============\n\n";
+	// std::cout << "\n\nResponse path is: =========>" << joinPath(merged, slashfound) << "<============\n\n";
     return joinPath(merged, slashfound);
 }
 
@@ -120,7 +120,7 @@ std::string mergePaths(std::string root, std::string request) {
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path(); // e.g. "/index.html"
-	std::cout << "request path------------->>> "  << requestedPath <<std::endl;
+	// std::cout << "request path------------->>> "  << requestedPath <<std::endl;
 	// if (requestedPath[requestedPath.size() - 1] == '/')
 	// 	r.slash = 1;
 	std::string matchedRoot;
@@ -458,7 +458,6 @@ void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, 
 		clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
 	}
     std::string value = clientobj[clientFd].GetpathMap.begin()->second;
-	std::cout << "====>>>>" << value << "\n I want to know the bool send_complete data is: " << clientobj[clientFd].send_complete << std::endl;
     if (!CheckMethodeIsAllowed("GET", _configs, conf_i, key))
     {
         clients[clientFd].response = Response::buildResponse(403, "Forbidden",_configs[conf_i].ErrorPages[403], clientFd, clientobj, _configs);
