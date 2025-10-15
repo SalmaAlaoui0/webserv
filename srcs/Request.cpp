@@ -56,12 +56,6 @@ bool request::error_set(std::map<int, Client> &clients, int clientFd, ServerConf
     std::map<std::string, std::string> headers = clients[clientFd].get_header();
     size_t pos = 0;
     pos = clients[clientFd].path.find("..");
-    if (clients[clientFd].PostBody.size() != (size_t)std::atoi(clients[clientFd].get_header()["Content-Length"].c_str()) && clients[clientFd].method == "POST")
-    {
-    ///// HADA RAH MOSSIB KA7LA 30WAD MAYHAL MOUCKIL DAR LINA MACHAKIL
-              clients[clientFd].response = Response::buildResponse(400, "bad request", config.ErrorPages[400], clientFd, clients ,_configs);
-        return 0;
-    }
     if (clients[clientFd].HeaderEnd > 8000)
     {
         clients[clientFd].response = Response::buildResponse(431, "Request Header Fields Too Large", config.ErrorPages[431], clientFd, clients ,_configs);
@@ -85,7 +79,7 @@ bool request::error_set(std::map<int, Client> &clients, int clientFd, ServerConf
     if (headers.find("Host") == headers.end())
     {
         std::cerr << "inside if statement of post\n";
-
+        
         clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients ,_configs);
         return 0;
     }
@@ -97,7 +91,7 @@ bool request::error_set(std::map<int, Client> &clients, int clientFd, ServerConf
     if (clients[clientFd].method == "POST")
     {
         std::map<std::string, std::string>::iterator ptr = headers.find("Content-Length");
-        if (ptr == headers.end() && headers["Transfer-Encoding"] != "chunked" && clients[clientFd].method == "POST")
+        if (ptr == headers.end()  && clients[clientFd].method == "POST")
         {
             clients[clientFd].response = Response::buildResponse(411, "Length Required", config.ErrorPages[411], clientFd, clients ,_configs);
             return 0;
@@ -109,21 +103,27 @@ bool request::error_set(std::map<int, Client> &clients, int clientFd, ServerConf
                 clients[clientFd].response = Response::buildResponse(411, "Length Required", config.ErrorPages[411], clientFd, clients ,_configs);
                 return 0;
             }
+            if (std::atof(ptr->second.c_str()) > static_cast<double>(_configs[clients[clientFd].conf_i].client_max_body_size) ) 
+            {
+                //send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
+                    clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",config.ErrorPages[413],  clientFd, clients ,_configs);
+                    return 0;
+                }
+            }
         }
         // if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>(config[clients[clientFd].conf_i].client_max_body_size ) )
         // {
-        //     clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
-        //     return 0;
-        // }
-        // if (clients[clientFd].PostBody.size() >static_cast<size_t>( config[clients[clientFd].conf_i].client_max_body_size ) && !client[clientFd].chnked)
-        // {
-        // //send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
-        //     clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clientobj);
-        //     return ;
-        // }
-    }
-    return 1;
-}
+            //     clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
+            //     return 0;
+            // }
+            if (clients[clientFd].PostBody.size() != (size_t)std::atoi(clients[clientFd].get_header()["Content-Length"].c_str()) && clients[clientFd].method == "POST")
+            {
+            ///// HADA RAH MOSSIB KA7LA 30WAD MAYHAL MOUCKIL DAR LINA MACHAKIL
+                      clients[clientFd].response = Response::buildResponse(400, "bad request", config.ErrorPages[400], clientFd, clients ,_configs);
+                return 0;
+            }
+            return 1;
+        }
 
 std::string trim1(std::string &s)
 {
@@ -207,7 +207,7 @@ std::string findCookies(const std::string &cookieHeader)
     return NULL;
 }
 
-request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &epollManager, request &r, int clientFd)
+request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &epollManager, request &r, int clientFd,std::vector<ServerConfig> _configs)
 {
     Server s;
     if (clientobj[clientFd].cgiMap[clientFd].pipefd != -1)
@@ -294,18 +294,17 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
             }
             else if (iterator->first == "Content-Length")
             {
-                //   std::cout << "welommmmmmmmmmm\n";
                 count++;
                 std::stringstream ss(iterator->second);
                 ss >> clientobj[clientFd].ContentLength;
-                // const unsigned long max_body_size = 1024 * 1024; // 1 Mo
-                // if (r.ContentLength > max_body_size)
-                // {
-                //     std::cout << "Problem here \n";
-                //     clientobj[clientFd].response = Response::buildResponse(r, 413, "Payload Too Large", "www/413.html", clientFd, clientobj);
-                //     // send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
-                //     return r;
-                // }
+                if(!is_valid_content_length(iterator->second))
+                {
+                    clientobj[clientFd].body_complete = 1;
+                }
+                if(std::atof(iterator->second.c_str()) > static_cast<double>( _configs[clientobj[clientFd].conf_i].client_max_body_size))
+                {
+                    clientobj[clientFd].body_complete = 1;
+                }
             }
             if (iterator->first == "Content-Type")
                 clientobj[clientFd].ContentType = iterator->second;
@@ -318,7 +317,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
             }
             iterator++;
         }
-        if (count == 0 && !clientobj[clientFd].chnked)
+        if (count == 0 )
             clientobj[clientFd].body_complete = 1;
         clientobj[clientFd].header_complete = 1;
     }

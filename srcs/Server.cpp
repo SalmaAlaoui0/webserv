@@ -530,7 +530,7 @@ void Server::run()
                     {
                         if (clients[fd].send_complete == 0)
                         {
-                            a = a.parseRequest(this->clients, epollManager, a, fd);
+                            a = a.parseRequest(this->clients, epollManager, a, fd, _configs);
                             std::map<int, Client>::iterator it = clients.find(fd);
                             if (it != clients.end())
                                 it->second.updateActivity();
