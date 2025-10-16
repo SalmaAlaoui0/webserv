@@ -212,7 +212,10 @@ bool CheckMethodeIsAllowed(std::string method, std::vector<ServerConfig> _config
 		while (it != _configs[servernum].locations[locationum].allowed_methods.end())
 		{
 			if (method == *it)
+			{
 				return 1;
+				std::cout << " methodeeeeeee isssssssssssss "<< method<< std::endl;
+			}
 			++it;
 		}
 	}
@@ -638,8 +641,9 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
         return 0;
     }
-	if (clients[clientFd].PostBody.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ) && !clients[clientFd].chnked)
+	if (clients[clientFd].PostBody.size() >static_cast<size_t>( _configs[clients[clientFd].conf_i].client_max_body_size ))
 	{
+		std::cout << " foorbidennnnnnnnnnnnnn\n\n";
 		clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",_configs[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients, _configs);
 		return 0;
 	}
@@ -828,7 +832,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		if(e != std::string::npos)
 			 fullpath = fullpath.substr(0,e);
 	 inter = find_matching_inter(extt, _configs, conf_i , key);
-	//std::cout << " matchinggggggggggg interprettttttttt ::::  "<< inter << std::endl;
+	std::cout << " matchinggggggggggg interprettttttttt ::::  "<< abstract_fil << "  "<< extt << std::endl;
 	}
 	fullpath = mergePaths(_configs[clients[clientFd].conf_i].locations[map.begin()->first].root, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
 	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;

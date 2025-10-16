@@ -215,11 +215,11 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         // std::cout << "should not be parsed it's a pipe event client\n";
         return r;
     }
-    char buffer[1024] = {0};
+    char buffer[9000] = {0};
     // std::cout << "\n\n\n-----Content in the buffer is: " << buffer << "-------\n\n";
     int bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
     // std::cout << "\n\n\n-----Content in the buffer is: " << buffer << "-------\n\n";
-    // std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
+     std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
     // usleep(10000);
     
     //std::cout << "ssssssssssssssssssssssssssouuuuuuuuuuuuuuuuuuuuuuuuunnnnnnnnnnnnnnnnnnnnnnnnnnaya\n"<< bytes_received <<std::endl;

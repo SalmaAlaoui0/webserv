@@ -328,7 +328,7 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     // std::cout << " fil repone %%%%%%% " << filePath << std::endl;
     if (!file)
     {
-        std::cerr << "❌❌ Failed to open file: " << filePath << std::endl;
+        std::cerr << "❌❌ Failed to open file: " << rep.statusCode<< std::endl;
         rep.statusCode = 500;
         rep.statusMsg  = "Internal Server Error";
         rep.body = "<!DOCTYPE html>\n"
