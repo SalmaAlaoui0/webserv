@@ -505,7 +505,7 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 			clients[clientFd].response= clients[clientFd].response.buildResponse(204, "No Content",config.ErrorPages[204], clientFd, clientobj, _configs);
 			return ;
 		}
-		if(remove(fullpath.c_str()) == 0) //dir empty remove it 
+		if(remove(fullpath.c_str()) == 0)
 		{
 			clients[clientFd].response= clients[clientFd].response.buildResponse(204, "No Content",config.ErrorPages[204], clientFd, clientobj, _configs);
 			return ;

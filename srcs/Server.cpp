@@ -34,71 +34,56 @@ void handle_sigint(int)
 
 int Server::creatServerSocket(const std::string &ip, int port)
 {
-    // 1. Create a TCP socket (IPv4)
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0)
         throw socketException("❌ Socket creation failed");
-
-    // 2. Make the socket non-blocking
-    if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0) {
+    if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0) 
+    {
         close(server_fd);
         throw socketException("❌ Failed to set non-blocking mode on socket");
     }
-
-    // 3. Set FD_CLOEXEC (good practice to close fd on exec calls)
-    if (fcntl(server_fd, F_SETFD, FD_CLOEXEC) < 0) {
+    if (fcntl(server_fd, F_SETFD, FD_CLOEXEC) < 0) 
+    {
         close(server_fd);
         throw socketException("❌ Failed to set FD_CLOEXEC");
     }
-
-    // 4. Allow address reuse (so we can restart server quickly without 'Address already in use')
     int opt = 1;
     if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         close(server_fd);
         throw socketException("❌ setsockopt(SO_REUSEADDR) failed");
     }
-
-    // 5. Prepare address resolution hints (IPv4 + TCP + passive)
     struct addrinfo hints;
     std::memset(&hints, 0, sizeof(hints));
-    hints.ai_family   = AF_INET;       // IPv4 only
-    hints.ai_socktype = SOCK_STREAM;   // TCP
-    hints.ai_flags    = AI_PASSIVE;    // For binding to all local interfaces if ip is empty
-
-    // Convert port to string
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags    = AI_PASSIVE;
     std::stringstream ss;
     ss << port;
     std::string portStr = ss.str();
-
-    // 6. Resolve IP and port into a sockaddr structure
     struct addrinfo *res;
     const char *host = ip.empty() ? NULL : ip.c_str();
     int status = getaddrinfo(host, portStr.c_str(), &hints, &res);
-    if (status != 0) {
+    if (status != 0) 
+    {
         close(server_fd);
         throw socketException(std::string("❌ getaddrinfo: ") + gai_strerror(status));
     }
-
-    // 7. Bind the socket to the resolved address
-    if (bind(server_fd, res->ai_addr, res->ai_addrlen) < 0) {
+    if (bind(server_fd, res->ai_addr, res->ai_addrlen) < 0) 
+    {
         freeaddrinfo(res);
         close(server_fd);
         throw socketException("❌ bind() failed");
     }
-
-    // 8. Start listening for incoming connections
-    if (listen(server_fd, SOMAXCONN) < 0) {
+    if (listen(server_fd, SOMAXCONN) < 0) 
+    {
         freeaddrinfo(res);
         close(server_fd);
         throw socketException("❌ listen() failed");
     }
-
-    // 9. Clean up the addrinfo struct
     freeaddrinfo(res);
 
     std::cout << GREEN << "✅ Listening on " << CYAN << (ip.empty() ? "0.0.0.0" : ip)
               << RESET << ":" << YELLOW << port << RESET << std::endl;
-
     return server_fd;
 }
 
@@ -118,7 +103,18 @@ void Server:: setupSockets()
 Server::Server(const std::vector<ServerConfig> &configs)
 {
     this->_configs = configs;
-    setupSockets();
+    try
+    {
+        setupSockets();
+    }
+  catch (const std::exception &e)
+    {
+        std::cerr << e.what() << std::endl;
+        for (size_t i = 0; i < serverSockets.size(); ++i)
+            close(serverSockets[i]);
+        serverSockets.clear();
+        throw;
+    }
 }
 
 Server::Server() {}
