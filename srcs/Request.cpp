@@ -190,6 +190,16 @@ int file(std::map<int, Client> &clientobj, std::vector<ServerConfig> &_configs, 
     struct stat statbuf;
     std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[clientobj[clientFd].conf_i]);
+    int key = map.begin()->first;
+    clientobj[clientFd].key = map.begin()->first;
+    if (!_configs[clientobj[clientFd].conf_i].locations[key].Return.empty())
+	{
+		clientobj[clientFd].statusCode = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->first;
+		clientobj[clientFd].statusMsg = "Found";
+		clientobj[clientFd].ReturnLocation = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->second;
+        clientobj[clientFd].body_complete = 1;
+        return 0;
+	}
     std::ostringstream filename;
     std::string fullpath = map.begin()->second;
     fullpath = mergePaths(_configs[clientobj[clientFd].conf_i].locations[map.begin()->first].root, _configs[clientobj[clientFd].conf_i].locations[map.begin()->first].upload_store);

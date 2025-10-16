@@ -74,6 +74,7 @@ class Client
         Response response;
         bool timeout;
         bool field_open;
+        int key;
         Client();
         Client(int fd);
         ~Client();

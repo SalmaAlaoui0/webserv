@@ -53,6 +53,7 @@ Client::Client()
   response(),
   timeout(false),
   field_open(0),
+  key(-1),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();
@@ -112,6 +113,7 @@ Client::Client(int fd)
   response(),
   timeout(false),
   field_open(0),
+  key(-1),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();

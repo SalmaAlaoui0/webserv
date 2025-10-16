@@ -146,7 +146,7 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
         clients[clientFd].response = Response::buildResponse(500, "Internal Server Error (no matching server)",_configs[this->clients[clientFd]. conf_i].ErrorPages[500], clientFd, clients, _configs);
         return;
     }
-    if (clientobj[clientFd].method  == "/favicon.ico")
+    if (clientobj[clientFd].path  == "/favicon.ico")
     {
         clients[clientFd].response = Response::buildResponse(404, "Not Found",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients, _configs);
         return;
@@ -221,6 +221,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].conf_i = 0;
         clients[clientFd].field_open = 0;
         clients[clientFd].method = "";
+        clients[clientFd].key = -1;
         clients[clientFd].path.clear();
         clients[clientFd].version.clear();
         clients[clientFd].autoIndexBody.clear();
@@ -375,6 +376,7 @@ void Server::run()
     }
 	while (running) 
 	{
+        // int key = -1;
 		std::vector<epoll_event> events = epollManager.waitEvents();
         checkTimeout(clients, epollManager, _configs);
         for(size_t i = 0; i < events.size(); i++)
@@ -393,14 +395,12 @@ void Server::run()
                 acceptNewClient(a, fd, epollManager);
             else if (clients[fd].cgiMap[fd].pipefd > 0) 
             {
-               // if (!clients[fd].CgiSend)
-                    init_cgi_map(clients, fd);
-       // info.pid = -1;
+                init_cgi_map(clients, fd);
                 if (clients[fd].Read)
                     WaitChildAndClean(epollManager, clients, fd, _configs);
                 else
                 {
-                    const size_t BUF_SIZE = 4096;
+                    const size_t BUF_SIZE = 12000;
                     char buffer[BUF_SIZE];
                     ssize_t bytesRead;
                     bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, BUF_SIZE - 1);
@@ -461,7 +461,6 @@ void Server::run()
                             a = a.parseRequest(this->clients, epollManager, a, fd, _configs);
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
                         {
-                            std::cout << "the requested path is: " << clients[fd].path << std::endl;
                             events[i].events = EPOLLOUT;
                             events[i].data.fd = fd;
                             if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) < 0)
@@ -480,10 +479,10 @@ void Server::run()
                                 }
                             }
                        }
-                        
+                    
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
-                            if (!a.error_set(this->clients, fd, this->_configs[this->clients[fd].conf_i], _configs))
+                            if (!a.error_set(this->clients, fd, this->_configs[this->clients[fd].conf_i], _configs) && this->_configs[this->clients[fd].conf_i].locations[clients[fd].key].Return.empty())
                             {
                                 std::cout << "error_._set is: equal to zero\n";
                                 throw socketException("❌ error detected  in error set");
@@ -500,10 +499,12 @@ void Server::run()
                 else if (events[i].events & EPOLLOUT)
                 {
                     clients[fd].updateActivity();
-                    if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
+                    if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi && !this->_configs[this->clients[fd].conf_i].locations[clients[fd].key].Return.empty()))
                         handleRequest(fd, a, clients, epollManager);
                     if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
+                    {
                         clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
+                    }
                     if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
                     || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1 || clients[fd].timeout)
                         closeConnection(fd, epollManager);

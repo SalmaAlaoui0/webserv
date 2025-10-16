@@ -559,11 +559,20 @@ std::string abstract_file(std::string fullpath)
 }
 
 
-void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj)
+void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client>& clientobj)
 {
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
+	if (!_configs[clientobj[clientFd].conf_i].locations[key].Return.empty())
+	{
+		clientobj[clientFd].statusCode = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->first;
+		clientobj[clientFd].statusMsg = "Found";
+		clientobj[clientFd].ReturnLocation = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->second;
+        clientobj[clientFd].body_complete = 1;
+		std::cout << "innnn handle return in delete: " << _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->first << " \n";
+        return ;
+	}
 	std::string fullpath = mergePaths(_configs[clients[clientFd].conf_i].locations[map.begin()->first].root, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
 	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 11111 "<< fullpath <<std::endl;
     fullpath = mergePaths(fullpath, r.get_path());
@@ -748,18 +757,27 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 
 void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> &clientobj,EpollManager &epollManager)
 {
+	
+	std::map<int, std::string> map;
+	map = getMatchingRootPath(r, _configs[conf_i]);
+	int key = map.begin()->first;
+    if (!_configs[clientobj[clientFd].conf_i].locations[key].Return.empty())
+	{
+		clientobj[clientFd].statusCode = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->first;
+		clientobj[clientFd].statusMsg = "Found";
+		clientobj[clientFd].ReturnLocation = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->second;
+        clientobj[clientFd].body_complete = 1;
+        return ;
+	}
 	if (clientobj[clientFd].has_cgi)
 	{
 		if(!handel_cgi_post(_configs, clientFd,  clientobj))
-			return;
+		return;
 	}
 	if(!error_post( clients,clientFd,  _configs,r, conf_i))
 		return ;
 	std::cout << " in post%%%%%%%%%\n <<<<<<<<<<<< "<< clientobj[clientFd].path<< std::endl;;
 	struct stat statbuf;
-	std::map<int, std::string> map;
-    map = getMatchingRootPath(r, _configs[conf_i]);
-	int key = map.begin()->first;
 	std::ostringstream filename;
     std::string fullpath = map.begin()->second;
 	std::string abstract_fil =  abstract_file(clientobj[clientFd].path);

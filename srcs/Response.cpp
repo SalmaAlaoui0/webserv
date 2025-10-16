@@ -120,8 +120,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
 
         std::string response = headers.str();
         sent = send(clientFd, response.c_str(), response.size(), MSG_NOSIGNAL);
-
-        std::cout << "✅ Redirect response sent to FD: " << clientFd << " with the return code is: " << statusStr << std::endl;
         clientobj[clientFd].send_complete = 1;
     }
 
@@ -161,10 +159,10 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         && clientobj[clientFd].send_complete && clientobj[clientFd].statusCode != 204 && !clientobj[clientFd].has_problem))
     {
         std::string chunkmybody;
-        if (clientobj[clientFd].CgiBody.size() > 8000)
+        if (clientobj[clientFd].CgiBody.size() > 12000)
         {
-            chunkmybody = clientobj[clientFd].CgiBody.substr(0, 8000);
-            clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(8000);
+            chunkmybody = clientobj[clientFd].CgiBody.substr(0, 12000);
+            clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(12000);
         }
         else
         {
