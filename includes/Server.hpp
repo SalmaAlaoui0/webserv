@@ -89,4 +89,5 @@ class Server
 };
 
 
-    
+std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config);
+std::string generateId1(size_t length = 16) ;

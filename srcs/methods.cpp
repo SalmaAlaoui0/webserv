@@ -337,9 +337,6 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 		if (clientobj[clientFd].method == "POST")
 		{
 			ssize_t written;
-			if(clientobj[clientFd].chnked)
-				written = write(input_pipe[1],clientobj[clientFd].body_chunked.c_str(),clientobj[clientFd].body_chunked.size());
-			else
 				written = write(input_pipe[1],clientobj[clientFd].PostBody.c_str(),clientobj[clientFd].PostBody.size());
 			if (written == -1)
 				perror("write to CGI stdin");
@@ -583,7 +580,7 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 		return;
 	}
 }
-std::string generateId1(size_t length = 16) 
+std::string generateId1(size_t length ) 
 {
     const char set[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
     std::string result;
@@ -649,6 +646,7 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 	}
 	if (_configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store.empty())
 	{
+		std::cout << " haniiiii hnaaa \n\n";
 		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
 		return 0;
 	}
@@ -718,19 +716,20 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 	{
 		std::cout << " helooooo\n\n";
 		std::cout << " signal : " << clientobj[clientFd].cgiMap[clientFd].signal<< " tim : "<< clientobj[clientFd].cgiMap[clientFd].Timeout<<std::endl;
-		remove(clientobj[clientFd].filename.c_str());	
+		if(remove(clientobj[clientFd].filename.c_str()))
+			return 0;	
 		return 0;
 	}
 	if(clientobj[clientFd].cgiMap[clientFd].exit_code_cgi != 0)
 	{
-				clientobj[clientFd].response= Response::buildResponse(502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj, _configs);
-				if(remove(clientobj[clientFd].filename.c_str()))
-					return 0;
-				return 0;
+		clientobj[clientFd].response= Response::buildResponse(502, "Bad Gateway",_configs[clientobj[clientFd].conf_i].ErrorPages[502], clientFd, clientobj, _configs);
+		if(remove(clientobj[clientFd].filename.c_str()))
+			return 0;
+		return 0;
 	}
-		std::ofstream out(clientobj[clientFd].filename.c_str(),std::ios::binary | std::ios::trunc);
-		if(!out)
-		{
+	std::ofstream out(clientobj[clientFd].filename.c_str(),std::ios::binary | std::ios::trunc);
+	if(!out)
+	{
 			if(stat(clientobj[clientFd].filename.c_str(), &statbuf) == -1)
 				clientobj[clientFd].response= Response::buildResponse(500, "Internal Server Error",_configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj, _configs);
 			else if(access(clientobj[clientFd].filename.c_str(), W_OK) == -1)
@@ -739,9 +738,10 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 				clientobj[clientFd].response = Response::buildResponse(500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500],clientFd, clientobj, _configs);
 			std::cerr << "❌ Failed to open file: " << clientobj[clientFd].filename << std::endl;
 			out.close();
-			remove(clientobj[clientFd].filename.c_str());
+			if(remove(clientobj[clientFd].filename.c_str()))
+				return 0;
 			return 0;
-		}
+	}
 		size_t header_end  = 0;
 		std::string header = "";
 		if((header_end = clientobj[clientFd].CGIPostBody.find("\r\n\r\n")) != std::string::npos)
@@ -809,9 +809,9 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	}
 	if(!error_post( clients,clientFd,  _configs,r, conf_i))
 		return ;
-	std::cout << " in post%%%%%%%%%\n";
-	std::map<int, std::string> map;
+	std::cout << " in post%%%%%%%%%\n <<<<<<<<<<<< "<< clientobj[clientFd].path<< std::endl;;
 	struct stat statbuf;
+	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
 	std::ostringstream filename;

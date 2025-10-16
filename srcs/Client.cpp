@@ -18,12 +18,12 @@ Client::Client()
   has_problem(false),
   send_complete(false),
   Sending(false),
-  file_opened(false),
   no_data(false),
   ResponseChunked(true),
   autoindex(false),
   has_cookie(false),
   Read(false),
+  FileOpened(false),
   has_cgi(false),
   cookies(""),
   autoIndexBody(""),
@@ -53,6 +53,7 @@ Client::Client()
   version(""),
   response(),
   timeout(false),
+  field_open(0),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();
@@ -77,12 +78,12 @@ Client::Client(int fd)
   has_problem(false),
   send_complete(false),
   Sending(false),
-  file_opened(false),
   no_data(false),
   ResponseChunked(true),
   autoindex(false),
   has_cookie(false),
   Read(false),
+  FileOpened(false),
   has_cgi(false),
   cookies(""),
   autoIndexBody(""),
@@ -112,6 +113,7 @@ Client::Client(int fd)
   version(""),
   response(),
   timeout(false),
+  field_open(0),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();

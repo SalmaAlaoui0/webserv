@@ -210,6 +210,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
         clients[clientFd].conf_i = 0;
+        clients[clientFd].field_open = 0;
         clients[clientFd].method = "";
         clients[clientFd].path.clear();
         clients[clientFd].version.clear();
@@ -297,8 +298,6 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             kill(pid, SIGKILL);
             waitpid(pid, &wstatus, 0);
             pipefd = clientobj[fd].cgiMap[fd].pipefd;
-            // kill(pid, SIGKILL);
-            //waitpid(pid, &wstatus, 0);
             if (pipefd != -1)
             {
                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
@@ -373,7 +372,7 @@ void Server::run()
 	while (running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
-        checkTimeout(clients, epollManager, _configs); 
+       // checkTimeout(clients, epollManager, _configs); 
         for(size_t i = 0; i < events.size(); i++)
         {
             int fd = events[i].data.fd;
@@ -494,9 +493,9 @@ void Server::run()
                         if (clients[fd].send_complete == 0)
                         {
                             a = a.parseRequest(this->clients, epollManager, a, fd, _configs);
-                            std::map<int, Client>::iterator it = clients.find(fd);
-                            if (it != clients.end())
-                                it->second.updateActivity();
+                            // std::map<int, Client>::iterator it = clients.find(fd);
+                            // if (it != clients.end())
+                            //     it->second.updateActivity();
                             // std::cout << "timeeeeeeee is: " << clients[fd].getLastActivity() << "<==========\n\n";
                         }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
@@ -525,8 +524,6 @@ void Server::run()
                         
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
-                            // std::cout << "hereee is\n\n";
-
                             if (!a.error_set(this->clients, fd, this->_configs[this->clients[fd].conf_i], _configs))
                             {
                                 std::cout << "error_._set is: equal to zero\n";
@@ -563,25 +560,18 @@ void Server::run()
                     }
                 }
                 else if (events[i].events & EPOLLOUT)
-                    {
-                        if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
-                        {
-                            // std::cout<<"+++++++++++++++++++maart ach kandir hna f handle req 2\n\n";
-                            handleRequest(fd, a, clients, epollManager);
-                        }
-                        if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
-                        {
-                            std::cout << " dkhlatttttttttttt\n\n";
-                            clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
-                        }
-                        if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
-                        || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1 || clients[fd].timeout)
-                        {
-                            std::cout << " closeeeeeeeeeeeeeeeee\n\n";
-                            closeConnection(fd, epollManager);
-                            // close(fd);
-                        }
-                    }
+                {
+                    std::map<int, Client>::iterator it = clients.find(fd);
+                    if (it != clients.end())
+                        it->second.updateActivity();
+                    if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
+                        handleRequest(fd, a, clients, epollManager);
+                    if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
+                        clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
+                    if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
+                    || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1 || clients[fd].timeout)
+                        closeConnection(fd, epollManager);
+                }
             }
         }
     }
