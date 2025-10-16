@@ -87,5 +87,5 @@ class Server
         void CheckDirOrFile(std::string requested_path, int clientFd, std::vector<ServerConfig> config, int i, int key, std::map<int, Client> &clientobj, EpollManager &epoll);
 };
 
-
-    
+std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config);
+std::string generateId1(size_t length = 16);

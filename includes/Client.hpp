@@ -73,7 +73,7 @@ class Client
         std::string version;
         Response response;
         bool timeout;
-
+        bool field_open;
         Client();
         Client(int fd);
         ~Client();

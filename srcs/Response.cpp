@@ -179,7 +179,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
         && !clientobj[clientFd].ResponseChunked && !clientobj[clientFd].has_problem)
     {
-        std::cout << "Sending ...\n";
         clientobj[clientFd].updateActivity();
         ssize_t sendbytes = send(clientFd, res.body.c_str(), clientobj[clientFd].bytesRead, MSG_NOSIGNAL);
         if (sendbytes != -1)
@@ -220,7 +219,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         clientobj[clientFd].send_complete = 1;
     }
     if (sent == 0)
-        std::cout << "Successful sending" << std::endl;
+        return;
     return;
 }
 

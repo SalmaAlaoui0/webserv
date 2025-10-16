@@ -52,6 +52,7 @@ Client::Client()
   version(""),
   response(),
   timeout(false),
+  field_open(0),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();
@@ -110,6 +111,7 @@ Client::Client(int fd)
   version(""),
   response(),
   timeout(false),
+  field_open(0),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();

@@ -219,6 +219,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
         clients[clientFd].conf_i = 0;
+        clients[clientFd].field_open = 0;
         clients[clientFd].method = "";
         clients[clientFd].path.clear();
         clients[clientFd].version.clear();
@@ -248,12 +249,7 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, s
         {
             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
             if (clients[it->first].method == "GET" && !clients[it->first].ResponseChunked && !clients[it->first].send_complete && clients[it->first].Sending)
-            {
-                std::cout << "curr time is; " << time(NULL) << "and get last activity is: " << it->second.getLastActivity() << "\n\n\n";
-                std::cout << "diff time is: " << difftime(time(NULL),it->second.getLastActivity()) << "\n\n";
                 close(clients[it->first]._fd);
-            }
-            exit(12);
             clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
             clients[it->first].timeout = true;
             epoll.modSocket(it->first, EPOLLOUT);
@@ -445,28 +441,14 @@ void Server::run()
                         std::cout << "finish reading cgi\n";
                     }
                     else if (bytesRead < 0)
-                    {
-                    //    if (errno == EAGAIN)
-                    //    {
-                    //         clients[fd].no_data = 1;
-                    //    }
-                    //     else
-                    //     {
-                    //         WaitChildAndClean(epollManager, clients, fd, _configs);
-                    //         clients[fd].send_complete = 1;
-                            std::cerr << "❌ read failed\n";
-                    //     }
-                    }
+                        continue;
                     time_t now = time(NULL);
                     if (difftime(now, clients[fd].CgiStartActivity) > 3)
                     {
                         std::cout << "CGI timeout\n";
                         WaitChildAndClean(epollManager, clients, fd, _configs);
-                        // closePipeAndCleanup(fd);
                     }
                 }
-                // clients[fd].has_cgi = 0;
-                // clients[fd].cgiMap[fd].pipefd
             }
             else
             {
@@ -513,7 +495,6 @@ void Server::run()
                     catch(std::exception &e)
                     {
                         std::cerr << e.what() << std::endl;
-                        clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                     }
                 }
                 else if (events[i].events & EPOLLOUT)

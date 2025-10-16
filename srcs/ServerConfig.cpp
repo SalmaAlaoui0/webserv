@@ -88,7 +88,6 @@ bool CheckValidIp(std::string ip)
 
 void parseListen(std::string line, std::vector<ServerConfig> &container, int i)
 {
-    // check ip valid numbers 
     std::string ip;
     int port;
     std::string listen = line.substr(isKey(line, "listen") + 1);
@@ -115,7 +114,6 @@ void parseListen(std::string line, std::vector<ServerConfig> &container, int i)
         throw ::InvalidData();
     }
     container[i].port = port;    
-    // std::cout << "ur listen info, host: -" << container[i].host << "- And port is: -" << container[i].port << "-" << std::endl;
 }
 
 void parseroot(std::string line, std::vector<ServerConfig> &container, int i)
@@ -158,7 +156,6 @@ void parsepages(std::string line, std::vector<ServerConfig> &container, int i) /
     error_path = error_path.substr(0, error_path.size() - 1);
     if (!isAllDigits(error_code) || (error_path.substr(error_path.size() - 5, error_path.size()) != ".html"))
         throw ::InvalidData();
-        // 400–599
     if (toInt(error_code) < 200 || toInt(error_code) > 599)
     {
         std::cerr << "Invalid error code\n";
@@ -243,5 +240,3 @@ void parseServerConfig(std::string line, std::vector<ServerConfig> &container, i
         throw ::InvalidData();
     }
 }
-// maybe I need to handle when it ends with ;;
-// if (anything except location check that the line ends by ;)

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 
-
 with open("/home/salaoui/images/cat.jpg", "rb") as f:
     data = f.read()
 
@@ -12,6 +11,7 @@ sys.stdout.buffer.write(f"Content-Length: {len(data)}\r\n\r\n".encode())
 # then the video data
 sys.stdout.buffer.write(data)
 sys.stdout.buffer.flush()  # make sure everything is sent
+
 
 # with open("/home/mlabyed/Desktop/hh.jpeg", "rb") as f:
 #     data = f.read()
