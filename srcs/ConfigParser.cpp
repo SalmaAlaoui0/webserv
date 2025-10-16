@@ -88,7 +88,6 @@ int valid_return_path(std::vector<LocationConfig> locations, std::string Path, i
 	{
 
 		std::string locpath = trim(locations[i].path);
-		// std::cout << "Location is: " << i << " and it's path is: -" << locpath << "-" << std::endl;
 		if (locpath == Path)
 		{
 			if (index == 2)
@@ -107,7 +106,6 @@ std::string return_found(std::vector<LocationConfig> locations, std::string Path
 	while (i < locations.size())
 	{
 		std::string locpath = trim(locations[i].path);
-		// std::cout << "Location is: " << i << " and it's path is: -" << locpath << "-" << std::endl;
 		if (locpath == Path)
 		{
 			if (locations[i].Return.empty())
@@ -141,6 +139,11 @@ void Check_return(std::vector<ServerConfig> &container)
 			std::cerr << "`server_name server;' is mondatory in server" << std::endl;
 			throw ::InvalidData();
 		}
+		if (container[server].root.empty())
+		{
+			std::cerr << "`a default root;' is mondatory in server" << std::endl;
+			throw ::InvalidData();
+		}
 		loc = 0;
 		while (loc < container[server].locations.size())
 		{
@@ -148,7 +151,6 @@ void Check_return(std::vector<ServerConfig> &container)
 			if (!container[server].locations[loc].Return.empty())
 			{
 				std::string value = container[server].locations[loc].Return.begin()->second;
-				// std::cout << "entered condition in:--" << loc << "--location with value: " << value << std::endl;
 				while (!value.empty())
 				{
 					if (!valid_return_path(container[server].locations, value, 2))
@@ -168,7 +170,6 @@ void Check_return(std::vector<ServerConfig> &container)
 						throw ::InvalidData();
 					}
 				}
-				// std::cout << "And Location: " << loc << "new return path value will be: " << container[server].locations[loc].Return.begin()->second << std::endl;
 			}
 			loc++;
 		}

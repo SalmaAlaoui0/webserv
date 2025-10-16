@@ -1,19 +1,3 @@
-/// awal haja nsayab object n7at fih data li9rit men and kola ciete nder while mahad kayn /r/t
-
-// unsigned long content_length = 0;
-// std::cout << "buffer ["<< buffer<< "]" << std::endl;
-// std::map<std::string,std::string>&map = r.get_header();
-
-// std::map<std::string, std::string>::iterator it= map.begin();
-// if(it == map.end())
-// {
-//     std::cout << "ana khawiiiiiiiiiiiiiiiii\n";
-//     return r;
-// }
-// for(it= map.begin() ; it!= map.end(); it++)
-// {
-//
-
 #include "../includes/Request.hpp"
 
 request &request::operator=(const request &other)
@@ -214,7 +198,7 @@ int file(std::map<int, Client> &clientobj, std::vector<ServerConfig> &_configs, 
     std::ofstream out(clientobj[clientFd].filename.c_str(), std::ios::binary | std::ios::trunc);
     if (!out)
     {
-        std::cout << "fieled to open file path is : " << clientobj[clientFd].filename << std::endl;
+        std::cout << " Failed to open file path is : " << clientobj[clientFd].filename << std::endl;
         if (stat(clientobj[clientFd].filename.c_str(), &statbuf) == -1)
             clientobj[clientFd].response = Response::buildResponse(500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj, _configs);
         else if (access(clientobj[clientFd].filename.c_str(), W_OK) == -1)
@@ -237,27 +221,31 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
     Server s;
 
     if (clientobj[clientFd].cgiMap[clientFd].pipefd != -1)
-    {
-        // std::cout << "should not be parsed it's a pipe event client\n";
         return r;
-    }
     char buffer[640000] = {0};
     int bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
-    //std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
     if (bytes_received <= 0)
     {
         if (clientobj[clientFd].PostBody.size() != (size_t)std::atoi(clientobj[clientFd].get_header()["Content-Length"].c_str()))
         {
             clientobj[clientFd].body_complete = 1;
+            s.closeConnection(clientFd, epollManager);
+            std::cerr<< " ContentLength Exception "<< std::endl;
+            throw requetetException("❌ recv failed: ");
             return r;
         }
-        s.closeConnection(clientFd, epollManager);
-        throw requetetException("❌ recv failed: ");
+        if(bytes_received < 0)
+        {
+            std::cerr<< " Connection Failed "<< std::endl;
+            throw requetetException("❌ Connection Failed : ");
+        }
+        return r;
     }
     clientobj[clientFd].PostBody.append(buffer, bytes_received);
    // std::cout << "Postbody is sizzzzzzzzz: " << clientobj[clientFd].PostBody.size() << "*************<<<\n\n";
    // //  std::cout << "body complete is: " << clientobj[clientFd].body_complete << "[[[[[[]]]]]]\n\n";
     // std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
+
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0)
     {
         clientobj[clientFd].HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
@@ -288,9 +276,6 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         else
             clientobj[clientFd].path = trim1(path);
         clientobj[clientFd].version = version;
-        // r.set_method(method);
-        // r.set_path(path);
-        // r.set_vergion(version);
         while (std::getline(iss, line, '\r') && !line.empty())
         {
             iss.ignore();
@@ -326,7 +311,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
             {
                 clientobj[clientFd].cookies = iterator->second;
                 std::string id = findCookies(clientobj[clientFd].cookies);
-                // std::cout << "Session ID: " << id << std::endl;
+                std::cout << "Session ID: " << id << std::endl;
                 clientobj[clientFd].has_cookie = 1;
             }
             iterator++;
@@ -340,7 +325,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         r.set_method(clientobj[clientFd].method);
         r.set_path(clientobj[clientFd].path);
         r.set_vergion(clientobj[clientFd].version);
-        if (!file(clientobj, _configs, clientFd, r))
+        if (clientobj[clientFd].method == "POST" && !file(clientobj, _configs, clientFd, r))
             return r;
         if (clientobj[clientFd].ContentLength == clientobj[clientFd].PostBody.size() || clientobj[clientFd].method == "GET")
         {

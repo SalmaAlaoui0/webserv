@@ -30,7 +30,6 @@
 #include "Response.hpp"
 #include "Request.hpp"
 #include "Client.hpp"
-//#include "Utils.hpp"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>       // pour getaddrinfo, addrinfo, AI_PASSIVE

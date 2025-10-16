@@ -274,6 +274,7 @@ std::string to_string98(size_t value) {
 void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, std::string interpreter, EpollManager &epollManager)
 {
 	clientobj[clientFd].has_cgi = 1;
+	Server s;
 	std::cout << "the cgi path is: " << path << ", and cgi interpreter is: " << interpreter << std::endl;
 
 	int input_pipe[2];
@@ -334,13 +335,27 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 	{
 		close(input_pipe[0]); 
 		close(pipeFD[1]);   
-		if (clientobj[clientFd].method == "POST")
-		{
-			ssize_t written;
-				written = write(input_pipe[1],clientobj[clientFd].PostBody.c_str(),clientobj[clientFd].PostBody.size());
-			if (written == -1)
-				perror("write to CGI stdin");
-		}
+		// if (clientobj[clientFd].method == "POST")
+		// {
+		// 	ssize_t written;
+		// 		written = write(input_pipe[1],clientobj[clientFd].PostBody.c_str(),clientobj[clientFd].PostBody.size());
+			
+		// 	if (written == -1)
+		// 	{
+		// 		std::cerr << "❌ write() failed on fd "
+		// 				<< input_pipe[1] << std::endl;
+
+		// 		close(input_pipe[1]);
+		// 		s.closeConnection(clientobj[clientFd].cgiMap[clientFd].pipefd, epollManager);
+		// 		return ;
+		// 	}
+		// 	else if (written == 0)
+		// 	{
+		// 		std::cerr << "⚠️ write() returned 0 bytes on fd "
+		// 				<< input_pipe[1] << " (nothing written)" << std::endl;
+		// 	}
+
+		// }
 		close(input_pipe[1]);
 		fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
 		epollManager.addSocket(pipeFD[0], EPOLLIN);

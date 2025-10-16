@@ -24,19 +24,14 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         }
         if (clientobj[clientFd]._fd < 0)
         {
-            std::cerr << "❌ Failed to open file\n"; // or make it perror("open file")
-			// clientobj[clientFd].response = Response::buildResponse(403, "Forbidden", _configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj, _configs);
+            std::cerr << "❌ Failed to open file\n";
             clientobj[clientFd].send_complete = 1;
-            // return rep;
-            // and make response page of file can't be open 
-            // and close connection and remove client from epoll
-            // return "Failed";
         }
         struct stat filesz;
         if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
         {
-            perror("fstat");
-            close(clientobj[clientFd]._fd);  // ✅ FIX: close opened fd on error
+            std::cerr << "❌ fstat failed\n";
+            close(clientobj[clientFd]._fd);
             clientobj[clientFd]._fd = -1;
             clientobj[clientFd].send_complete = 1;
             return rep;
@@ -54,7 +49,6 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         ssize_t Readbyte;
         char buffer[4000];
         Readbyte = read(clientobj[clientFd]._fd, buffer, sizeof(buffer));
-        // std::cout << "###the file size is: " << clientobj[clientFd].filesize << ", and I send clientobj[clientFd].bytesRead is: " << clientobj[clientFd].bytesRead << "\n\n"; 
         if (Readbyte == -1)
         {
             // if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -64,18 +58,16 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             // }
             // else
             // {
-                perror("read failed");
+                std::cerr << "❌ read failed\n";
                 close(clientobj[clientFd]._fd);
-                clientobj[clientFd].send_complete = 1;   
+                clientobj[clientFd].send_complete = 1;
         }
         else if (Readbyte == 0)
         {
             rep.body.assign(buffer, Readbyte);
             clientobj[clientFd].bytesRead = Readbyte;
-            // std::cout << "the only explanation is to see this message\n";
             clientobj[clientFd].send_complete = 1;
             close(clientobj[clientFd]._fd);
-            std::cout << "🎉Closed fd: " << clientobj[clientFd]._fd << std::endl;
         }
         else if (Readbyte > 0)
         {
@@ -85,7 +77,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         else
         {
             close(clientobj[clientFd]._fd);
-            perror("read failed");
+            std::cerr << "❌ read failed\n";
         }
     }
     return rep;
@@ -167,15 +159,12 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             heaaad << "Connection: keep-alive\r\n\r\n";
 
         std::string headerStr = heaaad.str();
-        // std::cout << "the headersssssss sennnnnding: " << headerStr << std::endl;
-        // std::cout << "**************booody  is: " <<  clientobj[clientFd].CgiBody << std::endl;
         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked)
     {
-        std::cout << "coming to this condition is acceptable and true\n\n";
         std::ostringstream headers;
         headers << "HTTP/1.1 " << res.statusCode << "\r\n"
             << "Content-Type: " << res.contentType << "\r\n";
@@ -208,14 +197,15 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             clientobj[clientFd].CgiBody = "";
             clientobj[clientFd].send_complete = 1;
         }
-        // std::cout << "**************chunkmybody id: " << chunkmybody << std::endl;
         ssize_t sendbytes = send(clientFd, chunkmybody.c_str(), chunkmybody.size(), MSG_NOSIGNAL);
         if (sendbytes != -1)
             clientobj[clientFd].size_send += sendbytes;
     }
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
-        && !clientobj[clientFd].ResponseChunked)
+        && !clientobj[clientFd].ResponseChunked && !clientobj[clientFd].has_problem)
     {
+        std::cout << "Sending ...\n";
+        clientobj[clientFd].updateActivity();
         ssize_t sendbytes = send(clientFd, res.body.c_str(), clientobj[clientFd].bytesRead, MSG_NOSIGNAL);
         if (sendbytes != -1)
             clientobj[clientFd].size_send += sendbytes;
@@ -232,14 +222,10 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         }
         response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
         << clientobj[clientFd].response.body;
-        
-        std::cout << " haniiiiiiiiiiiiiii\n\n" << " codeeeeeeeeeee "<< clientobj[clientFd].response.statusCode<<std::endl;
         sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
     }
     else if (clientobj[clientFd].statusCode == 204)
     {
-        // std::cout << "this is no content 204 cgi is; " << "\n";
-        // std::cout << "and body is :" << clientobj[clientFd].response.body << "<=---\n\n";
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
@@ -278,7 +264,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         // if (errno == EAGAIN || errno == EWOULDBLOCK)
         //     return;
         // else
-            std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
         //maybe we should close the connection if send failed
     }
     // else
@@ -322,43 +308,29 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     rep.statusCode = code;
     clientobj[clientFd].statusCode = code;
     rep.statusMsg = msg;
-    // std::cout << " code : "<< rep.statusCode<<std::endl; 
+    clientobj[clientFd].statusMsg = msg;
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
-    // std::cout << " fil repone %%%%%%% " << filePath << std::endl;
+    if (!file && clientobj[clientFd].statusCode == 200)
+    {
+        clientobj[clientFd].statusCode = 403;
+        clientobj[clientFd].statusMsg = "Forbidden";
+        rep.statusCode = 403;
+        rep.statusMsg = "Forbidden";
+        std::ifstream file(_configs[clientobj[clientFd].conf_i].ErrorPages[403].c_str(), std::ios::in | std::ios::binary);
+    }
     if (!file)
     {
-        std::cerr << "❌❌ Failed to open file: " << rep.statusCode<< std::endl;
-        rep.statusCode = 500;
-        rep.statusMsg  = "Internal Server Error";
-        rep.body = "<!DOCTYPE html>\n"
-           "<html lang=\"en\">\n"
-           "<head>\n"
-           "    <meta charset=\"UTF-8\">\n"
-           "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-           "    <title>500 Internal Server Error</title>\n"
-           "    <style>\n"
-           "        body {\n"
-           "            font-family: Arial, sans-serif;\n"
-           "            background-color: #f2f2f2;\n"
-           "            color: #333;\n"
-           "            text-align: center;\n"
-           "            padding: 50px;\n"
-           "        }\n"
-           "        h1 {\n"
-           "            color: #ff0000;\n"
-           "            font-size: 72px;\n"
-           "        }\n"
-           "        p {\n"
-           "            font-size: 24px;\n"
-           "        }\n"
-           "    </style>\n"
-           "</head>\n"
-           "<body>\n"
-           "    <h1>500</h1>\n"
-           "    <p>Internal Server Error</p>\n"
-           "    <p>Something went wrong on our server. Please try again later.</p>\n"
-           "</body>\n"
-           "</html>\n";
+        std::string statusStr = intToString(clientobj[clientFd].statusCode);
+        std::string reasonPhrase = clientobj[clientFd].statusMsg;
+
+        rep.body =
+            "<html>\n"
+            "<head><title>" + statusStr + "</title></head>\n"
+            "<body>\n"
+            "<h1>" + statusStr + " " + reasonPhrase + "</h1>\n"
+            "</body>\n"
+            "</html>";
+
         // filePath      = _configs[clientobj[clientFd]. conf_i].ErrorPages[500];
         rep.contentType = "text/html";
         clientobj[clientFd].has_problem = 1;
@@ -391,11 +363,9 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     }
     if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || clientobj[clientFd].method != "GET" || clientobj[clientFd].has_problem)
     {
-         std::cout << "helllllllllllllo------------------>>>>>>>>"<<clientobj[clientFd].method<<std::endl;
-        std::ostringstream ss; // to put file content in it ;)
+        std::ostringstream ss;
         ss << file.rdbuf();
         rep.body = ss.str();
-        //std::cout << "THE BODY OF UR FILE IS: " << rep.body << std::endl;
     }
     return rep;
 }
