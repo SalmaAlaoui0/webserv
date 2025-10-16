@@ -34,7 +34,7 @@ class request
     std::string fullUploadpath;
     std::string ContentType;
     size_t ContentLength;
-    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r, int clientFd,std::vector<ServerConfig> _configs);
+    request& parseRequest(std::map<int, Client>& clientobj , EpollManager &epollManager, request &r, int clientFd,std::vector<ServerConfig> &_configs);
     int get_final_port(request &r);
     std::string version;
     std::map<std::string, std::string> map;

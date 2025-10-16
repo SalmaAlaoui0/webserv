@@ -25,12 +25,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         if (clientobj[clientFd]._fd < 0)
         {
             std::cerr << "❌ Failed to open file\n";
-			// clientobj[clientFd].response = Response::buildResponse(403, "Forbidden", _configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj, _configs);
             clientobj[clientFd].send_complete = 1;
-            // return rep;
-            // and make response page of file can't be open 
-            // and close connection and remove client from epoll
-            // return "Failed";
         }
         struct stat filesz;
         if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
@@ -45,7 +40,6 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         clientobj[clientFd].size_send = 0;
 
         rep.statusCode = 200;
-        // rep.contentType = "video/mp4";
         rep.filesize = clientobj[clientFd].filesize;
     }
 
@@ -56,16 +50,8 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         Readbyte = read(clientobj[clientFd]._fd, buffer, sizeof(buffer));
         if (Readbyte == -1)
         {
-            // if (errno == EAGAIN || errno == EWOULDBLOCK)
-            // {
-            //     clientobj[clientFd].no_data = 1;
-            //     return rep;
-            // }
-            // else
-            // {
-                std::cerr << "❌ read failed\n";
-                close(clientobj[clientFd]._fd);
-                clientobj[clientFd].send_complete = 1;   
+            close(clientobj[clientFd]._fd);
+            clientobj[clientFd].send_complete = 1;
         }
         else if (Readbyte == 0)
         {
@@ -73,7 +59,6 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             clientobj[clientFd].bytesRead = Readbyte;
             clientobj[clientFd].send_complete = 1;
             close(clientobj[clientFd]._fd);
-            std::cout << "🎉Closed fd: " << clientobj[clientFd]._fd << std::endl;
         }
         else if (Readbyte > 0)
         {
@@ -81,10 +66,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             clientobj[clientFd].bytesRead = Readbyte;
         }
         else
-        {
             close(clientobj[clientFd]._fd);
-            std::cerr << "❌ read failed\n";
-        }
     }
     return rep;
 }
@@ -137,14 +119,14 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
                 << body;
 
         std::string response = headers.str();
-        send(clientFd, response.c_str(), response.size(), MSG_NOSIGNAL);
-
-        std::cout << "✅ Redirect response sent to FD: " << clientFd << " with the return code is: " << statusStr << std::endl;
+        sent = send(clientFd, response.c_str(), response.size(), MSG_NOSIGNAL);
         clientobj[clientFd].send_complete = 1;
     }
 
-    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].statusCode != 204 && 
-        clientobj[clientFd].statusCode != 504 && clientobj[clientFd].statusCode != 408)
+    else if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 &&
+        clientobj[clientFd].statusCode != 204 && clientobj[clientFd].statusCode != 504 && clientobj[clientFd].statusCode != 408) ||
+        (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
+        && !clientobj[clientFd].ResponseChunked))
     {
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
@@ -154,37 +136,21 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";
             std::cout << "Hello, new user! Data saved on server.\n\n";
         }
-        std::ostringstream heaaad;
-        heaaad << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
+        std::ostringstream headers;
+        headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
             << "Content-Type: " << clientobj[clientFd].ContentType << "\r\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
-            heaaad<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
+            headers<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
             clientobj[clientFd].has_cookie = 1;
         }
-            heaaad << "Connection: keep-alive\r\n\r\n";
+        if (!clientobj[clientFd].has_cgi)
+            headers<< "Content-Length: " << res.filesize << "\r\n";
 
-        std::string headerStr = heaaad.str();
-        send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
-        clientobj[clientFd].Sending = 1;
-    }
-    else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
-        && !clientobj[clientFd].ResponseChunked)
-    {
-        std::cout << "coming to this condition is acceptable and true\n\n";
-        std::ostringstream headers;
-        headers << "HTTP/1.1 " << res.statusCode << "\r\n"
-            << "Content-Type: " << res.contentType << "\r\n";
-        if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
-        {
-            headers<< "Set-Cookie: session_id=" << res.sessionId << "\r\n";
-            clientobj[clientFd].has_cookie = 1;
-        }
-            headers<< "Content-Length: " << res.filesize << "\r\n"
-            << "Connection: : keep-alive\r\n\r\n";
+        headers << "Connection: keep-alive\r\n\r\n";
 
         std::string headerStr = headers.str();
-        send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
+        sent = send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
     else if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
@@ -193,10 +159,10 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         && clientobj[clientFd].send_complete && clientobj[clientFd].statusCode != 204 && !clientobj[clientFd].has_problem))
     {
         std::string chunkmybody;
-        if (clientobj[clientFd].CgiBody.size() > 8000)
+        if (clientobj[clientFd].CgiBody.size() > 12000)
         {
-            chunkmybody = clientobj[clientFd].CgiBody.substr(0, 8000);
-            clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(8000);
+            chunkmybody = clientobj[clientFd].CgiBody.substr(0, 12000);
+            clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(12000);
         }
         else
         {
@@ -204,19 +170,20 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             clientobj[clientFd].CgiBody = "";
             clientobj[clientFd].send_complete = 1;
         }
-        ssize_t sendbytes = send(clientFd, chunkmybody.c_str(), chunkmybody.size(), MSG_NOSIGNAL);
-        if (sendbytes != -1)
-            clientobj[clientFd].size_send += sendbytes;
+        sent = send(clientFd, chunkmybody.c_str(), chunkmybody.size(), MSG_NOSIGNAL);
+        if (sent > -1)
+            clientobj[clientFd].size_send += sent;
     }
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
-        && !clientobj[clientFd].ResponseChunked)
+        && !clientobj[clientFd].ResponseChunked && !clientobj[clientFd].has_problem)
     {
+        clientobj[clientFd].updateActivity();
         ssize_t sendbytes = send(clientFd, res.body.c_str(), clientobj[clientFd].bytesRead, MSG_NOSIGNAL);
         if (sendbytes != -1)
             clientobj[clientFd].size_send += sendbytes;
     }
     else if (((!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST") && clientobj[clientFd].ResponseChunked) || 
-        clientobj[clientFd].method.empty())
+        (clientobj[clientFd].method.empty()) || (clientobj[clientFd].statusCode == 204))
     {
         response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
         << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
@@ -227,20 +194,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         }
         response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
         << clientobj[clientFd].response.body;
-        sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
-    }
-    else if (clientobj[clientFd].statusCode == 204)
-    {
-        response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
-                << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
-                if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
-                {
-                    response << "Set-Cookie: session_id=" << clientobj[clientFd].response.sessionId <<"\r\n";
-                    clientobj[clientFd].has_cookie = 1;
-                }
-                response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
-                << clientobj[clientFd].response.body;
-
         sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
     }
     else
@@ -260,23 +213,11 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     if (sent < 0)
     {
-        // if (errno == EPIPE)
-        // { // do nothing or debugging msg because the connection is closed:) 
-        //     std::cout << "❌client closed connection❌\n\n";
-        //     close(clientobj[clientFd]._fd);
-        //         // or maybe remove client from epoll events or epoll fds
-        // }
-        // if (errno == EAGAIN || errno == EWOULDBLOCK)
-        //     return;
-        // else
         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-        //maybe we should close the connection if send failed
+        clientobj[clientFd].send_complete = 1;
     }
-    // else
-    // {
-    //     std::cout << "✅ File response sent to FD: " << clientFd << std::endl;
-    //     // return ;
-    // }
+    if (sent == 0)
+        return;
     return;
 }
 
@@ -312,42 +253,31 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     }
     rep.statusCode = code;
     clientobj[clientFd].statusCode = code;
-    rep.statusMsg = msg; 
+    rep.statusMsg = msg;
+    clientobj[clientFd].statusMsg = msg;
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
+    if (!file && clientobj[clientFd].statusCode == 200)
+    {
+        clientobj[clientFd].statusCode = 403;
+        clientobj[clientFd].statusMsg = "Forbidden";
+        rep.statusCode = 403;
+        rep.statusMsg = "Forbidden";
+        std::ifstream file(_configs[clientobj[clientFd].conf_i].ErrorPages[403].c_str(), std::ios::in | std::ios::binary);
+    }
     if (!file)
     {
-        std::cerr << "❌❌ Failed to open file: " << filePath << std::endl;
-        rep.statusCode = 500;
-        rep.statusMsg  = "Internal Server Error";
-        rep.body = "<!DOCTYPE html>\n"
-           "<html lang=\"en\">\n"
-           "<head>\n"
-           "    <meta charset=\"UTF-8\">\n"
-           "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-           "    <title>500 Internal Server Error</title>\n"
-           "    <style>\n"
-           "        body {\n"
-           "            font-family: Arial, sans-serif;\n"
-           "            background-color: #f2f2f2;\n"
-           "            color: #333;\n"
-           "            text-align: center;\n"
-           "            padding: 50px;\n"
-           "        }\n"
-           "        h1 {\n"
-           "            color: #ff0000;\n"
-           "            font-size: 72px;\n"
-           "        }\n"
-           "        p {\n"
-           "            font-size: 24px;\n"
-           "        }\n"
-           "    </style>\n"
-           "</head>\n"
-           "<body>\n"
-           "    <h1>500</h1>\n"
-           "    <p>Internal Server Error</p>\n"
-           "    <p>Something went wrong on our server. Please try again later.</p>\n"
-           "</body>\n"
-           "</html>\n";
+        std::string statusStr = intToString(clientobj[clientFd].statusCode);
+        std::string reasonPhrase = clientobj[clientFd].statusMsg;
+
+        rep.body =
+            "<html>\n"
+            "<head><title>" + statusStr + "</title></head>\n"
+            "<body>\n"
+            "<h1>" + statusStr + " " + reasonPhrase + "</h1>\n"
+            "</body>\n"
+            "</html>";
+
+        // filePath      = _configs[clientobj[clientFd]. conf_i].ErrorPages[500];
         rep.contentType = "text/html";
         clientobj[clientFd].has_problem = 1;
         clientobj[clientFd].Sending = 1;
@@ -365,11 +295,11 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
         else if (filePath.find(".js") != std::string::npos)
             rep.contentType = "application/javascript";
         else if (filePath.find(".jpg") != std::string::npos || filePath.find(".jpeg") != std::string::npos)
-            rep.contentType = "image/jpeg";
+            clientobj[clientFd].ContentType = "image/jpeg";
         else if (filePath.find(".png") != std::string::npos)
-            rep.contentType = "image/png";
+            clientobj[clientFd].ContentType = "image/png";
         else if (filePath.find(".mp4") != std::string::npos)
-            rep.contentType = "video/mp4";
+            clientobj[clientFd].ContentType = "video/mp4";
         if (filePath.find(".mp4") != std::string::npos || filePath.find(".png") != std::string::npos ||
             filePath.find(".jpg") != std::string::npos || filePath.find(".jpeg") != std::string::npos)
         {

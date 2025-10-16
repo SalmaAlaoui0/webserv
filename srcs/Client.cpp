@@ -31,7 +31,6 @@ Client::Client()
   PostBody(""),
   ReturnLocation(""),
   CgiBody(""),
-  CGIPostBody(""),
   sessionId(""),
   filename(""),
   sessions(),
@@ -53,6 +52,8 @@ Client::Client()
   version(""),
   response(),
   timeout(false),
+  field_open(0),
+  key(-1),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();
@@ -90,7 +91,6 @@ Client::Client(int fd)
   PostBody(""),
   ReturnLocation(""),
   CgiBody(""),
-  CGIPostBody(""),
   sessionId(""),
   filename(""),
   sessions(),
@@ -112,6 +112,8 @@ Client::Client(int fd)
   version(""),
   response(),
   timeout(false),
+  field_open(0),
+  key(-1),
   CgiStartActivity(std::time(NULL))
 {
     updateActivity();

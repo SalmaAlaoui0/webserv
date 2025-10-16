@@ -40,74 +40,68 @@ bool request::error_set(std::map<int, Client> &clients, int clientFd, ServerConf
     std::map<std::string, std::string> headers = clients[clientFd].get_header();
     size_t pos = 0;
     pos = clients[clientFd].path.find("..");
+
     if (clients[clientFd].HeaderEnd > 8000)
     {
-        clients[clientFd].response = Response::buildResponse(431, "Request Header Fields Too Large", config.ErrorPages[431], clientFd, clients ,_configs);
+        clients[clientFd].response = Response::buildResponse(431, "Request Header Fields Too Large", config.ErrorPages[431], clientFd, clients, _configs);
         return 0;
     }
     if (pos != std::string::npos)
     {
-        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients ,_configs);
+        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients, _configs);
         return 0;
     }
     if (clients[clientFd].method != "GET" && clients[clientFd].method != "POST" && clients[clientFd].method != "DELETE")
     {
-        clients[clientFd].response = Response::buildResponse(501, "Not Implemented", config.ErrorPages[501], clientFd, clients ,_configs);
+        clients[clientFd].response = Response::buildResponse(501, "Not Implemented", config.ErrorPages[501], clientFd, clients, _configs);
         return 0;
     }
     if (clients[clientFd].version != "HTTP/1.1" && clients[clientFd].version != "HTTP/1.0")
     {
-        clients[clientFd].response = Response::buildResponse(505, "HTTP Version Not Supported", config.ErrorPages[505], clientFd, clients ,_configs);
+        clients[clientFd].response = Response::buildResponse(505, "HTTP Version Not Supported", config.ErrorPages[505], clientFd, clients, _configs);
         return 0;
     }
     if (headers.find("Host") == headers.end())
     {
-        std::cerr << "inside if statement of post\n";
-        
-        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients ,_configs);
+        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients, _configs);
         return 0;
     }
     if (clients[clientFd].method.empty() || clients[clientFd].path.empty())
     {
-        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients ,_configs);
+        clients[clientFd].response = Response::buildResponse(400, "Bad Request", config.ErrorPages[400], clientFd, clients, _configs);
         return 0;
     }
     if (clients[clientFd].method == "POST")
     {
         std::map<std::string, std::string>::iterator ptr = headers.find("Content-Length");
-        if (ptr == headers.end()  && clients[clientFd].method == "POST")
+        if (ptr == headers.end() && clients[clientFd].method == "POST")
         {
-            clients[clientFd].response = Response::buildResponse(411, "Length Required", config.ErrorPages[411], clientFd, clients ,_configs);
+            clients[clientFd].response = Response::buildResponse(411, "Length Required", config.ErrorPages[411], clientFd, clients, _configs);
             return 0;
         }
         if (ptr != headers.end())
         {
             if (!is_valid_content_length(ptr->second))
             {
-                clients[clientFd].response = Response::buildResponse(411, "Length Required", config.ErrorPages[411], clientFd, clients ,_configs);
+                clients[clientFd].response = Response::buildResponse(411, "Length Required", config.ErrorPages[411], clientFd, clients, _configs);
                 return 0;
             }
-            if (std::atof(ptr->second.c_str()) > static_cast<double>(_configs[clients[clientFd].conf_i].client_max_body_size) ) 
+            if (std::atof(ptr->second.c_str()) > static_cast<double>(_configs[clients[clientFd].conf_i].client_max_body_size))
             {
-                //send_response(clientFd, 413, "Payload Too Large", load_html_file("www/413.html"));
-                    clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",config.ErrorPages[413],  clientFd, clients ,_configs);
-                    return 0;
-                }
-            }
-        }
-        // if(clients[clientFd].chnked && clients[clientFd].body_chunked.size() >static_cast<size_t>(config[clients[clientFd].conf_i].client_max_body_size ) )
-        // {
-            //     clients[clientFd].response= Response::buildResponse(413, "Payload Too Large",config[clients[clientFd].conf_i].ErrorPages[413], clientFd, clients);
-            //     return 0;
-            // }
-            if (clients[clientFd].PostBody.size() != (size_t)std::atoi(clients[clientFd].get_header()["Content-Length"].c_str()) && clients[clientFd].method == "POST")
-            {
-            ///// HADA RAH MOSSIB KA7LA 30WAD MAYHAL MOUCKIL DAR LINA MACHAKIL
-                      clients[clientFd].response = Response::buildResponse(400, "bad request", config.ErrorPages[400], clientFd, clients ,_configs);
+                clients[clientFd].response = Response::buildResponse(413, "Payload Too Large", config.ErrorPages[413], clientFd, clients, _configs);
                 return 0;
             }
-            return 1;
         }
+    }
+    if (clients[clientFd].PostBody.size() != (size_t)std::atoi(clients[clientFd].get_header()["Content-Length"].c_str()) && clients[clientFd].method == "POST")
+    {
+        clients[clientFd].response = Response::buildResponse(400, "bad request", config.ErrorPages[400], clientFd, clients, _configs);
+        return 0;
+    }
+    if (clients[clientFd].field_open)
+        return 0;
+    return 1;
+}
 
 std::string trim1(std::string &s)
 {
@@ -191,29 +185,80 @@ std::string findCookies(const std::string &cookieHeader)
     return NULL;
 }
 
-request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &epollManager, request &r, int clientFd,std::vector<ServerConfig> _configs)
+int file(std::map<int, Client> &clientobj, std::vector<ServerConfig> &_configs, int clientFd, request &r)
+{
+    struct stat statbuf;
+    std::map<int, std::string> map;
+    map = getMatchingRootPath(r, _configs[clientobj[clientFd].conf_i]);
+    int key = map.begin()->first;
+    clientobj[clientFd].key = map.begin()->first;
+    if (!_configs[clientobj[clientFd].conf_i].locations[key].Return.empty())
+	{
+		clientobj[clientFd].statusCode = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->first;
+		clientobj[clientFd].statusMsg = "Found";
+		clientobj[clientFd].ReturnLocation = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->second;
+        clientobj[clientFd].body_complete = 1;
+        return 0;
+	}
+    std::ostringstream filename;
+    std::string fullpath = map.begin()->second;
+    fullpath = mergePaths(_configs[clientobj[clientFd].conf_i].locations[map.begin()->first].root, _configs[clientobj[clientFd].conf_i].locations[map.begin()->first].upload_store);
+    srand(time(NULL));
+    filename << fullpath << "/" << generateId1();
+    clientobj[clientFd].filename = filename.str();
+    std::ofstream out(clientobj[clientFd].filename.c_str(), std::ios::binary | std::ios::trunc);
+    if (!out)
+    {
+        std::cout << " Failed to open file path is : " << clientobj[clientFd].filename << std::endl;
+        if (stat(clientobj[clientFd].filename.c_str(), &statbuf) == -1)
+            clientobj[clientFd].response = Response::buildResponse(500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj, _configs);
+        else if (access(clientobj[clientFd].filename.c_str(), W_OK) == -1)
+            clientobj[clientFd].response = Response::buildResponse(403, "Forbiden", _configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj, _configs);
+        else
+            clientobj[clientFd].response = Response::buildResponse(500, "Internal Server Error", _configs[clientobj[clientFd].conf_i].ErrorPages[500], clientFd, clientobj, _configs);
+        std::cerr << "❌ Failed to open file: " << clientobj[clientFd].filename << std::endl;
+        out.close();
+        remove(clientobj[clientFd].filename.c_str());
+        clientobj[clientFd].body_complete = 1;
+        clientobj[clientFd].field_open = 1;
+        return 0;
+    }
+    if (remove(clientobj[clientFd].filename.c_str()) == -1)
+        return 0;
+    return 1;
+}
+
+request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &epollManager, request &r, int clientFd, std::vector<ServerConfig> &_configs)
 {
     Server s;
+
     if (clientobj[clientFd].cgiMap[clientFd].pipefd != -1)
         return r;
     char buffer[640000] = {0};
     int bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
-     std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
     if (bytes_received <= 0)
     {
-        if (clientobj[clientFd].PostBody.size() !=  (size_t)std::atoi(clientobj[clientFd].get_header()["Content-Length"].c_str()))
+        if (clientobj[clientFd].PostBody.size() != (size_t)std::atoi(clientobj[clientFd].get_header()["Content-Length"].c_str()))
         {
             clientobj[clientFd].body_complete = 1;
+            s.closeConnection(clientFd, epollManager);
+            std::cerr<< " ContentLength Exception "<< std::endl;
+            throw requetetException("❌ recv failed: ");
             return r;
         }
-            s.closeConnection(clientFd, epollManager);
-            throw requetetException("❌ recv failed: ");
+        if(bytes_received < 0)
+        {
+            std::cerr<< " Connection Failed "<< std::endl;
+            throw requetetException("❌ Connection Failed : ");
+        }
+        return r;
     }
     clientobj[clientFd].PostBody.append(buffer, bytes_received);
+
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0)
     {
         clientobj[clientFd].HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
-        if(clientobj[clientFd].HeaderEnd > 8000)
+        if (clientobj[clientFd].HeaderEnd > 8000)
             clientobj[clientFd].header_complete = 1;
         std::string headers = clientobj[clientFd].PostBody.substr(0, clientobj[clientFd].HeaderEnd);
         clientobj[clientFd].PostBody = clientobj[clientFd].PostBody.substr(clientobj[clientFd].HeaderEnd + 4);
@@ -259,23 +304,15 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         int count = 0;
         while (iterator != clientobj[clientFd].get_header().end())
         {
-            if (iterator->first == "Transfer-Encoding" && iterator->second == "chunked")
-            {
-                clientobj[clientFd].chnked = 1;
-            }
-            else if (iterator->first == "Content-Length")
+            if (iterator->first == "Content-Length")
             {
                 count++;
                 std::stringstream ss(iterator->second);
                 ss >> clientobj[clientFd].ContentLength;
-                if(!is_valid_content_length(iterator->second))
-                {
+                if (!is_valid_content_length(iterator->second))
                     clientobj[clientFd].body_complete = 1;
-                }
-                if(std::atof(iterator->second.c_str()) > static_cast<double>( _configs[clientobj[clientFd].conf_i].client_max_body_size))
-                {
+                if (std::atof(iterator->second.c_str()) > static_cast<double>(_configs[clientobj[clientFd].conf_i].client_max_body_size))
                     clientobj[clientFd].body_complete = 1;
-                }
             }
             if (iterator->first == "Content-Type")
                 clientobj[clientFd].ContentType = iterator->second;
@@ -288,7 +325,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
             }
             iterator++;
         }
-        if (count == 0 )
+        if (count == 0)
             clientobj[clientFd].body_complete = 1;
         clientobj[clientFd].header_complete = 1;
     }
@@ -297,41 +334,13 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         r.set_method(clientobj[clientFd].method);
         r.set_path(clientobj[clientFd].path);
         r.set_vergion(clientobj[clientFd].version);
-        if (clientobj[clientFd].chnked == 1)
-        {
-            while (1)
-            {
-                std::string chunk_string;
-                size_t pos2 = 0;
-                pos2 = clientobj[clientFd].PostBody.find("\r\n");
-                if (pos2 == std::string::npos)
-                    break;
-                std::string a = clientobj[clientFd].PostBody.substr(0, pos2);
-                clientobj[clientFd].chunk_size = std::strtol(a.c_str(), NULL, 16);
-                if (clientobj[clientFd].chunk_size == 0)
-                {
-                    clientobj[clientFd].body_complete = 1;
-                    break;
-                }
-
-                if (clientobj[clientFd].PostBody.size() < pos2 + 2 + clientobj[clientFd].chunk_size)
-                {
-                    break;
-                }
-                clientobj[clientFd].PostBody.erase(0, pos2 + 2);
-                chunk_string = clientobj[clientFd].PostBody.substr(0, clientobj[clientFd].chunk_size);
-                clientobj[clientFd].body_chunked.append(chunk_string);
-                clientobj[clientFd].PostBody.erase(0, clientobj[clientFd].chunk_size + 2);
-            }
-        }
+        if (clientobj[clientFd].method == "POST" && !file(clientobj, _configs, clientFd, r))
+            return r;
         if (clientobj[clientFd].ContentLength == clientobj[clientFd].PostBody.size() || clientobj[clientFd].method == "GET")
         {
             clientobj[clientFd].body_complete = 1;
             if (clientobj[clientFd].method == "POST")
-            {
-                std::cout << "\nReading Post body is Done ✅\n";
                 clientobj[clientFd].send_complete = 1;
-            }
         }
     }
 

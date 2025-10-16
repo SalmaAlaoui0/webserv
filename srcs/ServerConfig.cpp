@@ -88,7 +88,6 @@ bool CheckValidIp(std::string ip)
 
 void parseListen(std::string line, std::vector<ServerConfig> &container, int i)
 {
-    // check ip valid numbers 
     std::string ip;
     int port;
     std::string listen = line.substr(isKey(line, "listen") + 1);
@@ -115,7 +114,6 @@ void parseListen(std::string line, std::vector<ServerConfig> &container, int i)
         throw ::InvalidData();
     }
     container[i].port = port;    
-    // std::cout << "ur listen info, host: -" << container[i].host << "- And port is: -" << container[i].port << "-" << std::endl;
 }
 
 void parseroot(std::string line, std::vector<ServerConfig> &container, int i)
@@ -127,9 +125,6 @@ void parseroot(std::string line, std::vector<ServerConfig> &container, int i)
         throw ::InvalidData();
     root = root.substr(0, root.size() - 1);
 	container[i].root = root;
-    // make sure to test root is a valid directory
-	// std::cout << "ur root is: -" << root << "-" << std::endl;
-	// exit (0);
 }
 
 void parsename(std::string line, std::vector<ServerConfig> &container, int i)
@@ -141,8 +136,6 @@ void parsename(std::string line, std::vector<ServerConfig> &container, int i)
         throw ::InvalidData();
     server_name = server_name.substr(0, server_name.size() - 1);
 	container[i].server_name = server_name;
-    // std::cout << "ur server name is: -" << container[i].server_name << "-" << std::endl;
-    // exit (0);
 }
 
 void parsepages(std::string line, std::vector<ServerConfig> &container, int i) // error_page 404 403 500 /error.html;
@@ -163,7 +156,6 @@ void parsepages(std::string line, std::vector<ServerConfig> &container, int i) /
     error_path = error_path.substr(0, error_path.size() - 1);
     if (!isAllDigits(error_code) || (error_path.substr(error_path.size() - 5, error_path.size()) != ".html"))
         throw ::InvalidData();
-        // 400–599
     if (toInt(error_code) < 200 || toInt(error_code) > 599)
     {
         std::cerr << "Invalid error code\n";
@@ -178,9 +170,6 @@ void parsepages(std::string line, std::vector<ServerConfig> &container, int i) /
         throw InvalidErrorFile(err);
     }
     container[i].ErrorPages[toInt(error_code)] = error_path;
-    // std::cout << "ur error page is: -" << error_page << "-" << std::endl;
-    // std::cout << "     and it's error code is: -" << error_code << "-" << std::endl;
-    // exit (0);
 }
 
 void parseindex(std::string line, std::vector<ServerConfig> &container, int i)
@@ -198,7 +187,6 @@ void parseindex(std::string line, std::vector<ServerConfig> &container, int i)
     if (!isValidIndex(index) || (index.substr(index.size() - 5, index.size()) != ".html"))
         throw ::InvalidData();
     container[i].index = index;
-    // std::cout << "ur index file is: -" << container[i].index << "-" << std::endl;
 }
 
 void parse_max_size(std::string line, std::vector<ServerConfig> &container, int i)
@@ -228,8 +216,6 @@ void parse_max_size(std::string line, std::vector<ServerConfig> &container, int 
         container[i].client_max_body_size = (toInt(size) * 1024 * 1024);
     else if (max_size[l - 1] == 'G')
         container[i].client_max_body_size = (toInt(size) * 1024 * 1024 * 1024);
-    // std::cout << "ur max sizeValue is: -" << container[i].client_max_body_size << "-" << std::endl;
-    // exit (0);
 }
 
 void parseServerConfig(std::string line, std::vector<ServerConfig> &container, int i)
@@ -254,5 +240,3 @@ void parseServerConfig(std::string line, std::vector<ServerConfig> &container, i
         throw ::InvalidData();
     }
 }
-// maybe I need to handle when it ends with ;;
-// if (anything except location check that the line ends by ;)
