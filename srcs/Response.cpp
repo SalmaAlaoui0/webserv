@@ -24,14 +24,14 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         }
         if (clientobj[clientFd]._fd < 0)
         {
-            std::cerr << "❌ Failed to open file\n"; // or make it perror("open file")
+            std::cerr << "❌ Failed to open file\n";
             clientobj[clientFd].send_complete = 1;
         }
         struct stat filesz;
         if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
         {
-            perror("fstat");
-            close(clientobj[clientFd]._fd);  // ✅ FIX: close opened fd on error
+            std::cerr << "❌ fstat failed\n";
+            close(clientobj[clientFd]._fd);
             clientobj[clientFd]._fd = -1;
             clientobj[clientFd].send_complete = 1;
             return rep;
@@ -49,7 +49,6 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         ssize_t Readbyte;
         char buffer[4000];
         Readbyte = read(clientobj[clientFd]._fd, buffer, sizeof(buffer));
-        // std::cout << "###the file size is: " << clientobj[clientFd].filesize << ", and I send clientobj[clientFd].bytesRead is: " << clientobj[clientFd].bytesRead << "\n\n"; 
         if (Readbyte == -1)
         {
             // if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -59,7 +58,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             // }
             // else
             // {
-                perror("read failed");
+                std::cerr << "❌ read failed\n";
                 close(clientobj[clientFd]._fd);
                 clientobj[clientFd].send_complete = 1;
         }
@@ -67,7 +66,6 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         {
             rep.body.assign(buffer, Readbyte);
             clientobj[clientFd].bytesRead = Readbyte;
-            std::cout << "the only explanation is to see this message\n";
             clientobj[clientFd].send_complete = 1;
             close(clientobj[clientFd]._fd);
         }
@@ -79,7 +77,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         else
         {
             close(clientobj[clientFd]._fd);
-            perror("read failed");
+            std::cerr << "❌ read failed\n";
         }
     }
     return rep;
@@ -161,8 +159,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             heaaad << "Connection: keep-alive\r\n\r\n";
 
         std::string headerStr = heaaad.str();
-        // std::cout << "the headersssssss sennnnnding: " << headerStr << std::endl;
-        // std::cout << "**************booody  is: " <<  clientobj[clientFd].CgiBody << std::endl;
         send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
@@ -201,7 +197,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             clientobj[clientFd].CgiBody = "";
             clientobj[clientFd].send_complete = 1;
         }
-        // std::cout << "**************chunkmybody id: " << chunkmybody << std::endl;
         ssize_t sendbytes = send(clientFd, chunkmybody.c_str(), chunkmybody.size(), MSG_NOSIGNAL);
         if (sendbytes != -1)
             clientobj[clientFd].size_send += sendbytes;
@@ -227,14 +222,10 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         }
         response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
         << clientobj[clientFd].response.body;
-        
-        std::cout << " haniiiiiiiiiiiiiii\n\n" << " codeeeeeeeeeee "<< clientobj[clientFd].response.statusCode<<std::endl;
         sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
     }
     else if (clientobj[clientFd].statusCode == 204)
     {
-        // std::cout << "this is no content 204 cgi is; " << "\n";
-        // std::cout << "and body is :" << clientobj[clientFd].response.body << "<=---\n\n";
         response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
                 << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
                 if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
@@ -273,7 +264,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         // if (errno == EAGAIN || errno == EWOULDBLOCK)
         //     return;
         // else
-            std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
+        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
         //maybe we should close the connection if send failed
     }
     // else
@@ -372,11 +363,9 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     }
     if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || clientobj[clientFd].method != "GET" || clientobj[clientFd].has_problem)
     {
-         std::cout << "helllllllllllllo------------------>>>>>>>>"<<clientobj[clientFd].method<<std::endl;
-        std::ostringstream ss; // to put file content in it ;)
+        std::ostringstream ss;
         ss << file.rdbuf();
         rep.body = ss.str();
-        //std::cout << "THE BODY OF UR FILE IS: " << rep.body << std::endl;
     }
     return rep;
 }
