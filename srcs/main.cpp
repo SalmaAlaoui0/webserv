@@ -17,7 +17,6 @@
 
 int main(int argc, char** argv) 
 {
-    
     ConfigParser obj;
     try
     {
@@ -30,14 +29,12 @@ int main(int argc, char** argv)
             return 1;
         }
         std::vector<ServerConfig> configs = obj.parseConfig(configFile);
-        std::cout << "first server's port: " << configs[0].port << std::endl;
-        // std::cout << "first server's name: " << configs[0].server_name << std::endl;
         Server server(configs);
         server.run();
     }
     catch(const std::exception& e)
     {
-        std::cerr << e.what() << '\n';
+        std::cerr << e.what() << std::endl;
         return 1;
     }
 }

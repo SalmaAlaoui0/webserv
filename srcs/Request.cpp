@@ -1,19 +1,3 @@
-/// awal haja nsayab object n7at fih data li9rit men and kola ciete nder while mahad kayn /r/t
-
-// unsigned long content_length = 0;
-// std::cout << "buffer ["<< buffer<< "]" << std::endl;
-// std::map<std::string,std::string>&map = r.get_header();
-
-// std::map<std::string, std::string>::iterator it= map.begin();
-// if(it == map.end())
-// {
-//     std::cout << "ana khawiiiiiiiiiiiiiiiii\n";
-//     return r;
-// }
-// for(it= map.begin() ; it!= map.end(); it++)
-// {
-//
-
 #include "../includes/Request.hpp"
 
 request &request::operator=(const request &other)
@@ -211,18 +195,10 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
 {
     Server s;
     if (clientobj[clientFd].cgiMap[clientFd].pipefd != -1)
-    {
-        // std::cout << "should not be parsed it's a pipe event client\n";
         return r;
-    }
     char buffer[640000] = {0};
-    // std::cout << "\n\n\n-----Content in the buffer is: " << buffer << "-------\n\n";
     int bytes_received = recv(clientFd, buffer, sizeof(buffer), 0);
-    // std::cout << "\n\n\n-----Content in the buffer is: " << buffer << "-------\n\n";
      std::cout << "the buffer size is: " << sizeof(buffer) << std::endl;
-    // usleep(10000);
-    
-    //std::cout << "ssssssssssssssssssssssssssouuuuuuuuuuuuuuuuuuuuuuuuunnnnnnnnnnnnnnnnnnnnnnnnnnaya\n"<< bytes_received <<std::endl;
     if (bytes_received <= 0)
     {
         if (clientobj[clientFd].PostBody.size() !=  (size_t)std::atoi(clientobj[clientFd].get_header()["Content-Length"].c_str()))
@@ -232,12 +208,8 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         }
             s.closeConnection(clientFd, epollManager);
             throw requetetException("❌ recv failed: ");
-            // eres the client 
     }
     clientobj[clientFd].PostBody.append(buffer, bytes_received);
-     std::cout << "Postbody is sizzzzzzzzz: " << clientobj[clientFd].PostBody.size() << "*************<<<\n\n";
-    //  std::cout << "body complete is: " << clientobj[clientFd].body_complete << "[[[[[[]]]]]]\n\n";
-    // std::cout << "in this socket file number: " << clientFd << "=> size in header: " << clientobj[clientFd].ContentLength << " and size in body is: " << clientobj[clientFd].PostBody.size() << std::endl;
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0)
     {
         clientobj[clientFd].HeaderEnd = clientobj[clientFd].PostBody.find("\r\n\r\n");
@@ -268,12 +240,8 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         else
             clientobj[clientFd].path = trim1(path);
         clientobj[clientFd].version = version;
-        // r.set_method(method);
-        // r.set_path(path);
-        // r.set_vergion(version);
         while (std::getline(iss, line, '\r') && !line.empty())
         {
-            // std::cout << "line is: " << line << std::endl;
             iss.ignore();
             size_t pos = line.find(":");
             if (pos != std::string::npos)
@@ -315,7 +283,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
             {
                 clientobj[clientFd].cookies = iterator->second;
                 std::string id = findCookies(clientobj[clientFd].cookies);
-                // std::cout << "Session ID: " << id << std::endl;
+                std::cout << "Session ID: " << id << std::endl;
                 clientobj[clientFd].has_cookie = 1;
             }
             iterator++;
@@ -333,20 +301,15 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         {
             while (1)
             {
-                std::cout << " bodyy :::: " << clientobj[clientFd].PostBody << std::endl;
                 std::string chunk_string;
                 size_t pos2 = 0;
                 pos2 = clientobj[clientFd].PostBody.find("\r\n");
                 if (pos2 == std::string::npos)
-                {
-                    std::cout << "i m here\n";
                     break;
-                }
                 std::string a = clientobj[clientFd].PostBody.substr(0, pos2);
                 clientobj[clientFd].chunk_size = std::strtol(a.c_str(), NULL, 16);
                 if (clientobj[clientFd].chunk_size == 0)
                 {
-                    std::cout << " yesssssssssssssss completeeeeeeeee\n\n";
                     clientobj[clientFd].body_complete = 1;
                     break;
                 }
@@ -363,14 +326,12 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         }
         if (clientobj[clientFd].ContentLength == clientobj[clientFd].PostBody.size() || clientobj[clientFd].method == "GET")
         {
-            // std::cout << "haniiiiiii------------>\n";
             clientobj[clientFd].body_complete = 1;
             if (clientobj[clientFd].method == "POST")
             {
                 std::cout << "\nReading Post body is Done ✅\n";
                 clientobj[clientFd].send_complete = 1;
             }
-            // std::cout << "THe body has been recieved";
         }
     }
 

@@ -30,7 +30,6 @@ std::vector<std::string> pathchunks(std::string path)
 	while (iss >> word)
 	{
 		chunks.push_back(word);
-		// std::cout << "---" << word << "---" << std::endl;
 	}
 	return chunks;
 }
@@ -78,14 +77,13 @@ std::string joinPath(const std::vector<std::string> &parts, bool Slashfound) {
     return result.empty() ? "/" : result;
 }
 
-std::string mergePaths(std::string root, std::string request) {
+std::string mergePaths(std::string root, std::string request) 
+{
     std::vector<std::string> rootParts = splitPath(root);
     std::vector<std::string> reqParts = splitPath(request);
 	bool slashfound = 0;
 	if (root[0] == '/')
 		slashfound = 1;
-
-    // Remove the overlapping folders from end of root and start of request
     while (!rootParts.empty() && !reqParts.empty() && 
            rootParts.back() == reqParts.front())
 	{
@@ -94,35 +92,12 @@ std::string mergePaths(std::string root, std::string request) {
 
     std::vector<std::string> merged = rootParts;
     merged.insert(merged.end(), reqParts.begin(), reqParts.end());
-
-	// std::cout << "\n\nResponse path is: =========>" << joinPath(merged, slashfound) << "<============\n\n";
     return joinPath(merged, slashfound);
 }
 
-// std::string join_path(request &r, std::string root, std::string suffix)
-// {
-// 	std::string fixedRoot = root;
-// 	std::string fixedSuffix = suffix;
-
-// 	if (!fixedRoot.empty() && fixedRoot[fixedRoot.length() - 1] == '/' && r.get_method() != "DELETE")
-// 		fixedRoot.erase(fixedRoot.length() - 1);
-
-// 	if (!fixedSuffix.empty() && fixedSuffix[0] == '/' && r.get_method() != "DELETE")
-// 		fixedSuffix = fixedSuffix.substr(1);
-
-// 	if (r.get_method() != "DELETE")
-// 		return fixedRoot + "/" + fixedSuffix;
-// 	else 
-// 		return fixedRoot + fixedSuffix;
-// }
-
-
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
-	std::string requestedPath = r.get_path(); // e.g. "/index.html"
-	// std::cout << "request path------------->>> "  << requestedPath <<std::endl;
-	// if (requestedPath[requestedPath.size() - 1] == '/')
-	// 	r.slash = 1;
+	std::string requestedPath = r.get_path();
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
@@ -243,7 +218,6 @@ void send_dir_list(int clientFd, std::string requested_path, std::map<int, Clien
 				new_path += "/";
 			new_path += name;
 			body << "<li><a href=\"" << new_path << "\">" << name << "</a></li>";
-			// std::cout << new_path << std::endl;
 		}
 		closedir(directory);
 		body << "</ul></body></html>";
@@ -257,17 +231,6 @@ std::string to_string98(size_t value) {
     return oss.str();
 }
 
-
-// void init_cgi_map (std::map<int, Client>& clients, int fd)
-// {
-// 	std::cout << " initttttttttttttt\n\n\n";
-// 	clients[fd].cgiMap[fd].Timeout = 0;
-// 	clients[fd].cgiMap[fd].signal = 0;
-// 	clients[fd].cgiMap[fd].flag_rep = 0;
-// 	clients[fd].cgiMap[fd].start = time(NULL);
-// 	clients[fd].cgiMap[fd].exit_code_cgi = 0;
-// }
-
 void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string const &path, std::string interpreter, EpollManager &epollManager)
 {
 	clientobj[clientFd].has_cgi = 1;
@@ -278,15 +241,14 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 	//init_cgi_map(clientobj, clientFd);/// I put it here bash mayb9ach time kaytinitializa fkola loop
 	if (pipe(input_pipe) == -1 || pipe(pipeFD) == -1)
 	{
-		perror("pipe");
+		std::cerr<< "pipe failed \n";
 		return;
 	}
-
 	pid_t pid = fork();
 
 	if (pid == -1)
 	{
-		perror("fork");
+		std::cerr<< "fork failed \n";
 		return;
 	}
 	if (pid == 0)
@@ -324,7 +286,7 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
 		setenv("REDIRECT_STATUS", "200", 1);
 		execve(interpreter.c_str(), &args[0], environ);
-		perror("execve");
+		std::cerr<<"execve failed "<<strerror(errno)<<std::endl;
 		exit(1);
 	}
 	else
@@ -339,10 +301,11 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 			else
 				written = write(input_pipe[1],clientobj[clientFd].PostBody.c_str(),clientobj[clientFd].PostBody.size());
 			if (written == -1)
-				perror("write to CGI stdin");
+				std::cerr<<"write to CGI stdin\n";
 		}
 		close(input_pipe[1]);
-		fcntl(pipeFD[0], F_SETFL, O_NONBLOCK);
+		if (fcntl(pipeFD[0], F_SETFL, O_NONBLOCK) < 0)
+			std::cerr<<"fcntl pipe failed \n";
 		epollManager.addSocket(pipeFD[0], EPOLLIN);
 		CgiInfo info;
 		info.pipefd = pipeFD[0];
@@ -406,7 +369,6 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			if (config[i].locations[key].index.empty() && config[i].index.empty())
 				indexNotFound = true;
 			index_file = mergePaths(requested_path, file);
-			// std::cout << "firstly this hole path is: " << index_file << std::endl;
             if (stat(index_file.c_str(), &statbuf) == 0 && S_ISREG(statbuf.st_mode)) // file found ->means everything is good
 			{
 				ext = index_file.substr(index_file.find_last_of('.'));
@@ -523,7 +485,6 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 	struct stat st;
 	if(stat(fullpath.c_str() , &st) != 0)
 	{
-		//std::cout << "-------------------->>>>>>fuulpath"<<fullpath<<std::endl;
         clients[clientFd].response = Response::buildResponse(404, "Not Found",config.ErrorPages[404], clientFd, clientobj, _configs);
 		return ;
 	}
@@ -593,7 +554,6 @@ std::string generateId1(size_t length = 16)
 
 std::string abstract_file(std::string fullpath)
 {
-	std::cout << " path = " << fullpath << std::endl; 
 	size_t pos = 0;
 	std::string save = fullpath;
 	pos = fullpath.find('/');
@@ -605,19 +565,16 @@ std::string abstract_file(std::string fullpath)
 			pos = fullpath.find('/');
 		}
 	}
-	std::cout << " path = " << fullpath << std::endl; 
-
 	return fullpath;
 }
+
 void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs, int clientFd, size_t conf_i, std::map<int, Client> clientobj)
 {
 	std::map<int, std::string> map;
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
 	std::string fullpath = mergePaths(_configs[clients[clientFd].conf_i].locations[map.begin()->first].root, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
-	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 11111 "<< fullpath <<std::endl;
     fullpath = mergePaths(fullpath, r.get_path());
-	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 2222 "<< fullpath <<std::endl;
     if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
     {
 		clients[clientFd].response= clients[clientFd].response.buildResponse(403, "Forbidden", _configs[conf_i].ErrorPages[403], clientFd, clientobj, _configs);
@@ -625,9 +582,9 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
     }
 	if (r.get_path()[r.get_path().size() - 1] == '/')
 		fullpath += '/';
-	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<< fullpath <<std::endl;
     dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj); 
 }
+
 bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<ServerConfig> _configs,request & r, size_t conf_i)
 {
 	std::map<int, std::string> map;
@@ -645,7 +602,6 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 	}
 	if (_configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store.empty())
 	{
-		std::cout << " haniiiii hnaaa \n\n";
 		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
 		return 0;
 	}
@@ -673,9 +629,7 @@ std::map<std::string,std::string>  parce_header_cgi(std::string &header)
 			value = trim1(value);
 			size_t i1 = value.find(";");
 			value = value.substr(0,i1);
-			std::cout << "key^^^^^^^^^^^^^"<< key << std::endl;
 			map_h[key] = value;
-			std::cout << "value^^^^^^^^^^^^^"<< value << std::endl;
 			header = header.substr(i +1);
 		}
 		return map_h;
@@ -710,11 +664,9 @@ int get_code_status_cgi(std::map<std::string, std::string> map_h)
 bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<int, Client> &clientobj)
 {
 	struct stat statbuf;
-	//std::cout <<  "cgi bodyyyyyyyy********************** " << clientobj[clientFd].CGIPostBody<< std::endl;
+	
 	if(clientobj[clientFd].cgiMap[clientFd].signal || clientobj[clientFd].cgiMap[clientFd].Timeout)
 	{
-		std::cout << " helooooo\n\n";
-		std::cout << " signal : " << clientobj[clientFd].cgiMap[clientFd].signal<< " tim : "<< clientobj[clientFd].cgiMap[clientFd].Timeout<<std::endl;
 		remove(clientobj[clientFd].filename.c_str());	
 		return 0;
 	}
@@ -779,7 +731,7 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 	else
 		out.write(clientobj[clientFd].CGIPostBody.c_str(), clientobj[clientFd].CGIPostBody.size());
 	out.flush();
-	std::cout<< " file is " <<clientobj[clientFd].filename << std::endl;;
+	std::cout<< " file is " <<clientobj[clientFd].filename << std::endl;
 	if (std::rename(save.c_str(), clientobj[clientFd].filename.c_str()) == 0)
 		std::cout << "File renamed successfully!\n";
 	else 
@@ -791,7 +743,6 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 			return 0;
 		return 0;
 	}
-	std::cout << " yesssssssss\n\n";
 	clientobj[clientFd].response= Response::buildResponse(status_code, "Created",_configs[clientobj[clientFd].conf_i].ErrorPages[status_code], clientFd, clientobj, _configs);
 	out.close();
 	return 0;
@@ -802,18 +753,16 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	{
 		if(!handel_cgi_post(_configs, clientFd,  clientobj))
 			return;
-		//return ;
 	}
 	if(!error_post( clients,clientFd,  _configs,r, conf_i))
 		return ;
-	std::cout << " in post%%%%%%%%%\n";
 	std::map<int, std::string> map;
 	struct stat statbuf;
     map = getMatchingRootPath(r, _configs[conf_i]);
 	int key = map.begin()->first;
 	std::ostringstream filename;
     std::string fullpath = map.begin()->second;
-	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;
+	std::cout << "uploading path for post is:" << fullpath << std::endl;
 	std::string abstract_fil =  abstract_file(clientobj[clientFd].path);
 	size_t b = abstract_fil.find_last_of('.');
 	std::string extt = "";
@@ -829,14 +778,11 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		if(e != std::string::npos)
 			 fullpath = fullpath.substr(0,e);
 	 inter = find_matching_inter(extt, _configs, conf_i , key);
-	//std::cout << " matchinggggggggggg interprettttttttt ::::  "<< inter << std::endl;
 	}
 	fullpath = mergePaths(_configs[clients[clientFd].conf_i].locations[map.begin()->first].root, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
-	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;
 
 	if(inter.empty())
 	{
-		std::cout << " no cgiiiiiiiiiiiiiiiiiiiiiiiin sizz de bodyyyyyyyyyyy << " <<clientobj[clientFd].PostBody.size()  <<std::endl;; 
 		std::map<std::string, std::string> header_ = clientobj[clientFd].map;
 		std::map<std::string, std::string>::iterator it_ = header_.find("Content-Type");
 		std::string type = "";
@@ -874,8 +820,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	else if(!inter.empty() )
 	{
 		srand(time(NULL));
-		filename << fullpath << "/" << generateId1()  << extt;/////hereee
-		std::cout << "\nfile@@@@@@@@@@@@ is uploaded in: " << filename.str() << std::endl;
+		filename << fullpath << "/" << generateId1()  << extt;
 		clientobj[clientFd].filename = filename.str();
 		std::ofstream out(filename.str().c_str(),std::ios::binary);
 		if(!out)
@@ -903,7 +848,6 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	}
 	if (!clientobj[clientFd].has_cgi)
 	{
-		std::cout << " ouiiiiiiiiiiiiiiin\n\n";
 		clients[clientFd].response= Response::buildResponse(201, "Created",_configs[clients[clientFd].conf_i].ErrorPages[201], clientFd, clientobj, _configs);
 	}
 
