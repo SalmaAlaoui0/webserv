@@ -141,6 +141,11 @@ void Check_return(std::vector<ServerConfig> &container)
 			std::cerr << "`server_name server;' is mondatory in server" << std::endl;
 			throw ::InvalidData();
 		}
+		if (container[server].root.empty())
+		{
+			std::cerr << "`a default root;' is mondatory in server" << std::endl;
+			throw ::InvalidData();
+		}
 		loc = 0;
 		while (loc < container[server].locations.size())
 		{

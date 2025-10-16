@@ -234,14 +234,16 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, s
     std::map<int, Client>::iterator it = clients.begin();
     while (it != clients.end())
     {
-        if (difftime(time(NULL),it->second.getLastActivity()) > 5 && !clients[it->first].timeout && clients[it->first].cgiMap[it->first].pipefd == -1)
+        if (difftime(time(NULL),clients[it->first].getLastActivity()) > 5 && !clients[it->first].timeout && clients[it->first].cgiMap[it->first].pipefd == -1)
         {
             std::cerr << "⏱️ Client timed out: " << it->first << std::endl;
-             if (clients[it->first].method == "GET" && !clients[it->first].ResponseChunked && !clients[it->first].send_complete && clients[it->first].Sending)
+            if (clients[it->first].method == "GET" && !clients[it->first].ResponseChunked && !clients[it->first].send_complete && clients[it->first].Sending)
             {
+                std::cout << "curr time is; " << time(NULL) << "and get last activity is: " << it->second.getLastActivity() << "\n\n\n";
+                std::cout << "diff time is: " << difftime(time(NULL),it->second.getLastActivity()) << "\n\n";
                 close(clients[it->first]._fd);
-                std::cout << "🎉baam and Closed fd: " << clients[it->first]._fd << std::endl;
             }
+            // exit(12);
             clients[it->first].response = Response::buildResponse(408, "Request Timeout", _configs[clients[it->first]. conf_i].ErrorPages[408], it->first, clients ,_configs);
             clients[it->first].timeout = true;
             epoll.modSocket(it->first, EPOLLOUT);
@@ -253,9 +255,9 @@ void Server::checkTimeout(std::map<int, Client> &clients, EpollManager &epoll, s
 
 void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& clientobj, int fd, std::vector<ServerConfig> _configs)
 {
-     int pid = clientobj[fd].cgiMap[fd].pid;
-     int wstatus = 0;
-     int pipefd = -1;
+    int pid = clientobj[fd].cgiMap[fd].pid;
+    int wstatus = 0;
+    int pipefd = -1;
     pid_t result = waitpid(pid, &wstatus, WNOHANG);
     if (result == 0) 
     {
@@ -371,7 +373,7 @@ void Server::run()
 	while (running) 
 	{
 		std::vector<epoll_event> events = epollManager.waitEvents();
-        checkTimeout(clients, epollManager, _configs); 
+        checkTimeout(clients, epollManager, _configs);
         for(size_t i = 0; i < events.size(); i++)
         {
             int fd = events[i].data.fd;
@@ -562,9 +564,13 @@ void Server::run()
                 }
                 else if (events[i].events & EPOLLOUT)
                 {
-                    std::map<int, Client>::iterator it = clients.find(fd);
-                    if (it != clients.end())
-                        it->second.updateActivity();
+                    // std::map<int, Client>::iterator it = clients.find(fd);
+                    // if (it != clients.end())
+                    // {
+                        // std::cout << "\nEntered here\n";
+                        clients[fd].updateActivity();
+                        std::cout << "New time is: " << clients[fd].getLastActivity() << "\n\n";
+                    // }
                     if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi))
                         handleRequest(fd, a, clients, epollManager);
                     if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)

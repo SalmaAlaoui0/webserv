@@ -25,12 +25,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         if (clientobj[clientFd]._fd < 0)
         {
             std::cerr << "❌ Failed to open file\n"; // or make it perror("open file")
-			// clientobj[clientFd].response = Response::buildResponse(403, "Forbidden", _configs[clientobj[clientFd].conf_i].ErrorPages[403], clientFd, clientobj, _configs);
             clientobj[clientFd].send_complete = 1;
-            // return rep;
-            // and make response page of file can't be open 
-            // and close connection and remove client from epoll
-            // return "Failed";
         }
         struct stat filesz;
         if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
@@ -66,16 +61,15 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             // {
                 perror("read failed");
                 close(clientobj[clientFd]._fd);
-                clientobj[clientFd].send_complete = 1;   
+                clientobj[clientFd].send_complete = 1;
         }
         else if (Readbyte == 0)
         {
             rep.body.assign(buffer, Readbyte);
             clientobj[clientFd].bytesRead = Readbyte;
-            // std::cout << "the only explanation is to see this message\n";
+            std::cout << "the only explanation is to see this message\n";
             clientobj[clientFd].send_complete = 1;
             close(clientobj[clientFd]._fd);
-            std::cout << "🎉Closed fd: " << clientobj[clientFd]._fd << std::endl;
         }
         else if (Readbyte > 0)
         {
@@ -175,7 +169,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked)
     {
-        std::cout << "coming to this condition is acceptable and true\n\n";
         std::ostringstream headers;
         headers << "HTTP/1.1 " << res.statusCode << "\r\n"
             << "Content-Type: " << res.contentType << "\r\n";
@@ -214,8 +207,10 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             clientobj[clientFd].size_send += sendbytes;
     }
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
-        && !clientobj[clientFd].ResponseChunked)
+        && !clientobj[clientFd].ResponseChunked && !clientobj[clientFd].has_problem)
     {
+        std::cout << "Sending ...\n";
+        clientobj[clientFd].updateActivity();
         ssize_t sendbytes = send(clientFd, res.body.c_str(), clientobj[clientFd].bytesRead, MSG_NOSIGNAL);
         if (sendbytes != -1)
             clientobj[clientFd].size_send += sendbytes;
@@ -322,43 +317,29 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
     rep.statusCode = code;
     clientobj[clientFd].statusCode = code;
     rep.statusMsg = msg;
-    // std::cout << " code : "<< rep.statusCode<<std::endl; 
+    clientobj[clientFd].statusMsg = msg;
     std::ifstream file(filePath.c_str(), std::ios::in | std::ios::binary);
-    // std::cout << " fil repone %%%%%%% " << filePath << std::endl;
+    if (!file && clientobj[clientFd].statusCode == 200)
+    {
+        clientobj[clientFd].statusCode = 403;
+        clientobj[clientFd].statusMsg = "Forbidden";
+        rep.statusCode = 403;
+        rep.statusMsg = "Forbidden";
+        std::ifstream file(_configs[clientobj[clientFd].conf_i].ErrorPages[403].c_str(), std::ios::in | std::ios::binary);
+    }
     if (!file)
     {
-        std::cerr << "❌❌ Failed to open file: " << filePath << std::endl;
-        rep.statusCode = 500;
-        rep.statusMsg  = "Internal Server Error";
-        rep.body = "<!DOCTYPE html>\n"
-           "<html lang=\"en\">\n"
-           "<head>\n"
-           "    <meta charset=\"UTF-8\">\n"
-           "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"
-           "    <title>500 Internal Server Error</title>\n"
-           "    <style>\n"
-           "        body {\n"
-           "            font-family: Arial, sans-serif;\n"
-           "            background-color: #f2f2f2;\n"
-           "            color: #333;\n"
-           "            text-align: center;\n"
-           "            padding: 50px;\n"
-           "        }\n"
-           "        h1 {\n"
-           "            color: #ff0000;\n"
-           "            font-size: 72px;\n"
-           "        }\n"
-           "        p {\n"
-           "            font-size: 24px;\n"
-           "        }\n"
-           "    </style>\n"
-           "</head>\n"
-           "<body>\n"
-           "    <h1>500</h1>\n"
-           "    <p>Internal Server Error</p>\n"
-           "    <p>Something went wrong on our server. Please try again later.</p>\n"
-           "</body>\n"
-           "</html>\n";
+        std::string statusStr = intToString(clientobj[clientFd].statusCode);
+        std::string reasonPhrase = clientobj[clientFd].statusMsg;
+
+        rep.body =
+            "<html>\n"
+            "<head><title>" + statusStr + "</title></head>\n"
+            "<body>\n"
+            "<h1>" + statusStr + " " + reasonPhrase + "</h1>\n"
+            "</body>\n"
+            "</html>";
+
         // filePath      = _configs[clientobj[clientFd]. conf_i].ErrorPages[500];
         rep.contentType = "text/html";
         clientobj[clientFd].has_problem = 1;
