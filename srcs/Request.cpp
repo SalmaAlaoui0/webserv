@@ -206,8 +206,8 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
             clientobj[clientFd].body_complete = 1;
             return r;
         }
-            s.closeConnection(clientFd, epollManager);
-            throw requetetException("❌ recv failed: ");
+        s.closeConnection(clientFd, epollManager);
+        throw requetetException("❌ recv failed: ");
     }
     clientobj[clientFd].PostBody.append(buffer, bytes_received);
     if (clientobj[clientFd].PostBody.find("\r\n\r\n") != std::string::npos && clientobj[clientFd].header_complete == 0)
@@ -328,13 +328,9 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         {
             clientobj[clientFd].body_complete = 1;
             if (clientobj[clientFd].method == "POST")
-            {
-                std::cout << "\nReading Post body is Done ✅\n";
                 clientobj[clientFd].send_complete = 1;
-            }
         }
     }
-
     return r;
 }
 

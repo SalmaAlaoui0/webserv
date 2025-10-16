@@ -40,7 +40,6 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         clientobj[clientFd].size_send = 0;
 
         rep.statusCode = 200;
-        // rep.contentType = "video/mp4";
         rep.filesize = clientobj[clientFd].filesize;
     }
 
@@ -51,16 +50,8 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
         Readbyte = read(clientobj[clientFd]._fd, buffer, sizeof(buffer));
         if (Readbyte == -1)
         {
-            // if (errno == EAGAIN || errno == EWOULDBLOCK)
-            // {
-            //     clientobj[clientFd].no_data = 1;
-            //     return rep;
-            // }
-            // else
-            // {
-                std::cerr << "❌ read failed\n";
-                close(clientobj[clientFd]._fd);
-                clientobj[clientFd].send_complete = 1;
+            close(clientobj[clientFd]._fd);
+            clientobj[clientFd].send_complete = 1;
         }
         else if (Readbyte == 0)
         {
@@ -75,10 +66,7 @@ Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::strin
             clientobj[clientFd].bytesRead = Readbyte;
         }
         else
-        {
             close(clientobj[clientFd]._fd);
-            std::cerr << "❌ read failed\n";
-        }
     }
     return rep;
 }
@@ -131,14 +119,16 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
                 << body;
 
         std::string response = headers.str();
-        send(clientFd, response.c_str(), response.size(), MSG_NOSIGNAL);
+        sent = send(clientFd, response.c_str(), response.size(), MSG_NOSIGNAL);
 
         std::cout << "✅ Redirect response sent to FD: " << clientFd << " with the return code is: " << statusStr << std::endl;
         clientobj[clientFd].send_complete = 1;
     }
 
-    else if (clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 && clientobj[clientFd].statusCode != 204 && 
-        clientobj[clientFd].statusCode != 504 && clientobj[clientFd].statusCode != 408)
+    else if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 0 &&
+        clientobj[clientFd].statusCode != 204 && clientobj[clientFd].statusCode != 504 && clientobj[clientFd].statusCode != 408) ||
+        (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
+        && !clientobj[clientFd].ResponseChunked))
     {
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
@@ -148,36 +138,21 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";
             std::cout << "Hello, new user! Data saved on server.\n\n";
         }
-        std::ostringstream heaaad;
-        heaaad << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
+        std::ostringstream headers;
+        headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
             << "Content-Type: " << clientobj[clientFd].ContentType << "\r\n";
         if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
         {
-            heaaad<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
+            headers<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
             clientobj[clientFd].has_cookie = 1;
         }
-            heaaad << "Connection: keep-alive\r\n\r\n";
+        if (!clientobj[clientFd].has_cgi)
+            headers<< "Content-Length: " << res.filesize << "\r\n";
 
-        std::string headerStr = heaaad.str();
-        send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
-        clientobj[clientFd].Sending = 1;
-    }
-    else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
-        && !clientobj[clientFd].ResponseChunked)
-    {
-        std::ostringstream headers;
-        headers << "HTTP/1.1 " << res.statusCode << "\r\n"
-            << "Content-Type: " << res.contentType << "\r\n";
-        if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
-        {
-            headers<< "Set-Cookie: session_id=" << res.sessionId << "\r\n";
-            clientobj[clientFd].has_cookie = 1;
-        }
-            headers<< "Content-Length: " << res.filesize << "\r\n"
-            << "Connection: : keep-alive\r\n\r\n";
+        headers << "Connection: keep-alive\r\n\r\n";
 
         std::string headerStr = headers.str();
-        send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
+        sent = send(clientFd, headerStr.c_str(), headerStr.size(), MSG_NOSIGNAL);
         clientobj[clientFd].Sending = 1;
     }
     else if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].has_cgi && clientobj[clientFd].Sending == 1
@@ -197,9 +172,9 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             clientobj[clientFd].CgiBody = "";
             clientobj[clientFd].send_complete = 1;
         }
-        ssize_t sendbytes = send(clientFd, chunkmybody.c_str(), chunkmybody.size(), MSG_NOSIGNAL);
-        if (sendbytes != -1)
-            clientobj[clientFd].size_send += sendbytes;
+        sent = send(clientFd, chunkmybody.c_str(), chunkmybody.size(), MSG_NOSIGNAL);
+        if (sent > -1)
+            clientobj[clientFd].size_send += sent;
     }
     else if (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 1
         && !clientobj[clientFd].ResponseChunked && !clientobj[clientFd].has_problem)
@@ -211,7 +186,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             clientobj[clientFd].size_send += sendbytes;
     }
     else if (((!clientobj[clientFd].has_cgi || clientobj[clientFd].method == "POST") && clientobj[clientFd].ResponseChunked) || 
-        clientobj[clientFd].method.empty())
+        (clientobj[clientFd].method.empty()) || (clientobj[clientFd].statusCode == 204))
     {
         response << "HTTP/1.1 " << clientobj[clientFd].response.statusCode << "\r\n"
         << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
@@ -222,20 +197,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         }
         response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
         << clientobj[clientFd].response.body;
-        sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
-    }
-    else if (clientobj[clientFd].statusCode == 204)
-    {
-        response << "HTTP/1.0 " << clientobj[clientFd].response.statusCode << "\r\n"
-                << "Content-Type: " << clientobj[clientFd].response.contentType << "\r\n";
-                if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
-                {
-                    response << "Set-Cookie: session_id=" << clientobj[clientFd].response.sessionId <<"\r\n";
-                    clientobj[clientFd].has_cookie = 1;
-                }
-                response << "Content-Length: " << clientobj[clientFd].response.body.size() << "\r\n\r\n"
-                << clientobj[clientFd].response.body;
-
         sent = send(clientFd, response.str().c_str(), response.str().size(), MSG_NOSIGNAL);
     }
     else
@@ -255,23 +216,11 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
     }
     if (sent < 0)
     {
-        // if (errno == EPIPE)
-        // { // do nothing or debugging msg because the connection is closed:) 
-        //     std::cout << "❌client closed connection❌\n\n";
-        //     close(clientobj[clientFd]._fd);
-        //         // or maybe remove client from epoll events or epoll fds
-        // }
-        // if (errno == EAGAIN || errno == EWOULDBLOCK)
-        //     return;
-        // else
         std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
-        //maybe we should close the connection if send failed
+        clientobj[clientFd].send_complete = 1;
     }
-    // else
-    // {
-    //     std::cout << "✅ File response sent to FD: " << clientFd << std::endl;
-    //     // return ;
-    // }
+    if (sent == 0)
+        std::cout << "Successful sending" << std::endl;
     return;
 }
 
@@ -349,11 +298,11 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
         else if (filePath.find(".js") != std::string::npos)
             rep.contentType = "application/javascript";
         else if (filePath.find(".jpg") != std::string::npos || filePath.find(".jpeg") != std::string::npos)
-            rep.contentType = "image/jpeg";
+            clientobj[clientFd].ContentType = "image/jpeg";
         else if (filePath.find(".png") != std::string::npos)
-            rep.contentType = "image/png";
+            clientobj[clientFd].ContentType = "image/png";
         else if (filePath.find(".mp4") != std::string::npos)
-            rep.contentType = "video/mp4";
+            clientobj[clientFd].ContentType = "video/mp4";
         if (filePath.find(".mp4") != std::string::npos || filePath.find(".png") != std::string::npos ||
             filePath.find(".jpg") != std::string::npos || filePath.find(".jpeg") != std::string::npos)
         {

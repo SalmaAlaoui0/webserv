@@ -16,7 +16,7 @@
 #include "../includes/LocationConfig.hpp"
 #include "../includes/ConfigParser.hpp"
 #include "../includes/Utils.hpp"
-#include<sstream>
+#include <sstream>
 #include <sys/stat.h>
 
 std::vector<std::string> pathchunks(std::string path)
@@ -238,7 +238,6 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 
 	int input_pipe[2];
 	int pipeFD[2];
-	//init_cgi_map(clientobj, clientFd);/// I put it here bash mayb9ach time kaytinitializa fkola loop
 	if (pipe(input_pipe) == -1 || pipe(pipeFD) == -1)
 	{
 		std::cerr<< "pipe failed \n";
@@ -693,15 +692,15 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 		}
 		size_t header_end  = 0;
 		std::string header = "";
-		if((header_end = clientobj[clientFd].CGIPostBody.find("\r\n\r\n")) != std::string::npos)
+		if((header_end = clientobj[clientFd].CgiBody.find("\r\n\r\n")) != std::string::npos)
 		{
-			header = clientobj[clientFd].CGIPostBody.substr(0, header_end + 4);
-			clientobj[clientFd].CGIPostBody = clientobj[clientFd].CGIPostBody.substr(header.size());
+			header = clientobj[clientFd].CgiBody.substr(0, header_end + 4);
+			clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(header.size());
 		}
-		else if ((header_end = clientobj[clientFd].CGIPostBody.find("\n\n")) != std::string::npos )
+		else if ((header_end = clientobj[clientFd].CgiBody.find("\n\n")) != std::string::npos )
 		{
-			header = clientobj[clientFd].CGIPostBody.substr(0, header_end + 2);
-			clientobj[clientFd].CGIPostBody = clientobj[clientFd].CGIPostBody.substr(header.size());
+			header = clientobj[clientFd].CgiBody.substr(0, header_end + 2);
+			clientobj[clientFd].CgiBody = clientobj[clientFd].CgiBody.substr(header.size());
 		}
 		std::map<std::string, std::string> map_h = parce_header_cgi(header);
 		
@@ -725,11 +724,11 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 	{
 		std::string contentLength = it->second;
 		double siz = std::atof(contentLength.c_str());
-		out.write(clientobj[clientFd].CGIPostBody.c_str(), siz);
+		out.write(clientobj[clientFd].CgiBody.c_str(), siz);
 		std::cout << "Content-Length found: " << contentLength << std::endl;
 	}
 	else
-		out.write(clientobj[clientFd].CGIPostBody.c_str(), clientobj[clientFd].CGIPostBody.size());
+		out.write(clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size());
 	out.flush();
 	std::cout<< " file is " <<clientobj[clientFd].filename << std::endl;
 	if (std::rename(save.c_str(), clientobj[clientFd].filename.c_str()) == 0)
