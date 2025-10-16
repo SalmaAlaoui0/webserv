@@ -54,7 +54,6 @@ std::string checkValidLocation(std::string line)
     }
     else
 		path = value;
-    // std::cout << "the path extracted is: " << path << std::endl;
     return (path);
 }
 
@@ -80,7 +79,6 @@ void parseLoc_index(std::string line, std::vector<ServerConfig> &container, int 
         throw ::InvalidData();
     // index = index.substr(0, index.size() - 1);
     container[i].locations[j].index = index;
-    // std::cout << "ur location index file is: -" << container[i].locations[j].index << "-" << std::endl;
 }
 
 void parseLoc_root(std::string line, std::vector<ServerConfig> &container, int i, int j)
@@ -95,8 +93,6 @@ void parseLoc_root(std::string line, std::vector<ServerConfig> &container, int i
     }
     root = root.substr(0, root.size() - 1);
     container[i].locations[j].root = root;
-	// std::cout << "ur location root is: -" << container[i].locations[j].root << "-" << std::endl;
-    // exit (0);
 }
 
 void parseLoc_upload_store(std::string line, std::vector<ServerConfig> &container, int i, int j)
@@ -111,8 +107,6 @@ void parseLoc_upload_store(std::string line, std::vector<ServerConfig> &containe
     }
     upload_store = upload_store.substr(0, upload_store.size() - 1);
     container[i].locations[j].upload_store = upload_store;
-	// std::cout << "ur location root is: -" << container[i].locations[j].root << "-" << std::endl;
-    // exit (0);
 }
 
 void parseAutoIndex(std::string line, std::vector<ServerConfig> &container, int i, int j)
@@ -132,8 +126,6 @@ void parseAutoIndex(std::string line, std::vector<ServerConfig> &container, int 
         container[i].locations[j].autoindex = 1;
     else
         throw ::InvalidData();
-    // std::cout << "Your auto index value is: -" << container[i].locations[j].autoindex << "- " << std::endl;
-    // exit (0);
 }
 
 std::string MethodeSpliter(const std::string line) {
@@ -211,7 +203,6 @@ void parseLoc_max_size(std::string line, long &client_max_body_size)
         client_max_body_size = (toInt(size) * 1024 * 1024);
     else if (max_size[l - 1] == 'G')
         client_max_body_size = (toInt(size) * 1024 * 1024 * 1024);
-    // std::cout << "ur Location max file sizeValue is: -" << client_max_body_size << "-" << std::endl;
 }
 
 void parseLoc_cgi(std::string line, std::vector<ServerConfig> &container, int i, int j)
@@ -243,7 +234,6 @@ void parseLoc_cgi(std::string line, std::vector<ServerConfig> &container, int i,
         throw ::InvalidData();
     }
     container[i].locations[j].cgi_pass[ext] = interpreter;
-    // std::cout << "ur cgi pass is: ext:-" << ext << "---And interpreter is: -" << interpreter << "-- " << std::endl;
 }
 
 void parseReturn(std::string line, std::vector<ServerConfig> &container, int i, int j)
@@ -273,8 +263,6 @@ void parseReturn(std::string line, std::vector<ServerConfig> &container, int i, 
         throw ::InvalidData();
     }
     container[i].locations[j].Return[toInt(return_code)] = return_path;
-    // std::cout << "ur return page is: -" << Return << "-" << std::endl;
-    // std::cout << "     and it's return code is: -" << return_code << "-" << std::endl;
 }
 void parseLocationConfig(std::string line, std::vector<ServerConfig> &container, int i, int j)
 {

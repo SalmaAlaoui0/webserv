@@ -31,62 +31,74 @@ void handle_sigint(int)
     std::cout << "\n🛑 SIGINT received, shutting down..." << std::endl;
 }
 
+
 int Server::creatServerSocket(const std::string &ip, int port)
 {
-    // 1. Create socket
+    // 1. Create a TCP socket (IPv4)
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (server_fd < 0)
         throw socketException("❌ Socket creation failed");
-    // 2. Make socket non-blocking
-    // int flags = fcntl(server_fd, F_GETFL, 0);  // F_GETFL, -->forbiden
-    // if (fcntl(server_fd, F_SETFL, flags | O_NONBLOCK) < 0) 
-    // {
-    //     close(server_fd);
-    //     throw socketException("❌ Failed to set non-blocking mode on socket");
-    // }
-    // 3. Allow address reuse
+
+    // 2. Make the socket non-blocking
+    if (fcntl(server_fd, F_SETFL, O_NONBLOCK) < 0) {
+        close(server_fd);
+        throw socketException("❌ Failed to set non-blocking mode on socket");
+    }
+
+    // 3. Set FD_CLOEXEC (good practice to close fd on exec calls)
+    if (fcntl(server_fd, F_SETFD, FD_CLOEXEC) < 0) {
+        close(server_fd);
+        throw socketException("❌ Failed to set FD_CLOEXEC");
+    }
+
+    // 4. Allow address reuse (so we can restart server quickly without 'Address already in use')
     int opt = 1;
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) 
-    {
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
         close(server_fd);
         throw socketException("❌ setsockopt(SO_REUSEADDR) failed");
     }
-    // 4. Prepare hints
+
+    // 5. Prepare address resolution hints (IPv4 + TCP + passive)
     struct addrinfo hints;
     std::memset(&hints, 0, sizeof(hints));
-    hints.ai_family   = AF_INET;       // IPv4
+    hints.ai_family   = AF_INET;       // IPv4 only
     hints.ai_socktype = SOCK_STREAM;   // TCP
-    hints.ai_flags    = AI_PASSIVE;    // For binding
+    hints.ai_flags    = AI_PASSIVE;    // For binding to all local interfaces if ip is empty
+
     // Convert port to string
     std::stringstream ss;
     ss << port;
     std::string portStr = ss.str();
-    // 5. Resolve address
+
+    // 6. Resolve IP and port into a sockaddr structure
     struct addrinfo *res;
     const char *host = ip.empty() ? NULL : ip.c_str();
     int status = getaddrinfo(host, portStr.c_str(), &hints, &res);
-    if (status != 0) 
-    {
+    if (status != 0) {
         close(server_fd);
         throw socketException(std::string("❌ getaddrinfo: ") + gai_strerror(status));
     }
-    // 6. Bind socket
-    if (bind(server_fd, res->ai_addr, res->ai_addrlen) < 0) 
-    {
+
+    // 7. Bind the socket to the resolved address
+    if (bind(server_fd, res->ai_addr, res->ai_addrlen) < 0) {
         freeaddrinfo(res);
         close(server_fd);
         throw socketException("❌ bind() failed");
     }
-    if (listen(server_fd, SOMAXCONN) < 0) 
-    {
+
+    // 8. Start listening for incoming connections
+    if (listen(server_fd, SOMAXCONN) < 0) {
         freeaddrinfo(res);
         close(server_fd);
         throw socketException("❌ listen() failed");
     }
+
+    // 9. Clean up the addrinfo struct
     freeaddrinfo(res);
-    std::cout << GREEN << "✅ Listening on "<< CYAN << (ip.empty() ? "0.0.0.0" : ip)
-          << RESET << ":"<< YELLOW << port<< RESET << std::endl;
-          
+
+    std::cout << GREEN << "✅ Listening on " << CYAN << (ip.empty() ? "0.0.0.0" : ip)
+              << RESET << ":" << YELLOW << port << RESET << std::endl;
+
     return server_fd;
 }
 
@@ -127,7 +139,6 @@ std::vector<ServerConfig> Server::getConfig() const
     return sessions;
  }
 
-
 void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clientobj, EpollManager &epoll)
 {
     if (this->clients[clientFd]. conf_i == _configs.size()) 
@@ -137,23 +148,18 @@ void Server::handleRequest(int clientFd, request &r, std::map<int, Client> &clie
     }
     if (clientobj[clientFd].method  == "/favicon.ico")
     {
-        // std::cout << "hereeee: the favicon thing\n";
         clients[clientFd].response = Response::buildResponse(404, "Not Found",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients, _configs);
         return;
     }
 	if (clientobj[clientFd].method == "GET")
         handle_get_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
     else if(clientobj[clientFd].method== "POST")
-    {
-        std::cout << " hiiiiiiiiiiiiii222222\n\n";
         handle_post_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj, epoll);
-
-    }
     else if (clientobj[clientFd].method  == "DELETE")
 		handle_delete_methode(r, this->_configs, clientFd, this->clients[clientFd]. conf_i, clientobj);
     else
     {
-        clients[clientFd].response = Response::buildResponse(404, "invalid method",_configs[this->clients[clientFd]. conf_i].ErrorPages[404], clientFd, clients, _configs);
+        clients[clientFd].response = Response::buildResponse(403, "forbidden : invalid method",_configs[this->clients[clientFd]. conf_i].ErrorPages[403], clientFd, clients, _configs);
 		return;
     }
 }
@@ -165,17 +171,21 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         req.path.clear();
         socklen_t clientLen = sizeof(clientAddr);
         int clientFd = accept(serverFd, (sockaddr *)&clientAddr , &clientLen);
-        int flags = fcntl(clientFd, F_GETFL, 0);  // ❌❌❌❌  F_GETFL forbiden
-        if (fcntl(clientFd, F_SETFL, flags | O_NONBLOCK) == -1 )
+        if (clientFd < 0) 
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+                return;
+            std::cerr<<"❌ accept failed\n";
+        }
+        if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1) 
         {
             close(clientFd);
-            throw socketException("❌fcntl() failed");
+            std::cerr<<"❌ fcntl() failed\n";
         }
-        if (clientFd < 0)
+        if (fcntl(clientFd, F_SETFD, FD_CLOEXEC) == -1) 
         {
-            // if (errno == EAGAIN || errno == EWOULDBLOCK)
-            //     return;
-            throw socketException("❌ accept failed");
+            close(clientFd);
+            std::cerr<<"❌ fcntl() FD_CLOEXEC failed\n";
         }
         epollManager.addSocket(clientFd, EPOLLIN);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
@@ -219,8 +229,7 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
 }
 
 bool Server::isServerSocket(int fd) const 
-{
-    // std::cout << "\n✅✅✅✅✅ New client connected on fd : " << std::endl; 
+{ 
     for (size_t i = 0; i < serverSockets.size(); ++i) 
     {
         if (serverSockets[i] == fd) 
@@ -260,8 +269,6 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
     if (result == 0) 
     {
         clientobj[fd].Read = 1;
-        // std::cout << "diff of time si: " << difftime(time(NULL), clientobj[fd].cgiMap[fd].start) << std::endl;
-        // std::cout << "entering herree and ex\n\n";
         double elapsed = difftime(time(NULL), clientobj[fd].cgiMap[fd].start);
         if (elapsed > 3) 
         {
@@ -275,7 +282,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
-                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << clientobj[fd].cgiMap[fd].pipefd << " from epoll\n";
+                std::cout << "Removing CGI pipe fd" << clientobj[fd].cgiMap[fd].pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
@@ -284,8 +291,8 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
         return;
     }               
 
-    if (result == pid) {
-        std::cout << " ttttttttttttttttt\n\n";
+    if (result == pid) 
+    {
         if (WIFEXITED(wstatus)) 
         {
             int exitCode = WEXITSTATUS(wstatus);
@@ -299,7 +306,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
-                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
+                std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
@@ -316,7 +323,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
                 pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
-                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
+                std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
@@ -333,7 +340,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
-                std::cout << "Removing CGI pipe fd%%%%%%%%%%%% " << pipefd << " from epoll\n";
+                std::cout << "Removing CGI pipe fd" << pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
@@ -366,7 +373,6 @@ void Server::run()
 	for (size_t i =0; i < serverSockets.size(); i++)
 	{
         epollManager.addSocket(serverSockets[i], EPOLLIN);
-        std::cout << "new socket added to lesten for any upcoming connections" << std::endl;
     }
 	while (running) 
 	{
@@ -386,13 +392,11 @@ void Server::run()
             }
             if (isServerSocket(fd) && (events[i].events & EPOLLIN))
                 acceptNewClient(a, fd, epollManager);
-            else if (clients[fd].cgiMap[fd].pipefd > 0) {
+            else if (clients[fd].cgiMap[fd].pipefd > 0) 
+            {
                // if (!clients[fd].CgiSend)
                     init_cgi_map(clients, fd);
        // info.pid = -1;
-                // std::cout << "Handling CGI pipe read for fd: " << fd << ", pipefd: " << clients[fd].cgiMap[fd].pipefd << std::endl;
-                // std::cout << "\n\n Here in reading cgi pipe content\n\n";
-                // exit (18);
                 if (clients[fd].Read)
                     WaitChildAndClean(epollManager, clients, fd, _configs);
                 else
@@ -407,24 +411,19 @@ void Server::run()
                     {
                         clients[fd].CgiSend = 1;
                         buffer[bytesRead] = '\0';
-                        // std::cout << "The Body Is Being Appended. " << std::endl;
                         if (clients[fd].method == "GET")
                         {
                             clients[fd].CgiBody.append(buffer, bytesRead);
                             // clients[fd].Read = 1;
-                            // std::cout << "hereere READINNG IS: 1 and body is" << clients[fd].CgiBody << "\n";
                         }
                         else if (clients[fd].method == "POST")
                         {
                             clients[fd].CGIPostBody.append(buffer, bytesRead);
-                        //    std::cout << "\n\n Here in reading cgi pipe content buffer:++>" << buffer << "<--\n\n";
-                            // exit (19);
                         }
                         clients[fd].bytesRead = bytesRead;
                     }
                     else if (bytesRead == 0 && clients[fd].statusCode != 204)//add timeout
                     {
-                        // std::cout << "bytesRead is : 0" << std::endl;
                         // clients[fd].CgiBody.append(buffer, bytesRead);
                         clients[fd].statusCode = 200;
                         clients[fd].statusMsg = "OK";
@@ -438,20 +437,15 @@ void Server::run()
                         if (HeaderEnd != std::string::npos)
                         {
                             std::string headers = clients[fd].CgiBody.substr(0, HeaderEnd);
-                            // std::cout << "\n\n\n-------> header:" << headers << "<---" << std::endl;
                             clients[fd].ContentType = ft_content_type(headers);
                             clients[fd].statusCode = ft_code_status(headers);
                             clients[fd].CgiBody = clients[fd].CgiBody.substr(HeaderEnd + sepLength);
-                            // std::cout << "\n\n\n-------> Body:" << clients[fd].CgiBody << "<---" << std::endl;
-                            // std::cout << "No data read from CGI pipe, setting CgiEmptyContent to 1 in the fd number: " << fd << "\n";
                             if (clients[fd].CgiBody.empty())
                             {
                                 clients[fd].response = Response::buildResponse(204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients ,_configs);
-                                // exit(22);
                                 clients[fd].statusCode = 204;
                                 clients[fd].statusMsg = "No Content";
                             }
-                            // exit(13);
                         }
                         WaitChildAndClean(epollManager, clients, fd, _configs);
                         std::cout << "finish reading cgi\n";
@@ -466,7 +460,7 @@ void Server::run()
                     //     {
                     //         WaitChildAndClean(epollManager, clients, fd, _configs);
                     //         clients[fd].send_complete = 1;
-                    //         perror("REad");
+                            std::cerr << "❌ read failed\n";
                     //     }
                     }
                     time_t now = time(NULL);
@@ -482,35 +476,25 @@ void Server::run()
             }
             else
             {
-               // std::cout<<"❌❌❌❌❌" << clients[fd].send_complete  << "  header  : "<< this->clients[fd].header_complete <<"  methode  : "<<  this->clients[fd].method<<std::endl;
                 clients[fd].no_data = 0;
                 if (events[i].events & EPOLLIN) 
                 {
-                    // std::cout << "Socket ❌❌❌❌❌ " << fd << " is ready to read\n";
                     try
                     {
                         if (clients[fd].send_complete == 0)
-                        {
                             a = a.parseRequest(this->clients, epollManager, a, fd, _configs);
-                            // std::map<int, Client>::iterator it = clients.find(fd);
-                            // if (it != clients.end())
-                            //     it->second.updateActivity();
-                            // std::cout << "timeeeeeeee is: " << clients[fd].getLastActivity() << "<==========\n\n";
-                        }
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET" ||(this->clients[fd].method.empty() && this->clients[fd].header_complete))
                         {
                             std::cout << "the requested path is: " << clients[fd].path << std::endl;
                             events[i].events = EPOLLOUT;
                             events[i].data.fd = fd;
-                            if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) == -1) {
-                                perror("epoll_ctl: mod");
-                            }
+                            if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) < 0)
+                                std::cerr<< "❌ epoll_ctl: mod failed ";
                         }
                         if (this->clients[fd].header_complete)
                         {
                             for (size_t i = 0; i < this->_configs.size(); ++i)
                             {
-                             //   std::cout << "the port in config is: " << this->_configs[i].port << " and the final port is: " << clients[fd].get_final_port() << std::endl;
                                 if (!clients[fd].get_final_port() || clients[fd].get_final_ip().empty())
                                     clients[fd].response = Response::buildResponse(400, "Bad Request", _configs[this->clients[fd]. conf_i].ErrorPages[400], fd, clients ,_configs);
                                 if (this->_configs[i].port == clients[fd].get_final_port() && this->_configs[i].host == clients[fd].get_final_ip())
@@ -523,41 +507,19 @@ void Server::run()
                         
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
-                            // std::cout << "hereee is\n\n";
-
                             if (!a.error_set(this->clients, fd, this->_configs[this->clients[fd].conf_i], _configs))
                             {
                                 std::cout << "error_._set is: equal to zero\n";
                                 throw socketException("❌ error detected  in error set");
                             }
                             else
-                            {
-
-                                // std::cout << "Hrererere is the leakkk for fd: handle " << fd << std::endl;
-
                                 handleRequest(fd, a, clients, epollManager);
-                                        // Read from the pipe directly
-                                // char buffer[4096];
-                                // ssize_t bytesRead;
-                                // std::string pipeOutput;
-
-                                // while ((bytesRead = read(clients[fd].cgiMap[fd].pipefd, buffer, sizeof(buffer) - 1)) > 0) {
-                                //     buffer[bytesRead] = '\0';
-                                //     pipeOutput += buffer;
-                                // }
-
-                                // std::cout << "DEBUG: CGI output from pipe:\n" << pipeOutput << std::endl;
-                            }
-                        
-
                         }
                     }
                     catch(std::exception &e)
                     {
-                        std::cout << e.what() << std::endl;
-                        std::cout << " heloooooo|\n\n\n\n";
-
-                            clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
+                        std::cerr << e.what() << std::endl;
+                        clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
                     }
                 }
                 else if (events[i].events & EPOLLOUT)
@@ -586,39 +548,17 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
     {
         int pipefd = it->second.cgiMap[fd].pipefd;
         std::cout << "🔸 Closing CGI pipefd: " << pipefd << std::endl;
-        epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, pipefd, NULL);
+        if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, pipefd, NULL) == -1)
+            std::cerr << "❌ epoll_ctl DEL fd failed\n";   
         close(pipefd);
         it->second.cgiMap[fd].pipefd = -1;
     }
-    std::cout << "✅ Closing client fd: " << fd << std::endl;
-    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL);
+    std::cout << "✅ client: " << fd << " is disconnected\n";
+    if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL) == -1)
+        std::cerr << "❌ epoll_ctl DEL fd failed\n";
     close(fd);
     clients.erase(it);
 }
-
-
-
-// void Server::closeConnection(int fd, EpollManager &epollManager)
-// {
-//     // if (clients[fd].has_cgi)
-//     // {
-//     //     std::cout << " ouiiiiiiiiiiiiiii\n\n"<< clients[fd].has_cgi << std::endl;
-//     //     int pipefd = clients[fd].cgiMap[fd].pipefd;
-//     //     if (pipefd != -1)
-//     //     {
-//     //         std::cout << "Closing CGI pipefd#############: " << pipefd << "\n";
-//     //         if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, pipefd, NULL) == -1)
-//     //                 perror("epoll_ctl DEL pipefd");
-//     //         close(pipefd);
-//     //         clients[fd].cgiMap[fd].pipefd = -1;
-//     //     }
-//     // }
-//     if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL) == -1)
-//         perror("epoll_ctl DEL fd");
-//     close(fd);
-//     clients.erase(fd);
-//     std::cout << "✅ client: " << fd << " is disconnected\n";
-// }
 
 Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
 

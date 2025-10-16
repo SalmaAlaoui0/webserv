@@ -15,8 +15,8 @@
 
 EpollManager::EpollManager()
 {
-    epollFd = epoll_create1(EPOLL_CLOEXEC);
-     MAX_EVENTS = 64;
+    epollFd = epoll_create(1);
+    MAX_EVENTS = 64;
     
     if (epollFd == -1)
         throw epollException("❌ Failed to create epoll instance");
@@ -69,33 +69,6 @@ std::vector<epoll_event> EpollManager::waitEvents()
     events.resize(n);
     return events;    
 }
-
-// std::vector<int> EpollManager::waitEvents(Server &obj)
-// {
-//     std::vector<int> readyFds;
-//     const int MAX_EVENTS = 64;
-//     struct epoll_event events[MAX_EVENTS];
-//     int n = epoll_wait(epollFd, events, MAX_EVENTS , 1000);
-//     if (n == -1)
-//     {
-//         // if (errno == EINTR) 
-//         //     return std::vector<epoll_event>(); // ignore signal interrupts
-//         throw epollException("❌ epoll_wait failed");
-//     }
-//     for (int i = 0; i < n ; i++)
-//     {
-//         int fd = events[i].data.fd;
-//         if (events[i].events & EPOLLRDHUP)
-//         {
-//             std::cout << "Client disconnected fd: " << fd << std::endl;
-//             obj.closeClient(fd, *this);
-//             continue;
-//         }
-//         // std::cout << " Ready FD: " << events[i].data.fd << std::endl;
-//         readyFds.push_back(events[i].data.fd);
-//     }
-//     return readyFds;    
-// }
 
 EpollManager::epollException::epollException(const std::string &msg) :_msg(msg){}
 
