@@ -644,8 +644,6 @@ int get_code_status_cgi(std::map<std::string, std::string> map_h)
 					std::cout << "✅ Code CGI extrait = [" << status_code<< "]" << std::endl;
 			}
 	}
-	else
-		std::cerr << "❌ Aucun header Status trouvé dans CGI" << std::endl;
 	return status_code;
 }
 
@@ -715,12 +713,11 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 		std::string contentLength = it->second;
 		double siz = std::atof(contentLength.c_str());
 		out.write(clientobj[clientFd].CgiBody.c_str(), siz);
-		std::cout << "Content-Length found: " << contentLength << std::endl;
 	}
 	else
 		out.write(clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size());
 	out.flush();
-	std::cout<< " file is " <<clientobj[clientFd].filename << std::endl;
+	std::cout<< "file is " <<clientobj[clientFd].filename << std::endl;
 	if (std::rename(save.c_str(), clientobj[clientFd].filename.c_str()) == 0)
 		std::cout << "File renamed successfully!\n";
 	else 
@@ -758,7 +755,6 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 	}
 	if(!error_post( clients,clientFd,  _configs,r, conf_i))
 		return ;
-	std::cout << " in post%%%%%%%%%\n <<<<<<<<<<<< "<< clientobj[clientFd].path<< std::endl;;
 	struct stat statbuf;
 	std::ostringstream filename;
     std::string fullpath = map.begin()->second;
@@ -777,14 +773,10 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 		if(e != std::string::npos)
 			 fullpath = fullpath.substr(0,e);
 	 inter = find_matching_inter(extt, _configs, conf_i , key);
-	std::cout << " matchinggggggggggg interprettttttttt ::::  "<< abstract_fil << "  "<< extt << std::endl;
 	}
 	fullpath = mergePaths(_configs[clients[clientFd].conf_i].locations[map.begin()->first].root, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
-	std::cout << "join ****************hiiiiiiiuploading path for post is:" << fullpath << std::endl;
-
 	if(inter.empty())
 	{
-		std::cout << " no cgiiiiiiiiiiiiiiiiiiiiiiiin sizz de bodyyyyyyyyyyy << " <<clientobj[clientFd].PostBody.size()  <<std::endl;; 
 		std::map<std::string, std::string> header_ = clientobj[clientFd].map;
 		std::map<std::string, std::string>::iterator it_ = header_.find("Content-Type");
 		std::string type = "";
@@ -797,7 +789,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			type = "plain";
 		srand(time(NULL));
 		filename << fullpath << "/" << generateId1() << "." << type  ;
-		std::cout << "\nfile is uploaded in: " << filename.str() << std::endl;
+		std::cout << "file is uploaded in: " << filename.str() << std::endl;
 		std::ofstream out(filename.str().c_str(),std::ios::binary);
 		if(!out)
 		{
@@ -838,6 +830,7 @@ void Server::handle_post_methode(request & r, std::vector<ServerConfig> _configs
 			remove(clientobj[clientFd].filename.c_str());
 			return;
 		}
+		std::cout << "file is uploaded in: " << filename.str() << std::endl;
 		if(clientobj[clientFd].chnked ==1 && clientobj[clientFd].body_complete == 1)
 		{
 			out.write(clientobj[clientFd].body_chunked.c_str(), clientobj[clientFd].body_chunked.size());

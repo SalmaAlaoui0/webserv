@@ -246,6 +246,7 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         if(bytes_received < 0)
         {
             std::cerr << " Connection Failed " << std::endl;
+            s.closeConnection(clientFd, epollManager);
             throw requetetException("❌ Connection Failed : ");
         }
         return r;
