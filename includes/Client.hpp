@@ -3,16 +3,14 @@
 #include <iostream>
 #include <unistd.h>
 #include <ctime>
-//#include"Server.hpp"
-//#include "Request.hpp"
 #include "Response.hpp"
 
 struct CgiInfo {
     
     int pipefd;
     int signal;
-    int start;// initailiserrr 
-    bool flag_rep;/// initailiserrrrr 
+    int start;
+    bool flag_rep;
     int exit_code_cgi;
     int Timeout;
     pid_t pid;
@@ -60,7 +58,7 @@ class Client
         size_t conf_i ;
         size_t bytesRead;
         size_t HeaderEnd;
-        std::map<int, CgiInfo> cgiMap;///// in this map add cgi exit status code and do not send cgi response until code status is 200 
+        std::map<int, CgiInfo> cgiMap;
         std::map<int, std::string> GetpathMap;
         std::map<std::string, std::string> map;
         std::string ContentType;

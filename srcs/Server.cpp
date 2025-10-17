@@ -210,7 +210,6 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         clients[clientFd].cgiMap[clientFd].Timeout = 0;
         clients[clientFd].HeaderEnd  = 0;
         clients[clientFd].chnked =0;
-     //   clients[clientFd].cgiMap[clientFd].start = time(NULL);
         clients[clientFd].ContentLength = 0;
         clients[clientFd].CgiStartActivity = time(NULL);
         clients[clientFd].Read = 0;
@@ -357,7 +356,6 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
         clients[fd].cgiMap[fd].Timeout = 0;
         clients[fd].cgiMap[fd].signal = 0;
         clients[fd].cgiMap[fd].flag_rep = 0;
-       // clients[fd].cgiMap[fd].start = time(NULL);
         clients[fd].cgiMap[fd].exit_code_cgi = 0;
  }
 
@@ -372,7 +370,6 @@ void Server::run()
     }
 	while (running) 
 	{
-        // int key = -1;
 		std::vector<epoll_event> events = epollManager.waitEvents();
         checkTimeout(clients, epollManager, _configs);
         for(size_t i = 0; i < events.size(); i++)
@@ -409,16 +406,16 @@ void Server::run()
                         clients[fd].CgiBody.append(buffer, bytesRead);
                         clients[fd].bytesRead = bytesRead;
                     }
-                    else if (bytesRead == 0 && clients[fd].statusCode != 204)//add timeout
+                    else if (bytesRead == 0 && clients[fd].statusCode != 204)
                     {
                         clients[fd].statusCode = 200;
                         clients[fd].statusMsg = "OK";
                         size_t HeaderEnd = clients[fd].CgiBody.find("\r\n\r\n");
-                        size_t sepLength = 4; // default CRLF
+                        size_t sepLength = 4;
 
                         if (HeaderEnd == std::string::npos) {
                             HeaderEnd = clients[fd].CgiBody.find("\n\n");
-                            sepLength = 2; // LF only
+                            sepLength = 2;
                         }
                         if (HeaderEnd != std::string::npos)
                         {

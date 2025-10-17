@@ -159,10 +159,7 @@ std::vector<std::string> parseCookies(const std::string &cookieHeader)
         size_t pos = token.find('=');
         if (pos != std::string::npos)
         {
-            // std::string key = token.substr(0, pos);
             std::string value = token.substr(pos + 1);
-            // remove spaces
-            // key.erase(0, key.find_first_not_of(" "));
             cookies.push_back(value);
         }
     }
@@ -320,7 +317,6 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
             {
                 clientobj[clientFd].cookies = iterator->second;
                 std::string id = findCookies(clientobj[clientFd].cookies);
-                std::cout << "Session ID: " << id << std::endl;
                 clientobj[clientFd].has_cookie = 1;
             }
             iterator++;

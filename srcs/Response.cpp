@@ -128,7 +128,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         (!clientobj[clientFd].has_cgi && clientobj[clientFd].method == "GET" && clientobj[clientFd].Sending == 0
         && !clientobj[clientFd].ResponseChunked))
     {
-        if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+        if(clientobj[clientFd].has_cookie == 0)
         {
             srand(time(NULL));
             clientobj[clientFd].sessionId = generateId(16);
@@ -139,7 +139,7 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         std::ostringstream headers;
         headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
             << "Content-Type: " << clientobj[clientFd].ContentType << "\r\n";
-        if(clientobj[clientFd].has_cookie == 0)  //zadt cookies
+        if(clientobj[clientFd].has_cookie == 0)
         {
             headers<< "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\r\n";
             clientobj[clientFd].has_cookie = 1;

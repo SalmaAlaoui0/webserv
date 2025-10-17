@@ -119,10 +119,7 @@ Client::Client(int fd)
     updateActivity();
 }
 
-Client::~Client()
-{
-     //close (_fd);
-}
+Client::~Client(){}
 
 int Client::get_final_port()
 {
