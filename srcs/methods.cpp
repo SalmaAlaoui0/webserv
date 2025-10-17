@@ -96,8 +96,6 @@ std::string mergePaths(std::string root, std::string request)
 std::map<int, std::string> getMatchingRootPath(request &r, ServerConfig &config)
 {
 	std::string requestedPath = r.get_path();
-	// if (requestedPath[requestedPath.size() - 1] == '/')
-	// 	r.slash = 1;
 	std::string matchedRoot;
 	size_t maxMatchLength = 0;
 	std::string locPath;
@@ -419,7 +417,7 @@ void Server::handle_get_methode(request &r, std::vector<ServerConfig> _configs, 
 		CheckDirOrFile(value, clientFd, _configs, conf_i, key, clientobj, epoll);
 }
 
-bool Server::delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj)
+bool Server::delete_dir_recursive(std::string &path, int clientFd, ServerConfig &config, request &r, std::map<int, Client> &clientobj)
 {
 	DIR *dir = opendir(path.c_str());
 	if (!dir)
@@ -469,7 +467,7 @@ bool is_directory_empty(const std::string& path)
     return true;
 }
 
-void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &config, request &r, std::map<int, Client> clientobj)
+void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &config, request &r, std::map<int, Client> &clientobj)
 {
 	struct stat st;
 	if(stat(fullpath.c_str() , &st) != 0)
@@ -488,7 +486,7 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 		{
 			if (!delete_dir_recursive(fullpath, clientFd, config, r, clientobj))
 			{
-				clients[clientFd].response = Response::buildResponse(500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj, _configs);
+				clients[clientFd].response = Response::buildResponse(403, "Forbidden",config.ErrorPages[403], clientFd, clientobj, _configs);
 				return;
 			}
 			clients[clientFd].response= clients[clientFd].response.buildResponse(204, "No Content",config.ErrorPages[204], clientFd, clientobj, _configs);
@@ -499,7 +497,7 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 			clients[clientFd].response= clients[clientFd].response.buildResponse(204, "No Content",config.ErrorPages[204], clientFd, clientobj, _configs);
 			return ;
 		}
-		else  // Failed to remove directory
+		else 
 		{
 			clients[clientFd].response= clients[clientFd].response.buildResponse(500, "Internal Server Error",config.ErrorPages[500], clientFd, clientobj, _configs);
 			return ;
@@ -507,7 +505,7 @@ void Server::dir_or_file(std::string &fullpath, int clientFd, ServerConfig &conf
 	}
 	else if (S_ISREG(st.st_mode))
 	{
-		if(access(fullpath.c_str(), W_OK) != 0)  // doesn't have permission for delete
+		if(access(fullpath.c_str(), W_OK) != 0)
 		{
 			clients[clientFd].response= clients[clientFd].response.buildResponse(403, "Forbidden",config.ErrorPages[403], clientFd, clientobj, _configs);
 			return;
@@ -570,13 +568,10 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
 		clientobj[clientFd].statusMsg = "Found";
 		clientobj[clientFd].ReturnLocation = _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->second;
         clientobj[clientFd].body_complete = 1;
-		std::cout << "innnn handle return in delete: " << _configs[clientobj[clientFd].conf_i].locations[key].Return.begin()->first << " \n";
         return ;
 	}
 	std::string fullpath = mergePaths(_configs[clients[clientFd].conf_i].locations[map.begin()->first].root, _configs[clients[clientFd].conf_i].locations[map.begin()->first].upload_store);
-	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 11111 "<< fullpath <<std::endl;
     fullpath = mergePaths(fullpath, r.get_path());
-	//std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH 2222 "<< fullpath <<std::endl;
     if (!CheckMethodeIsAllowed("DELETE", _configs, conf_i, key))
     {
 		clients[clientFd].response= clients[clientFd].response.buildResponse(403, "Forbidden", _configs[conf_i].ErrorPages[403], clientFd, clientobj, _configs);
@@ -608,13 +603,6 @@ bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<Server
 		clients[clientFd].response= Response::buildResponse(403, "Forbidden",_configs[clients[clientFd].conf_i].ErrorPages[403], clientFd, clients, _configs);
 		return 0;
 	}
-	// if (!_configs[conf_i].locations[key].Return.empty())
-	// {
-	// 	clientobj[clientFd].statusCode = _configs[conf_i].locations[key].Return.begin()->first;
-	// 	clientobj[clientFd].statusMsg = "Found";
-	// 	clientobj[clientFd].ReturnLocation = _configs[conf_i].locations[key].Return.begin()->second;
-	// 	return;
-	// }
 	return 1;
 }
 
@@ -632,9 +620,7 @@ std::map<std::string,std::string>  parce_header_cgi(std::string &header)
 			value = trim1(value);
 			size_t i1 = value.find(";");
 			value = value.substr(0,i1);
-			std::cout << "key^^^^^^^^^^^^^"<< key << std::endl;
 			map_h[key] = value;
-			std::cout << "value^^^^^^^^^^^^^"<< value << std::endl;
 			header = header.substr(i +1);
 		}
 		return map_h;
