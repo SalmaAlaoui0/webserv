@@ -131,8 +131,8 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             srand(time(NULL));
             clientobj[clientFd].sessionId = generateId(16);
             clientobj[clientFd].getSession().push_back(clientobj[clientFd].sessionId);
-            std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";//salamdelthis
-            std::cout << "Hello, new user! Data saved on server.\n\n";//salamdelthis
+            // std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";
+            // std::cout << "Hello, new user! Data saved on server.\n\n";
         }
         std::ostringstream headers;
         headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
@@ -272,7 +272,6 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
             "</body>\n"
             "</html>";
 
-        // filePath      = _configs[clientobj[clientFd]. conf_i].ErrorPages[500];
         rep.contentType = "text/html";
         clientobj[clientFd].has_problem = 1;
         clientobj[clientFd].Sending = 1;

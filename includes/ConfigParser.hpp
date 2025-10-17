@@ -17,7 +17,6 @@ struct ServerConfig;
 
 class ConfigParser
 {
-// private:
 public:
 std::vector<ServerConfig> serverdata;
 	class InvalidFile : public std::exception
@@ -30,7 +29,7 @@ std::vector<ServerConfig> serverdata;
 	public:
 		const char *what() const throw();
 	};
-	ConfigParser(/* args */);
+	ConfigParser();
 	~ConfigParser();
 	std::vector<ServerConfig> parseConfig(std::string);
 };

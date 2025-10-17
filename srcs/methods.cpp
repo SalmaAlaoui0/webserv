@@ -575,7 +575,6 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
     }
 	if (r.get_path()[r.get_path().size() - 1] == '/')
 		fullpath += '/';
-	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<< fullpath <<std::endl;//salamdelthis
     dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj); 
 }
 bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<ServerConfig> _configs,request & r, size_t conf_i)

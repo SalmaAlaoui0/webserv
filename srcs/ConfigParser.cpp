@@ -1,12 +1,10 @@
 #include "../includes/ConfigParser.hpp"
 
-ConfigParser::ConfigParser(/* args */)
-{
-}
+ConfigParser::ConfigParser(){}
 
-ConfigParser::~ConfigParser()
-{
-}
+
+ConfigParser::~ConfigParser(){}
+
 
 const char* ConfigParser::InvalidFile::what() const throw()
 {
