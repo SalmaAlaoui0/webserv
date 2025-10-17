@@ -64,9 +64,7 @@ class Server
         void run();
         bool isServerSocket(int fd) const;
         void acceptNewClient(request & r, int listenFd, EpollManager &epollManager);
-       // void handleClient(int clientFd, EpollManager &epollManager, std::vector<epoll_event> &events);
         void checkTimeout(std::map<int, Client> &clients, EpollManager &epoll , std::vector<ServerConfig> _configs);
-        //std::string readRequest(int clientFd, EpollManager &epollManager);
         void handleRequest(int clientFd, request &r, std::map<int, Client> &clientob, EpollManager &epoll);
         
         void closeConnection(int fd, EpollManager &epollManager);

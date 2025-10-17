@@ -39,8 +39,7 @@ class EpollManager
         void delSocket(int fd);
         int getEpollFd() const;
 
-        //std::vector<int> waitEvents(Server &obj);
-         std::vector<epoll_event> waitEvents();
+        std::vector<epoll_event> waitEvents();
         class epollException : public std::exception 
         {
             private:

@@ -15,9 +15,6 @@
 #include <vector>
 #include <map>
 #include "EpollManager.hpp"
-//#include "Server.hpp"
-//#include "Request.hpp"
-// #define SEND 8000
 
 class Client;
 class EpollManager;

@@ -28,7 +28,7 @@ std::string ft_content_type(const std::string &headers)
             }
         }
     }
-    return "text/plain"; // Default content-type
+    return "text/plain";
 }
 
 int ft_code_status(std::string headers)
@@ -58,6 +58,6 @@ int ft_code_status(std::string headers)
             }
         }
     }
-    return 200; // Default st code
+    return 200;
 }
 
