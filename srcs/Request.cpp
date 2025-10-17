@@ -239,13 +239,13 @@ request &request::parseRequest(std::map<int, Client> &clientobj, EpollManager &e
         {
             clientobj[clientFd].body_complete = 1;
             s.closeConnection(clientFd, epollManager);
-            std::cerr<< " ContentLength Exception "<< std::endl;
+            std::cerr << " ContentLength Exception " << std::endl;
             throw requetetException("❌ recv failed: ");
             return r;
         }
         if(bytes_received < 0)
         {
-            std::cerr<< " Connection Failed "<< std::endl;
+            std::cerr << " Connection Failed " << std::endl;
             throw requetetException("❌ Connection Failed : ");
         }
         return r;

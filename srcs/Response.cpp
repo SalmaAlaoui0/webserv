@@ -11,26 +11,24 @@ Response::Response() : statusCode(0), statusMsg(""), body(""), contentType("text
 
 Response::~Response() {}
 
-Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::string filePath, Response &rep, std::vector<ServerConfig> &_configs)
+Response send_bigsize(std::map<int, Client> &clientobj, int clientFd, std::string filePath, Response &rep)
 {
-    (void)_configs;
     if (clientobj[clientFd].Sending == 0)
     {
         if (!clientobj[clientFd].FileOpened)
         {
             clientobj[clientFd]._fd = open(filePath.c_str(), O_RDONLY);
             clientobj[clientFd].FileOpened = 1;
-            std::cout << "🎉Opened fd: " << clientobj[clientFd]._fd << std::endl;
         }
         if (clientobj[clientFd]._fd < 0)
         {
-            std::cerr << "❌ Failed to open file\n";
+            std::cerr << "❌ Failed to open file" << std::endl;
             clientobj[clientFd].send_complete = 1;
         }
         struct stat filesz;
         if (fstat(clientobj[clientFd]._fd, &filesz) == -1)
         {
-            std::cerr << "❌ fstat failed\n";
+            std::cerr << "❌ fstat failed" << std::endl;
             close(clientobj[clientFd]._fd);
             clientobj[clientFd]._fd = -1;
             clientobj[clientFd].send_complete = 1;
@@ -133,8 +131,8 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             srand(time(NULL));
             clientobj[clientFd].sessionId = generateId(16);
             clientobj[clientFd].getSession().push_back(clientobj[clientFd].sessionId);
-            std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";
-            std::cout << "Hello, new user! Data saved on server.\n\n";
+            std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";//salamdelthis
+            std::cout << "Hello, new user! Data saved on server.\n\n";//salamdelthis
         }
         std::ostringstream headers;
         headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
@@ -212,11 +210,8 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
         return;
     }
     if (sent < 0)
-    {
-        std::cerr << "❌ send failed: " << strerror(errno) << std::endl;
         clientobj[clientFd].send_complete = 1;
-    }
-    if (sent == 0)
+    else if (sent == 0)
         return;
     return;
 }
@@ -240,8 +235,8 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
         srand(time(NULL));
         rep.sessionId = generateId(16);
         s.getSession() .push_back(rep.sessionId);
-        std::cout << "Set-Cookie: session_id=" << rep.sessionId << "\n";
-        std::cout << "Hello, new user! Data saved on server.\n\n";
+        std::cout << "Set-Cookie: session_id=" << rep.sessionId << "\n";//salamdelthis
+        std::cout << "Hello, new user! Data saved on server.\n\n";//salamdelthis
     }
     if (clientobj[clientFd].autoindex)
     {
@@ -304,7 +299,7 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
             filePath.find(".jpg") != std::string::npos || filePath.find(".jpeg") != std::string::npos)
         {
             clientobj[clientFd].ResponseChunked = 0;
-            send_bigsize(clientobj, clientFd, filePath, rep, _configs);
+            send_bigsize(clientobj, clientFd, filePath, rep);
         }
     }
     if ((clientobj[clientFd].method == "GET" && clientobj[clientFd].ResponseChunked == 1 && !clientobj[clientFd].autoindex) || clientobj[clientFd].method != "GET" || clientobj[clientFd].has_problem)

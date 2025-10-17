@@ -70,14 +70,13 @@ void parseLoc_index(std::string line, std::vector<ServerConfig> &container, int 
     index = trim(index);
 	if (index[index.size() - 1] != ';' || index[index.size() - 2] == ';')
     {
-        std::cout << "Unacceptable notation `;'\n";
+        std::cerr << "Unacceptable notation `;'\n";
         throw ::InvalidData();
     }
     index = index.substr(0, index.size() - 1);
     index = trim(index);
     if (!isValidIndex(index) || !hasExtension(index))
         throw ::InvalidData();
-    // index = index.substr(0, index.size() - 1);
     container[i].locations[j].index = index;
 }
 
@@ -88,10 +87,16 @@ void parseLoc_root(std::string line, std::vector<ServerConfig> &container, int i
     root = trim(root);
 	if (root[root.size() - 1] != ';' || root[root.size() - 2] == ';')
     {
-        std::cout << "Unacceptable notation `;'\n";
+        std::cerr << "Unacceptable notation `;'\n";
         throw ::InvalidData();
     }
     root = root.substr(0, root.size() - 1);
+    root = trim(root);
+    if (root != "www")
+    {
+        std::cerr << "Invalid root directory -`www' is required- if not found try `mkdir www`" << std::endl;
+        throw ::InvalidData();
+    }
     container[i].locations[j].root = root;
 }
 
@@ -102,7 +107,7 @@ void parseLoc_upload_store(std::string line, std::vector<ServerConfig> &containe
     upload_store = trim(upload_store);
 	if (upload_store[upload_store.size() - 1] != ';' || upload_store[upload_store.size() - 2] == ';')
     {
-        std::cout << "Unacceptable notation `;'\n";
+        std::cerr << "Unacceptable notation `;'\n";
         throw ::InvalidData();
     }
     upload_store = upload_store.substr(0, upload_store.size() - 1);
@@ -116,7 +121,7 @@ void parseAutoIndex(std::string line, std::vector<ServerConfig> &container, int 
     value = trim(value);
     if (value[value.size() - 1] != ';' || value[value.size() - 2] == ';')
     {
-        std::cout << "Unacceptable notation `;'\n";
+        std::cerr << "Unacceptable notation `;'\n";
         throw ::InvalidData();
     }
     value = value.substr(0, value.size() - 1);
@@ -244,7 +249,7 @@ void parseReturn(std::string line, std::vector<ServerConfig> &container, int i, 
     Return = line.substr(isKey(line, "return") + 1);
     if (Return[Return.size() - 1] != ';' || Return[Return.size() - 2] == ';')
     {
-        std::cout << "Unacceptable notation `;'\n";
+        std::cerr << "Unacceptable notation `;'\n";
         throw ::InvalidData();
     }
     Return = Return.substr(0, Return.size() - 1);

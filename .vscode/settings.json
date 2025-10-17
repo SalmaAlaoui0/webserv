@@ -1,5 +1,7 @@
 {
     "files.associations": {
+        "editor.cursorStyle": "line",
+        "editor.cursorBlinking": "blink",
         "array": "cpp",
         "atomic": "cpp",
         "bit": "cpp",

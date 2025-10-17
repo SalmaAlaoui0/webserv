@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import sys
 
-with open("/home/salaoui/images/directory/1hour.mp4", "rb") as f:
+with open("/home/salaoui/goinfre/webserv/www/video.mp4", "rb") as f:
     data = f.read()
 
 # headers first, as bytes

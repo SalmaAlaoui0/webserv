@@ -202,12 +202,10 @@ void send_dir_list(int clientFd, std::string requested_path, std::map<int, Clien
 	clientobj[clientFd].autoindex = 1;
     clientobj[clientFd].ResponseChunked = 1;
 	if (!directory)
-	{
-		body << "<html><body><h1>Unable to open director" << requested_path << "</h1></body></html>";
-	}
+		body << "<html><body><h1>Unable to open directory: " << requested_path << "</h1></body></html>";
 	else
 	{
-		body << "<html><body><h1>AutoIndex ON: Listing Path files and directories Of" << requested_path << "!</h1><ul>";
+		body << "<html><body><h1>AutoIndex ON: Listing Path files and directories Of: " << requested_path << "!</h1><ul>";
 		while ((entry = readdir(directory)) != NULL)
 		{
 			std::string name = entry->d_name;
@@ -238,14 +236,14 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 	int pipeFD[2];
 	if (pipe(input_pipe) == -1 || pipe(pipeFD) == -1)
 	{
-		std::cerr<< "pipe failed \n";
+		std::cerr<< "pipe failed" << std::endl;
 		return;
 	}
 
 	pid_t pid = fork();
 	if (pid == -1)
 	{
-		std::cerr<< "fork failed \n";
+		std::cerr<< "fork failed" << std::endl;
 		return;
 	}
 	if (pid == 0)
@@ -283,7 +281,7 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 		setenv("SERVER_PROTOCOL", "HTTP/1.1", 1);
 		setenv("REDIRECT_STATUS", "200", 1);
 		execve(interpreter.c_str(), &args[0], environ);
-		std::cerr<<"execve failed "<<strerror(errno)<<std::endl;
+		std::cerr << "execve failed " << strerror(errno) << std::endl;
 		exit(1);
 	}
 	else
@@ -292,7 +290,7 @@ void execute_cgi(int clientFd, std::map<int, Client> &clientobj, std::string con
 		close(pipeFD[1]);   
 		close(input_pipe[1]);
 		if (fcntl(pipeFD[0], F_SETFL, O_NONBLOCK) < 0)
-			std::cerr<<"fcntl pipe failed \n";
+			std::cerr << "fcntl pipe failed" << std::endl;
 		epollManager.addSocket(pipeFD[0], EPOLLIN);
 		CgiInfo info;
 		info.pipefd = pipeFD[0];
@@ -374,9 +372,9 @@ void Server::CheckDirOrFile(std::string requested_path, int clientFd, std::vecto
 			{
 				clientobj[clientFd].ResponseChunked = 1;
 				if (!clientobj[clientFd].has_cookie)
-					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "www/new_client.html", clientFd, clientobj, _configs);
+					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "error_pages/new_client.html", clientFd, clientobj, _configs);
 				else
-					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "www/returning_client.html", clientFd, clientobj, _configs);
+					clients[clientFd].response = Response::buildResponse(403, "Forbidden", "error_pages/returning_client.html", clientFd, clientobj, _configs);
 			}
         }
 		else // If we did attach the file but still it's not found
@@ -579,7 +577,7 @@ void Server::handle_delete_methode(request r, std::vector<ServerConfig> _configs
     }
 	if (r.get_path()[r.get_path().size() - 1] == '/')
 		fullpath += '/';
-	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<< fullpath <<std::endl;
+	std::cout << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!FULLPATH"<< fullpath <<std::endl;//salamdelthis
     dir_or_file(fullpath, clientFd, _configs[conf_i], r, clientobj); 
 }
 bool error_post( std::map<int, Client> &clients,int clientFd, std::vector<ServerConfig> _configs,request & r, size_t conf_i)
@@ -641,11 +639,12 @@ int get_code_status_cgi(std::map<std::string, std::string> map_h)
 				status_code = 500;
 				std::cerr << "⚠️ Impossible de parser Status: " << code_cgi << std::endl;
 			} 
-			else {
-					if (status_code < 100 ||  status_code > 599)
-							status_code = 500;
-					else
-						std::cout << "✅ Code CGI extrait = [" << status_code<< "]" << std::endl;
+			else
+			{
+				if (status_code < 100 ||  status_code > 599)
+						status_code = 500;
+				else
+					std::cout << "✅ Code CGI extrait = [" << status_code<< "]" << std::endl;
 			}
 	}
 	else
@@ -724,7 +723,7 @@ bool handel_cgi_post(std::vector<ServerConfig> _configs, int clientFd, std::map<
 	else
 		out.write(clientobj[clientFd].CgiBody.c_str(), clientobj[clientFd].CgiBody.size());
 	out.flush();
-	std::cout<< " file is " <<clientobj[clientFd].filename << std::endl;;
+	std::cout<< " file is " <<clientobj[clientFd].filename << std::endl;
 	if (std::rename(save.c_str(), clientobj[clientFd].filename.c_str()) == 0)
 		std::cout << "File renamed successfully!\n";
 	else 

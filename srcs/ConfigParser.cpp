@@ -155,7 +155,7 @@ void Check_return(std::vector<ServerConfig> &container)
 				{
 					if (!valid_return_path(container[server].locations, value, 2))
 					{
-						std::cout << "Invalid `return' value Detected" << std::endl;
+						std::cerr << "Invalid `return' value Detected" << std::endl;
 						throw ::InvalidData();
 					}
 					value = return_found(container[server].locations, value);
@@ -166,7 +166,7 @@ void Check_return(std::vector<ServerConfig> &container)
 					}
 					else if (!value.empty())
 					{
-						std::cout << "Invalid `return' Implementation Detected" << std::endl;
+						std::cerr << "Invalid `return' Implementation Detected" << std::endl;
 						throw ::InvalidData();
 					}
 				}
@@ -250,9 +250,3 @@ std::vector<ServerConfig> ConfigParser::parseConfig(std::string file)
 	Check_return(container);
 	return container;
 }
-
-// Do not forget to check if empty cofig instruc. for :
-	// server_name localhost;
-	// root www;
-	// allowed_methods;
-// And check location's info is btw {}

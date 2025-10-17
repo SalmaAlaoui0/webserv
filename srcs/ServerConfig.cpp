@@ -124,6 +124,12 @@ void parseroot(std::string line, std::vector<ServerConfig> &container, int i)
 	if (root[root.size() - 1] != ';' || root[root.size() - 2] == ';')
         throw ::InvalidData();
     root = root.substr(0, root.size() - 1);
+    root = trim(root);
+    if (root != "www")
+    {
+        std::cerr << "Invalid root directory -`www' is required- if not found try `mkdir www`" << std::endl;
+        throw ::InvalidData();
+    }
 	container[i].root = root;
 }
 
@@ -158,7 +164,7 @@ void parsepages(std::string line, std::vector<ServerConfig> &container, int i) /
         throw ::InvalidData();
     if (toInt(error_code) < 200 || toInt(error_code) > 599)
     {
-        std::cerr << "Invalid error code\n";
+        std::cerr << "Invalid error code" << std::endl;
         throw ::InvalidData();
     }
     std::ifstream file(error_path.c_str(), std::ios::in | std::ios::binary);// we open file in binary read mode to support text && binary files
@@ -179,7 +185,7 @@ void parseindex(std::string line, std::vector<ServerConfig> &container, int i)
     index = trim(index);
 	if (index[index.size() - 1] != ';' || index[index.size() - 2] == ';')
     {
-        std::cout << "Unacceptable notation `;'\n";
+        std::cerr << "Unacceptable notation `;'" << std::endl;
         throw ::InvalidData();
     }
     index = index.substr(0, index.size() - 1);
@@ -236,7 +242,7 @@ void parseServerConfig(std::string line, std::vector<ServerConfig> &container, i
 		parse_max_size(line, container, i);
     else if (!isKey(line, "server"))
     {
-        std::cout << line << std::endl;
+        std::cerr << line << std::endl;
         throw ::InvalidData();
     }
 }

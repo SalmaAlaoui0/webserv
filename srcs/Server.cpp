@@ -171,17 +171,17 @@ void Server::acceptNewClient(request &req, int serverFd, EpollManager &epollMana
         {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
                 return;
-            std::cerr<<"❌ accept failed\n";
+            std::cerr << "❌ accept failed" << std::endl;
         }
         if (fcntl(clientFd, F_SETFL, O_NONBLOCK) == -1) 
         {
             close(clientFd);
-            std::cerr<<"❌ fcntl() failed\n";
+            std::cerr << "❌ fcntl() failed" << std::endl;
         }
         if (fcntl(clientFd, F_SETFD, FD_CLOEXEC) == -1) 
         {
             close(clientFd);
-            std::cerr<<"❌ fcntl() FD_CLOEXEC failed\n";
+            std::cerr << "❌ fcntl() FD_CLOEXEC failed" << std::endl;
         }
         epollManager.addSocket(clientFd, EPOLLIN);
         clients.insert(std::make_pair(clientFd, Client(clientFd)));
@@ -269,7 +269,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
         {
             clientobj[fd].cgiMap[fd].Timeout = true;
             std::cerr << "[CGI] Timeout exceeded, killing process " << pid << std::endl;
-            std::cout << "[CGI] Timeout (pid=" <<clientobj[fd].cgiMap[fd].pid << ", fd=" <<clientobj[fd].cgiMap[fd].pipefd << ")\n";
+            std::cerr << "[CGI] Timeout (pid=" << clientobj[fd].cgiMap[fd].pid << ", fd=" <<clientobj[fd].cgiMap[fd].pipefd << ")\n";
 
             clientobj[fd].response = Response::buildResponse(504, "Gateway Timeout", _configs[clientobj[fd]. conf_i].ErrorPages[504], fd, clientobj ,_configs);
             kill(pid, SIGKILL);
@@ -277,7 +277,6 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
-                std::cout << "Removing CGI pipe fd" << clientobj[fd].cgiMap[fd].pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
@@ -295,34 +294,33 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
 
             if (exitCode == 0)
             {
-                std::cout << "CGI terminé avec succès ✅\n"; 
-            kill(pid, SIGKILL);
-            waitpid(pid, &wstatus, 0);
-            pipefd = clientobj[fd].cgiMap[fd].pipefd;
-            if (pipefd != -1)
-            {
-                std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
-                epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
-                close(clientobj[fd].cgiMap[fd].pipefd);
-                clientobj[fd].cgiMap[fd].pipefd = -1;
-            }
-            }
-            else
-            {
-                std::cerr << "CGI exited with error code " << exitCode << std::endl;
-                clientobj[fd].cgiMap[fd].flag_rep = true;
-                std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
-                clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
                 kill(pid, SIGKILL);
                 waitpid(pid, &wstatus, 0);
                 pipefd = clientobj[fd].cgiMap[fd].pipefd;
-            if (pipefd != -1)
-            {
-                std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
-                epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
-                close(clientobj[fd].cgiMap[fd].pipefd);
-                clientobj[fd].cgiMap[fd].pipefd = -1;
-            }
+                if (pipefd != -1)
+                {
+                    std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
+                    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL) ;
+                    close(clientobj[fd].cgiMap[fd].pipefd);
+                    clientobj[fd].cgiMap[fd].pipefd = -1;
+                }
+                }
+                else
+                {
+                    std::cerr << "CGI exited with error code " << exitCode << std::endl;
+                    clientobj[fd].cgiMap[fd].flag_rep = true;
+                    std::cout<< " flag111 == " <<clientobj[fd].cgiMap[fd].flag_rep<< std::endl;
+                    clientobj[fd].response = Response::buildResponse(502, "Bad Gateway", _configs[clientobj[fd]. conf_i].ErrorPages[502], fd, clientobj ,_configs);
+                    kill(pid, SIGKILL);
+                    waitpid(pid, &wstatus, 0);
+                    pipefd = clientobj[fd].cgiMap[fd].pipefd;
+                if (pipefd != -1)
+                {
+                    std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
+                    epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
+                    close(clientobj[fd].cgiMap[fd].pipefd);
+                    clientobj[fd].cgiMap[fd].pipefd = -1;
+                }
             }
         } 
         else if (WIFSIGNALED(wstatus))
@@ -335,7 +333,6 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
             pipefd = clientobj[fd].cgiMap[fd].pipefd;
             if (pipefd != -1)
             {
-                std::cout << "Removing CGI pipe fd" << pipefd << " from epoll\n";
                 epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
                 close(clientobj[fd].cgiMap[fd].pipefd);
                 clientobj[fd].cgiMap[fd].pipefd = -1;
@@ -345,7 +342,6 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client>& client
     pipefd = clientobj[fd].cgiMap[fd].pipefd;
     if (pipefd != -1)
     {
-        std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
         epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
         close(clientobj[fd].cgiMap[fd].pipefd);
         clientobj[fd].cgiMap[fd].pipefd = -1;
@@ -431,16 +427,12 @@ void Server::run()
                             }
                         }
                         WaitChildAndClean(epollManager, clients, fd, _configs);
-                        std::cout << "finish reading cgi\n";
                     }
                     else if (bytesRead < 0)
                         continue;
                     time_t now = time(NULL);
                     if (difftime(now, clients[fd].CgiStartActivity) > 3)
-                    {
-                        std::cout << "CGI timeout\n";
                         WaitChildAndClean(epollManager, clients, fd, _configs);
-                    }
                 }
             }
             else
@@ -457,7 +449,7 @@ void Server::run()
                             events[i].events = EPOLLOUT;
                             events[i].data.fd = fd;
                             if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_MOD, fd, &events[i]) < 0)
-                                std::cerr<< "❌ epoll_ctl: mod failed ";
+                                std::cerr << "❌ epoll_ctl: mod failed ";
                         }
                         if (this->clients[fd].header_complete)
                         {
@@ -476,10 +468,7 @@ void Server::run()
                         if (this->clients[fd].body_complete == 1 || this->clients[fd].method == "GET")
                         {
                             if (!a.error_set(this->clients, fd, this->_configs[this->clients[fd].conf_i], _configs) && this->_configs[this->clients[fd].conf_i].locations[clients[fd].key].Return.empty())
-                            {
-                                std::cout << "error_._set is: equal to zero\n";
                                 throw socketException("❌ error detected  in error set");
-                            }
                             else
                                 handleRequest(fd, a, clients, epollManager);
                         }
@@ -495,9 +484,7 @@ void Server::run()
                     if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi && !this->_configs[this->clients[fd].conf_i].locations[clients[fd].key].Return.empty()))
                         handleRequest(fd, a, clients, epollManager);
                     if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
-                    {
                         clients[fd].response.RequestResponse(fd, clients[fd].response, clients);
-                    }
                     if ((clients[fd].method == "GET" && clients[fd].send_complete == 1) || clients[fd].method != "GET"
                     || (clients[fd].method == "GET" && clients[fd].ResponseChunked == 1) || clients[fd].autoindex == 1 || clients[fd].timeout)
                         closeConnection(fd, epollManager);
@@ -514,17 +501,16 @@ void Server::closeConnection(int fd, EpollManager &epollManager)
     if (it->second.cgiMap.count(fd) && it->second.cgiMap[fd].pipefd != -1)
     {
         int pipefd = it->second.cgiMap[fd].pipefd;
-        std::cout << "🔸 Closing CGI pipefd: " << pipefd << std::endl;
         if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, pipefd, NULL) == -1)
-            std::cerr << "❌ epoll_ctl DEL fd failed\n";   
+            std::cerr << "❌ epoll_ctl DEL fd failed" << std::endl;   
         close(pipefd);
         it->second.cgiMap[fd].pipefd = -1;
     }
-    std::cout << "✅ client: " << fd << " is disconnected\n";
     if (epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, fd, NULL) == -1)
-        std::cerr << "❌ epoll_ctl DEL fd failed\n";
+        std::cerr << "❌ epoll_ctl DEL fd failed" << std::endl;
     close(fd);
     clients.erase(it);
+        std::cout << "✅ client: " << fd << " is disconnected\n";
 }
 
 Server ::socketException::socketException(const std::string &msg) :_msg(msg){}
