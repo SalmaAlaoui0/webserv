@@ -404,26 +404,30 @@ void Server::run()
                     }
                     else if (bytesRead == 0 && clients[fd].statusCode != 204)
                     {
-                        clients[fd].statusCode = 200;
-                        clients[fd].statusMsg = "OK";
-                        size_t HeaderEnd = clients[fd].CgiBody.find("\r\n\r\n");
-                        size_t sepLength = 4;
-
-                        if (HeaderEnd == std::string::npos) {
-                            HeaderEnd = clients[fd].CgiBody.find("\n\n");
-                            sepLength = 2;
-                        }
-                        if (HeaderEnd != std::string::npos)
+                        if (clients[fd].method == "GET")
                         {
-                            std::string headers = clients[fd].CgiBody.substr(0, HeaderEnd);
-                            clients[fd].ContentType = ft_content_type(headers);
-                            clients[fd].statusCode = ft_code_status(headers);
-                            clients[fd].CgiBody = clients[fd].CgiBody.substr(HeaderEnd + sepLength);
-                            if (clients[fd].CgiBody.empty())
+                            clients[fd].statusCode = 200;
+                            clients[fd].statusMsg = "OK";
+                            size_t HeaderEnd = clients[fd].CgiBody.find("\r\n\r\n");
+                            size_t sepLength = 4;
+
+                            if (HeaderEnd == std::string::npos)
                             {
-                                clients[fd].response = Response::buildResponse(204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients ,_configs);
-                                clients[fd].statusCode = 204;
-                                clients[fd].statusMsg = "No Content";
+                                HeaderEnd = clients[fd].CgiBody.find("\n\n");
+                                sepLength = 2;
+                            }
+                            if (HeaderEnd != std::string::npos)
+                            {
+                                std::string headers = clients[fd].CgiBody.substr(0, HeaderEnd);
+                                clients[fd].ContentType = ft_content_type(headers);
+                                clients[fd].statusCode = ft_code_status(headers);
+                                clients[fd].CgiBody = clients[fd].CgiBody.substr(HeaderEnd + sepLength);
+                                if (clients[fd].CgiBody.empty())
+                                {
+                                    clients[fd].response = Response::buildResponse(204, "No Content",_configs[this->clients[fd]. conf_i].ErrorPages[204], fd, clients ,_configs);
+                                    clients[fd].statusCode = 204;
+                                    clients[fd].statusMsg = "No Content";
+                                }
                             }
                         }
                         WaitChildAndClean(epollManager, clients, fd, _configs);
@@ -481,7 +485,7 @@ void Server::run()
                 else if (events[i].events & EPOLLOUT)
                 {
                     clients[fd].updateActivity();
-                    if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi && !this->_configs[this->clients[fd].conf_i].locations[clients[fd].key].Return.empty()))
+                    if ((clients[fd].method == "GET" && !clients[fd].ResponseChunked && !clients[fd].has_cgi) || (clients[fd].method == "POST" && clients[fd].has_cgi && this->_configs[this->clients[fd].conf_i].locations[clients[fd].key].Return.empty()))
                         handleRequest(fd, a, clients, epollManager);
                     if (!clients[fd].no_data || clients[fd].cgiMap[fd].Timeout || clients[fd].timeout)
                         clients[fd].response.RequestResponse(fd, clients[fd].response, clients);

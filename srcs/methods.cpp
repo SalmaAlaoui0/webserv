@@ -21,10 +21,8 @@
 
 std::vector<std::string> pathchunks(std::string path)
 {
-	int result;
 	std::vector<std::string> chunks;
 	std::string word;
-	result = path.find('{') != std::string::npos;
 	path = path.substr(0, path.find('{'));
 	std::istringstream iss(path);
 	while (iss >> word)

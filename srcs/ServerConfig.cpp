@@ -80,7 +80,7 @@ bool CheckValidIp(std::string ip)
         return 0;
     while (std::getline(ss, segment, '.'))
 	{
-		if (toInt(segment) > 255 || toInt(segment) < 0)
+		if (toInt(segment) > 255)
 			return 0;
 	}
     return 1;
