@@ -310,6 +310,7 @@ void WaitChildAndClean(EpollManager &epollManager, std::map<int, Client> &client
                 pipefd = clientobj[fd].cgiMap[fd].pipefd;
                 if (pipefd != -1)
                 {
+                    std::cout << "Removing CGI pipe fd " << pipefd << " from epoll\n";
                     epoll_ctl(epollManager.getEpollFd(), EPOLL_CTL_DEL, clientobj[fd].cgiMap[fd].pipefd, NULL);
                     close(clientobj[fd].cgiMap[fd].pipefd);
                     clientobj[fd].cgiMap[fd].pipefd = -1;

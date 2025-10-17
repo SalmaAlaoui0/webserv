@@ -131,8 +131,6 @@ void Response::RequestResponse(int clientFd, Response &res, std::map<int, Client
             srand(time(NULL));
             clientobj[clientFd].sessionId = generateId(16);
             clientobj[clientFd].getSession().push_back(clientobj[clientFd].sessionId);
-            // std::cout << "Set-Cookie: session_id=" << clientobj[clientFd].sessionId << "\n";
-            // std::cout << "Hello, new user! Data saved on server.\n\n";
         }
         std::ostringstream headers;
         headers << "HTTP/1.1 " << clientobj[clientFd].statusCode << "\r\n"
@@ -235,8 +233,6 @@ Response Response::buildResponse(int code, const std::string msg, std::string fi
         srand(time(NULL));
         rep.sessionId = generateId(16);
         s.getSession() .push_back(rep.sessionId);
-        std::cout << "Set-Cookie: session_id=" << rep.sessionId << "\n";//salamdelthis
-        std::cout << "Hello, new user! Data saved on server.\n\n";//salamdelthis
     }
     if (clientobj[clientFd].autoindex)
     {
